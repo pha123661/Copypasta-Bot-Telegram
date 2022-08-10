@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"log"
 	"net/http"
 	"os"
 	"path"
@@ -25,7 +26,7 @@ func build_cache() {
 	// updates cache with existing files
 	files, err := os.ReadDir(FILE_LOCATION)
 	if err != nil {
-		fmt.Println(err)
+		log.Println(err)
 		return
 	}
 
@@ -43,7 +44,7 @@ func handleUpdate(bot *tgbotapi.BotAPI, update tgbotapi.Update) {
 			replyMsg := tgbotapi.NewMessage(update.Message.Chat.ID, update.Message.Text)
 			replyMsg.ReplyToMessageID = update.Message.MessageID
 			if _, err := bot.Send(replyMsg); err != nil {
-				fmt.Println(err)
+				log.Println(err)
 			}
 		case "new": // new hok tse bun
 			// find file name
@@ -52,7 +53,7 @@ func handleUpdate(bot *tgbotapi.BotAPI, update tgbotapi.Update) {
 				replyMsg := tgbotapi.NewMessage(update.Message.Chat.ID, "錯誤：新增格式爲 “/new {關鍵字} {內容}”")
 				replyMsg.ReplyToMessageID = update.Message.MessageID
 				if _, err := bot.Send(replyMsg); err != nil {
-					fmt.Println(err)
+					log.Println(err)
 				}
 			}
 
@@ -71,14 +72,14 @@ func handleUpdate(bot *tgbotapi.BotAPI, update tgbotapi.Update) {
 					),
 				)
 				if _, err := bot.Send(replyMsg); err != nil {
-					panic(err)
+					log.Println(err)
 				}
 				return
 			}
 			// write file
 			file, err := os.Create(path.Join(FILE_LOCATION, filename))
 			if err != nil {
-				panic(err)
+				log.Println(err)
 			}
 			file.WriteString(content)
 			file.Close()
@@ -90,7 +91,7 @@ func handleUpdate(bot *tgbotapi.BotAPI, update tgbotapi.Update) {
 			replyMsg := tgbotapi.NewMessage(update.Message.Chat.ID, fmt.Sprintf("新增複製文「%s」成功", delExtension(filename)))
 			replyMsg.ReplyToMessageID = update.Message.MessageID
 			if _, err := bot.Send(replyMsg); err != nil {
-				fmt.Println(err)
+				log.Println(err)
 			}
 		}
 	} else {
@@ -100,7 +101,7 @@ func handleUpdate(bot *tgbotapi.BotAPI, update tgbotapi.Update) {
 				// hit
 				replyMsg := tgbotapi.NewMessage(update.Message.Chat.ID, CACHE[k])
 				if _, err := bot.Send(replyMsg); err != nil {
-					fmt.Println(err)
+					log.Println(err)
 				}
 			}
 		}
@@ -115,6 +116,10 @@ func main() {
 	go http.ListenAndServe(":9000", nil)
 
 	// initialize
+	file, _ := os.OpenFile("log.log")
+	defer file.Close()
+	log.SetOutput(file)
+
 	if _, err := os.Stat(FILE_LOCATION); os.IsNotExist(err) {
 		os.Mkdir(FILE_LOCATION, 0755)
 	}
@@ -143,11 +148,10 @@ func main() {
 				replyMsg := tgbotapi.NewMessage(update.CallbackQuery.Message.Chat.ID, "其實不按否也沒差啦 哈哈")
 				replyMsg.ReplyToMessageID = update.CallbackQuery.Message.MessageID
 				if _, err := bot.Send(replyMsg); err != nil {
-					fmt.Println(err)
+					log.Println(err)
 				}
 			} else {
 				split_tmp := strings.Split(update.CallbackQuery.Data, " ")
-				fmt.Println(split_tmp)
 				var filename string = split_tmp[0]
 				var content string = split_tmp[1]
 				// write file
@@ -159,16 +163,13 @@ func main() {
 				file.Close()
 
 				// update cache
-				fmt.Println(filename)
 				CACHE[delExtension(filename)] = content
-
-				fmt.Println(filename)
 
 				// send response to user
 				replyMsg := tgbotapi.NewMessage(update.CallbackQuery.Message.Chat.ID, fmt.Sprintf("更新複製文「%s」成功", delExtension(filename)))
 				replyMsg.ReplyToMessageID = update.CallbackQuery.Message.MessageID
 				if _, err := bot.Send(replyMsg); err != nil {
-					fmt.Println(err)
+					log.Println(err)
 				}
 			}
 			editedMsg := tgbotapi.NewEditMessageReplyMarkup(
