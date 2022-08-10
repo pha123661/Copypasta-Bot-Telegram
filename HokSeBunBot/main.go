@@ -8,6 +8,7 @@ import (
 	"os"
 	"path"
 	"strings"
+	"unicode/utf8"
 
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
 )
@@ -64,8 +65,9 @@ func handleUpdate(bot *tgbotapi.BotAPI, update tgbotapi.Update) {
 			var content string = update.Message.Text[len(update.Message.Command())+len(filename)-1:]
 			content = strings.TrimSpace(content)
 			if v, is_exist := CACHE[delExtension(filename)]; is_exist {
-				if len(v) >= 100 {
-					v = v[:100] + "……"
+				if utf8.RuneCountInString(v) >= 100 {
+					r := []rune(v)[:100]
+					v = string(r) + "……"
 				}
 				replyMsg := tgbotapi.NewMessage(update.Message.Chat.ID, fmt.Sprintf("「%s」複製文已存在：「%s」，確認是否覆蓋？", split_tmp[1], v))
 				replyMsg.ReplyMarkup = tgbotapi.NewInlineKeyboardMarkup(
