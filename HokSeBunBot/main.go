@@ -33,7 +33,6 @@ func build_cache() {
 		text, _ := os.ReadFile(path.Join(FILE_LOCATION, file.Name()))
 		CACHE[delExtension(file.Name())] = string(text) // text is []byte
 	}
-	fmt.Println(CACHE)
 }
 
 func handleUpdate(bot *tgbotapi.BotAPI, update tgbotapi.Update) {
@@ -82,7 +81,6 @@ func handleUpdate(bot *tgbotapi.BotAPI, update tgbotapi.Update) {
 				if _, err := bot.Send(replyMsg); err != nil {
 					fmt.Println(err)
 				}
-				break
 			}
 		}
 	}
