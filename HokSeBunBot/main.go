@@ -3,6 +3,7 @@ package main
 import (
 	"fmt"
 	"log"
+	"math/rand"
 	"net/http"
 	"os"
 	"path"
@@ -91,6 +92,19 @@ func handleUpdate(bot *tgbotapi.BotAPI, update tgbotapi.Update) {
 			// send response to user
 			replyMsg := tgbotapi.NewMessage(update.Message.Chat.ID, fmt.Sprintf("新增複製文「%s」成功", delExtension(filename)))
 			replyMsg.ReplyToMessageID = update.Message.MessageID
+			if _, err := bot.Send(replyMsg); err != nil {
+				log.Println(err)
+			}
+		case "random":
+			k := rand.Intn(len(CACHE))
+			var context string
+			for _, v := range CACHE {
+				if k == 0 {
+					context = v
+				}
+				k--
+			}
+			replyMsg := tgbotapi.NewMessage(update.Message.Chat.ID, context)
 			if _, err := bot.Send(replyMsg); err != nil {
 				log.Println(err)
 			}
