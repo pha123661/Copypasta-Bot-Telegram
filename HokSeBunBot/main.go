@@ -109,6 +109,7 @@ func handleUpdate(bot *tgbotapi.BotAPI, update tgbotapi.Update) {
 				}
 				k--
 			}
+			context = fmt.Sprintf("幫你從 %d 篇文章中精心選擇了：\n%s", len(CACHE), context)
 			replyMsg := tgbotapi.NewMessage(update.Message.Chat.ID, context)
 			if _, err := bot.Send(replyMsg); err != nil {
 				log.Println(err)
