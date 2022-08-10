@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"net/http"
 	"os"
 	"path"
 	"strings"
@@ -107,6 +108,12 @@ func handleUpdate(bot *tgbotapi.BotAPI, update tgbotapi.Update) {
 }
 
 func main() {
+	// keep alive
+	http.HandleFunc("/", func(res http.ResponseWriter, req *http.Request) {
+		fmt.Fprint(res, "Hello World!")
+	})
+	go http.ListenAndServe(":9000", nil)
+
 	// initialize
 	if _, err := os.Stat(FILE_LOCATION); os.IsNotExist(err) {
 		os.Mkdir(FILE_LOCATION, 0755)
