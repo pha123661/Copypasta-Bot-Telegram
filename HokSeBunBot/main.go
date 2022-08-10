@@ -13,20 +13,20 @@ import (
 var FILE_LOCATION string = "../HokSeBun_db"
 var CACHE = make(map[string]string)
 
+func delExtension(fileName string) string {
+	// utility for removing file extension from filename
+	if pos := strings.LastIndexByte(fileName, '.'); pos != -1 {
+		return fileName[:pos]
+	}
+	return fileName
+}
+
 func build_cache() {
 	// updates cache with existing files
 	files, err := ioutil.ReadDir(FILE_LOCATION)
 	if err != nil {
 		fmt.Println(err)
 		return
-	}
-
-	// utility for removing file extension from filename
-	delExtension := func(fileName string) string {
-		if pos := strings.LastIndexByte(fileName, '.'); pos != -1 {
-			return fileName[:pos]
-		}
-		return fileName
 	}
 
 	for _, file := range files {
@@ -49,24 +49,45 @@ func handleUpdate(bot *tgbotapi.BotAPI, update tgbotapi.Update) {
 			// find file name
 			split_tmp := strings.Split(update.Message.Text, " ")
 			if len(split_tmp) <= 2 {
-				return
+				replyMsg := tgbotapi.NewMessage(update.Message.Chat.ID, "錯誤：新增格式爲 “/new {關鍵字} {內容}”")
+				replyMsg.ReplyToMessageID = update.Message.MessageID
+				if _, err := bot.Send(replyMsg); err != nil {
+					fmt.Println(err)
+				}
 			}
 
-			// write file
+			// check file existence
 			var filename string = split_tmp[1] + ".txt"
+			var content string = update.Message.Text[len(update.Message.Command())+len(filename)-1:]
+			if v, is_exist := CACHE[delExtension(filename)]; is_exist {
+				if len(v) >= 100 {
+					v = v[:100] + "……"
+				}
+				replyMsg := tgbotapi.NewMessage(update.Message.Chat.ID, fmt.Sprintf("「%s」複製文已存在：「%s」，確認是否覆蓋？", split_tmp[1], v))
+				replyMsg.ReplyMarkup = tgbotapi.NewInlineKeyboardMarkup(
+					tgbotapi.NewInlineKeyboardRow(
+						tgbotapi.NewInlineKeyboardButtonData("是", fmt.Sprintf("%s %s", filename, content)),
+						tgbotapi.NewInlineKeyboardButtonData("否", "NIL"),
+					),
+				)
+				if _, err := bot.Send(replyMsg); err != nil {
+					panic(err)
+				}
+				return
+			}
+			// write file
 			file, err := os.Create(path.Join(FILE_LOCATION, filename))
 			if err != nil {
 				panic(err)
 			}
-			var content string = update.Message.Text[len(update.Message.Command())+len(filename)-1:]
 			file.WriteString(content)
 			file.Close()
 
 			// update cache
-			CACHE[split_tmp[1]] = content
+			CACHE[delExtension(filename)] = content
 
 			// send response to user
-			replyMsg := tgbotapi.NewMessage(update.Message.Chat.ID, fmt.Sprintf("新增複製文「%s」成功", filename[:len(filename)-4]))
+			replyMsg := tgbotapi.NewMessage(update.Message.Chat.ID, fmt.Sprintf("新增複製文「%s」成功", delExtension(filename)))
 			replyMsg.ReplyToMessageID = update.Message.MessageID
 			if _, err := bot.Send(replyMsg); err != nil {
 				fmt.Println(err)
@@ -92,6 +113,7 @@ func main() {
 		os.Mkdir(FILE_LOCATION, 0755)
 	}
 	build_cache()
+
 	// start bot
 	bot, err := tgbotapi.NewBotAPI(os.Getenv("TELEGRAM_API_TOKEN"))
 	if err != nil {
@@ -108,10 +130,51 @@ func main() {
 	updates := bot.GetUpdatesChan(updateConfig)
 	for update := range updates {
 		// ignore nil
-		if update.Message == nil {
-			continue
+		if update.Message != nil {
+			handleUpdate(bot, update)
+		} else if update.CallbackQuery != nil {
+			if update.CallbackQuery.Data == "NIL" {
+				replyMsg := tgbotapi.NewMessage(update.CallbackQuery.Message.Chat.ID, "其實不按否也沒差啦 哈哈")
+				replyMsg.ReplyToMessageID = update.CallbackQuery.Message.MessageID
+				if _, err := bot.Send(replyMsg); err != nil {
+					fmt.Println(err)
+				}
+			} else {
+				split_tmp := strings.Split(update.CallbackQuery.Data, " ")
+				fmt.Println(split_tmp)
+				var filename string = split_tmp[0]
+				var content string = split_tmp[1]
+				// write file
+				file, err := os.Create(path.Join(FILE_LOCATION, filename))
+				if err != nil {
+					panic(err)
+				}
+				file.WriteString(content)
+				file.Close()
+
+				// update cache
+				fmt.Println(filename)
+				CACHE[delExtension(filename)] = content
+
+				fmt.Println(filename)
+
+				// send response to user
+				replyMsg := tgbotapi.NewMessage(update.CallbackQuery.Message.Chat.ID, fmt.Sprintf("更新複製文「%s」成功", delExtension(filename)))
+				replyMsg.ReplyToMessageID = update.CallbackQuery.Message.MessageID
+				if _, err := bot.Send(replyMsg); err != nil {
+					fmt.Println(err)
+				}
+			}
+			editedMsg := tgbotapi.NewEditMessageReplyMarkup(
+				update.CallbackQuery.Message.Chat.ID,
+				update.CallbackQuery.Message.MessageID,
+				tgbotapi.InlineKeyboardMarkup{
+					InlineKeyboard: make([][]tgbotapi.InlineKeyboardButton, 0),
+				},
+			)
+			bot.Send(editedMsg)
 		}
-		handleUpdate(bot, update)
+
 	}
 
 }
