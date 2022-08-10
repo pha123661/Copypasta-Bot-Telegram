@@ -55,6 +55,7 @@ func handleUpdate(bot *tgbotapi.BotAPI, update tgbotapi.Update) {
 				if _, err := bot.Send(replyMsg); err != nil {
 					log.Println(err)
 				}
+				return
 			}
 
 			// check file existence
@@ -116,7 +117,7 @@ func main() {
 	go http.ListenAndServe(":9000", nil)
 
 	// initialize
-	file, _ := os.OpenFile("log.log")
+	file, _ := os.OpenFile("log.log", os.O_RDWR|os.O_CREATE|os.O_APPEND, 0666)
 	defer file.Close()
 	log.SetOutput(file)
 
