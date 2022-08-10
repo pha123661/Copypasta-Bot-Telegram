@@ -15,6 +15,7 @@ import (
 
 var FILE_LOCATION string = "../HokSeBun_db"
 var CACHE = make(map[string]string)
+var tmp_content string // for override confirm
 
 func delExtension(fileName string) string {
 	// utility for removing file extension from filename
@@ -69,10 +70,11 @@ func handleUpdate(bot *tgbotapi.BotAPI, update tgbotapi.Update) {
 					r := []rune(v)[:100]
 					v = string(r) + "……"
 				}
+				tmp_content = content
 				replyMsg := tgbotapi.NewMessage(update.Message.Chat.ID, fmt.Sprintf("「%s」複製文已存在：「%s」，確認是否覆蓋？", split_tmp[1], v))
 				replyMsg.ReplyMarkup = tgbotapi.NewInlineKeyboardMarkup(
 					tgbotapi.NewInlineKeyboardRow(
-						tgbotapi.NewInlineKeyboardButtonData("是", fmt.Sprintf("%s %s", filename, content)),
+						tgbotapi.NewInlineKeyboardButtonData("是", filename),
 						tgbotapi.NewInlineKeyboardButtonData("否", "NIL"),
 					),
 				)
@@ -169,9 +171,8 @@ func main() {
 					log.Println(err)
 				}
 			} else {
-				split_tmp := strings.Split(update.CallbackQuery.Data, " ")
-				var filename string = split_tmp[0]
-				var content string = strings.TrimSpace(split_tmp[1])
+				var filename string = update.CallbackQuery.Data
+				var content string = strings.TrimSpace(tmp_content)
 				// write file
 				file, err := os.Create(path.Join(FILE_LOCATION, filename))
 				if err != nil {
