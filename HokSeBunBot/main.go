@@ -2,7 +2,6 @@ package main
 
 import (
 	"fmt"
-	"io/ioutil"
 	"os"
 	"path"
 	"strings"
@@ -23,7 +22,7 @@ func delExtension(fileName string) string {
 
 func build_cache() {
 	// updates cache with existing files
-	files, err := ioutil.ReadDir(FILE_LOCATION)
+	files, err := os.ReadDir(FILE_LOCATION)
 	if err != nil {
 		fmt.Println(err)
 		return
