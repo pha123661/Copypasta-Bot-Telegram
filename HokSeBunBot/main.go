@@ -46,7 +46,7 @@ func handleUpdate(bot *tgbotapi.BotAPI, update tgbotapi.Update) {
 			if _, err := bot.Send(replyMsg); err != nil {
 				log.Println(err)
 			}
-		case "new": // new hok tse bun
+		case "new", "add": // new hok tse bun
 			// find file name
 			split_tmp := strings.Split(update.Message.Text, " ")
 			if len(split_tmp) <= 2 {
