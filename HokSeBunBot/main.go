@@ -53,7 +53,7 @@ func handleUpdate(bot *tgbotapi.BotAPI, update tgbotapi.Update) {
 			// find file name
 			split_tmp := strings.Split(update.Message.Text, " ")
 			if len(split_tmp) <= 2 {
-				replyMsg := tgbotapi.NewMessage(update.Message.Chat.ID, "錯誤：新增格式爲 “/new {關鍵字} {內容}”")
+				replyMsg := tgbotapi.NewMessage(update.Message.Chat.ID, fmt.Sprintf("錯誤：新增格式爲 “/%s {關鍵字} {內容}”", update.Message.Command()))
 				replyMsg.ReplyToMessageID = update.Message.MessageID
 				if _, err := bot.Send(replyMsg); err != nil {
 					log.Println(err)
