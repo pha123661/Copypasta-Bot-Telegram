@@ -62,6 +62,7 @@ func handleUpdate(bot *tgbotapi.BotAPI, update tgbotapi.Update) {
 			// check file existence
 			var filename string = split_tmp[1] + ".txt"
 			var content string = update.Message.Text[len(update.Message.Command())+len(filename)-1:]
+			content = strings.TrimSpace(content)
 			if v, is_exist := CACHE[delExtension(filename)]; is_exist {
 				if len(v) >= 100 {
 					v = v[:100] + "……"
@@ -168,7 +169,7 @@ func main() {
 			} else {
 				split_tmp := strings.Split(update.CallbackQuery.Data, " ")
 				var filename string = split_tmp[0]
-				var content string = split_tmp[1]
+				var content string = strings.TrimSpace(split_tmp[1])
 				// write file
 				file, err := os.Create(path.Join(FILE_LOCATION, filename))
 				if err != nil {
