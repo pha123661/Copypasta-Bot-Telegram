@@ -120,9 +120,6 @@ func handleUpdateMessage(bot *tgbotapi.BotAPI, Message *tgbotapi.Message) {
 				log.Println(err)
 			}
 			for k, v := range CACHE {
-				fmt.Println(len(Keyword), Keyword)
-				fmt.Println(len(k), k)
-				fmt.Println(len(v.content), v.content)
 				if fuzzy.Match(Keyword, k) || fuzzy.Match(k, Keyword) || fuzzy.Match(Keyword, v.summarization) || fuzzy.Match(Keyword, v.content) {
 					ResultCount++
 					content := trimString(v.content, 100)
