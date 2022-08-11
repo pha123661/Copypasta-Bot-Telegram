@@ -62,7 +62,7 @@ func handleUpdateMessage(bot *tgbotapi.BotAPI, Message *tgbotapi.Message) {
 				return
 			}
 			// write file
-			file, err := os.Create(path.Join(FILE_LOCATION, filename))
+			file, err := os.Create(path.Join(CONFIG.FILE_LOCATION, filename))
 			if err != nil {
 				log.Println(err)
 			}
@@ -118,7 +118,7 @@ func handleUpdateCallbackQuery(bot *tgbotapi.BotAPI, CallbackQuery *tgbotapi.Cal
 		var filename string = CallbackQuery.Data
 		var content string = Queued_Overrides[filename]
 		// write file
-		file, err := os.Create(path.Join(FILE_LOCATION, filename))
+		file, err := os.Create(path.Join(CONFIG.FILE_LOCATION, filename))
 		if err != nil {
 			panic(err)
 		}
@@ -153,17 +153,20 @@ func main() {
 	go http.ListenAndServe(":9000", nil)
 
 	// initialize
+	// setup logging
 	file, _ := os.OpenFile("log.log", os.O_RDWR|os.O_CREATE|os.O_APPEND, 0666)
 	defer file.Close()
 	log.SetOutput(file)
-
-	if _, err := os.Stat(FILE_LOCATION); os.IsNotExist(err) {
-		os.Mkdir(FILE_LOCATION, 0755)
+	// read config
+	CONFIG = initConfig("../config.toml")
+	// build cache
+	if _, err := os.Stat(CONFIG.FILE_LOCATION); os.IsNotExist(err) {
+		os.Mkdir(CONFIG.FILE_LOCATION, 0755)
 	}
 	build_cache()
 
 	// start bot
-	bot, err := tgbotapi.NewBotAPI(os.Getenv("TELEGRAM_API_TOKEN"))
+	bot, err := tgbotapi.NewBotAPI(CONFIG.TELEGRAM_API_TOKEN)
 	if err != nil {
 		panic(err)
 	}

@@ -1,0 +1,2 @@
+TELEGRAM_API_TOKEN = "your_tg_api_token_here"
+FILE_LOCATION = "../HokSeBun_db"
