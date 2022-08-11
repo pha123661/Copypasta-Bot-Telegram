@@ -17,22 +17,22 @@ import (
 // "existed_filename.txt": "new content"
 var Queued_Overrides = make(map[string]string)
 
-func handleUpdate(bot *tgbotapi.BotAPI, update tgbotapi.Update) {
-	if update.Message.IsCommand() {
+func handleUpdateMessage(bot *tgbotapi.BotAPI, Message *tgbotapi.Message) {
+	if Message.IsCommand() {
 		// handle commands
-		switch update.Message.Command() {
+		switch Message.Command() {
 		case "echo":
-			replyMsg := tgbotapi.NewMessage(update.Message.Chat.ID, update.Message.Text)
-			replyMsg.ReplyToMessageID = update.Message.MessageID
+			replyMsg := tgbotapi.NewMessage(Message.Chat.ID, Message.Text)
+			replyMsg.ReplyToMessageID = Message.MessageID
 			if _, err := bot.Send(replyMsg); err != nil {
 				log.Println(err)
 			}
 		case "new", "add": // new hok tse bun
 			// find file name
-			split_tmp := strings.Split(update.Message.Text, " ")
+			split_tmp := strings.Split(Message.Text, " ")
 			if len(split_tmp) <= 2 {
-				replyMsg := tgbotapi.NewMessage(update.Message.Chat.ID, fmt.Sprintf("錯誤：新增格式爲 “/%s {關鍵字} {內容}”", update.Message.Command()))
-				replyMsg.ReplyToMessageID = update.Message.MessageID
+				replyMsg := tgbotapi.NewMessage(Message.Chat.ID, fmt.Sprintf("錯誤：新增格式爲 “/%s {關鍵字} {內容}”", Message.Command()))
+				replyMsg.ReplyToMessageID = Message.MessageID
 				if _, err := bot.Send(replyMsg); err != nil {
 					log.Println(err)
 				}
@@ -41,7 +41,7 @@ func handleUpdate(bot *tgbotapi.BotAPI, update tgbotapi.Update) {
 
 			// check file existence
 			var filename string = split_tmp[1] + ".txt"
-			var content string = update.Message.Text[len(update.Message.Command())+len(filename)-1:]
+			var content string = Message.Text[len(Message.Command())+len(filename)-1:]
 			content = strings.TrimSpace(content)
 			if v, is_exist := CACHE[delExtension(filename)]; is_exist {
 				if utf8.RuneCountInString(v) >= 100 {
@@ -49,7 +49,7 @@ func handleUpdate(bot *tgbotapi.BotAPI, update tgbotapi.Update) {
 					v = string(r) + "……"
 				}
 				Queued_Overrides[filename] = content
-				replyMsg := tgbotapi.NewMessage(update.Message.Chat.ID, fmt.Sprintf("「%s」複製文已存在：「%s」，確認是否覆蓋？", split_tmp[1], v))
+				replyMsg := tgbotapi.NewMessage(Message.Chat.ID, fmt.Sprintf("「%s」複製文已存在：「%s」，確認是否覆蓋？", split_tmp[1], v))
 				replyMsg.ReplyMarkup = tgbotapi.NewInlineKeyboardMarkup(
 					tgbotapi.NewInlineKeyboardRow(
 						tgbotapi.NewInlineKeyboardButtonData("是", filename),
@@ -73,8 +73,8 @@ func handleUpdate(bot *tgbotapi.BotAPI, update tgbotapi.Update) {
 			CACHE[delExtension(filename)] = content
 
 			// send response to user
-			replyMsg := tgbotapi.NewMessage(update.Message.Chat.ID, fmt.Sprintf("新增複製文「%s」成功", delExtension(filename)))
-			replyMsg.ReplyToMessageID = update.Message.MessageID
+			replyMsg := tgbotapi.NewMessage(Message.Chat.ID, fmt.Sprintf("新增複製文「%s」成功", delExtension(filename)))
+			replyMsg.ReplyToMessageID = Message.MessageID
 			if _, err := bot.Send(replyMsg); err != nil {
 				log.Println(err)
 			}
@@ -88,7 +88,7 @@ func handleUpdate(bot *tgbotapi.BotAPI, update tgbotapi.Update) {
 				k--
 			}
 			context = fmt.Sprintf("幫你從 %d 篇文章中精心選擇了：\n%s", len(CACHE), context)
-			replyMsg := tgbotapi.NewMessage(update.Message.Chat.ID, context)
+			replyMsg := tgbotapi.NewMessage(Message.Chat.ID, context)
 			if _, err := bot.Send(replyMsg); err != nil {
 				log.Println(err)
 			}
@@ -96,9 +96,9 @@ func handleUpdate(bot *tgbotapi.BotAPI, update tgbotapi.Update) {
 	} else {
 		// search hok tse bun
 		for k := range CACHE {
-			if strings.Contains(update.Message.Text, k) {
+			if strings.Contains(Message.Text, k) {
 				// hit
-				replyMsg := tgbotapi.NewMessage(update.Message.Chat.ID, CACHE[k])
+				replyMsg := tgbotapi.NewMessage(Message.Chat.ID, CACHE[k])
 				if _, err := bot.Send(replyMsg); err != nil {
 					log.Println(err)
 				}
@@ -141,7 +141,7 @@ func main() {
 	for update := range updates {
 		// ignore nil
 		if update.Message != nil {
-			handleUpdate(bot, update)
+			handleUpdateMessage(bot, update.Message)
 		} else if update.CallbackQuery != nil {
 			if update.CallbackQuery.Data == "NIL" {
 				replyMsg := tgbotapi.NewMessage(update.CallbackQuery.Message.Chat.ID, "其實不按否也沒差啦 哈哈")
