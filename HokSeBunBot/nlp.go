@@ -69,6 +69,7 @@ func getSingleSummarization(filename string, input string) string {
 			log.Println(err)
 			log.Println("[HuggingFace] API dead, switching token...")
 			setAvailableAPI()
+			return getSingleSummarization(filename, input)
 		}
 	} else {
 		content = sresps[0].SummaryText
