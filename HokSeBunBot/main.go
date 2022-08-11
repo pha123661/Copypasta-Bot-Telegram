@@ -119,6 +119,11 @@ func handleUpdateMessage(bot *tgbotapi.BotAPI, Message *tgbotapi.Message) {
 			if _, err := bot.Send(tgbotapi.NewMessage(Message.Chat.ID, "正在搜尋中…… 請稍後")); err != nil {
 				log.Println(err)
 			}
+			if Message.Chat.ID != Message.From.ID {
+				if _, err := bot.Send(tgbotapi.NewMessage(Message.From.ID, fmt.Sprintf("「%s」的搜尋結果如下：", Keyword))); err != nil {
+					log.Println(err)
+				}
+			}
 			for k, v := range CACHE {
 				if fuzzy.Match(Keyword, k) || fuzzy.Match(k, Keyword) || fuzzy.Match(Keyword, v.summarization) || fuzzy.Match(Keyword, v.content) {
 					ResultCount++
@@ -130,6 +135,11 @@ func handleUpdateMessage(bot *tgbotapi.BotAPI, Message *tgbotapi.Message) {
 			}
 			if _, err := bot.Send(tgbotapi.NewMessage(Message.Chat.ID, fmt.Sprintf("搜尋完成，共 %d 筆吻合\n(結果在與bot的私訊中)", ResultCount))); err != nil {
 				log.Println(err)
+			}
+			if Message.Chat.ID == Message.From.ID {
+				if _, err := bot.Send(tgbotapi.NewMessage(Message.From.ID, fmt.Sprintf("搜尋完成，共 %d 筆吻合\n", ResultCount))); err != nil {
+					log.Println(err)
+				}
 			}
 
 		default:
