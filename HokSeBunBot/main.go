@@ -106,7 +106,7 @@ func handleUpdateMessage(bot *tgbotapi.BotAPI, Message *tgbotapi.Message) {
 			var Keyword string = Message.CommandArguments()
 			var ResultCount int
 			if utf8.RuneCountInString(Keyword) <= 2 {
-				if _, err := bot.Send(tgbotapi.NewMessage(Message.Chat.ID, "搜尋關鍵字至少要兩個字！")); err != nil {
+				if _, err := bot.Send(tgbotapi.NewMessage(Message.Chat.ID, "搜尋關鍵字至少要三個字！")); err != nil {
 					log.Println(err)
 				}
 				return
