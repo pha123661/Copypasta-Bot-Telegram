@@ -9,7 +9,7 @@ import (
 	"unicode/utf8"
 
 	toml "github.com/BurntSushi/toml"
-	progressbar "github.com/schollz/progressbar/v3"
+	pb "github.com/schollz/progressbar/v2"
 )
 
 var CACHE = make(map[string]HokSeBun)
@@ -81,7 +81,7 @@ func buildCache() {
 	if err != nil {
 		log.Panicln(err)
 	}
-	bar := progressbar.Default(int64(len(files)))
+	bar := pb.New(len(files))
 	for _, file := range files {
 		bar.Add(1)
 		if file.IsDir() {
