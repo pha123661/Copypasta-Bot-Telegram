@@ -18,7 +18,7 @@ func getSingleSummarization(filename string, input string) string {
 	if _, err := os.Stat(path.Join(CONFIG.SUMMARIZATION_LOCATION, filename)); err == nil {
 		bytes, err := os.ReadFile(path.Join(CONFIG.SUMMARIZATION_LOCATION, filename))
 		if err != nil {
-			panic(err)
+			log.Panicln(err)
 		}
 		return string(bytes)
 	}
@@ -31,7 +31,7 @@ func getSingleSummarization(filename string, input string) string {
 		},
 	)
 	if err != nil {
-		panic(err)
+		log.Panicln(err)
 	}
 	var content string = sresps[0].SummaryText
 

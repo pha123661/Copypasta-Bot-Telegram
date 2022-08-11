@@ -163,7 +163,7 @@ func handleUpdateCallbackQuery(bot *tgbotapi.BotAPI, CallbackQuery *tgbotapi.Cal
 		// write file
 		file, err := os.Create(path.Join(CONFIG.FILE_LOCATION, filename))
 		if err != nil {
-			panic(err)
+			log.Panicln(err)
 		}
 		file.WriteString(content)
 		file.Close()
@@ -219,7 +219,7 @@ func main() {
 	// start bot
 	bot, err := tgbotapi.NewBotAPI(CONFIG.TELEGRAM_API_TOKEN)
 	if err != nil {
-		panic(err)
+		log.Panicln(err)
 	}
 	bot.Debug = true
 	fmt.Println("***", "Sucessful logged in as", bot.Self.UserName, "***")

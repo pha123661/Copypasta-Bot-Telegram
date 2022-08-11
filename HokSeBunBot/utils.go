@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"log"
 	"os"
 	"path"
 	"strings"
@@ -45,10 +46,10 @@ type HokSeBun struct {
 func initConfig(CONFIG_PATH string) Config {
 	tomldata, err := os.ReadFile(CONFIG_PATH)
 	if err != nil {
-		panic(err)
+		log.Panicln(err)
 	}
 	if _, err := toml.Decode(string(tomldata), &CONFIG); err != nil {
-		panic(err)
+		log.Panicln(err)
 	}
 	return CONFIG
 }
@@ -74,7 +75,7 @@ func buildCache() {
 	// updates cache with existing files
 	files, err := os.ReadDir(CONFIG.FILE_LOCATION)
 	if err != nil {
-		panic(err)
+		log.Panicln(err)
 	}
 
 	for _, file := range files {
