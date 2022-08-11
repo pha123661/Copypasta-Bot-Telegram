@@ -136,7 +136,7 @@ func handleUpdateMessage(bot *tgbotapi.BotAPI, Message *tgbotapi.Message) {
 			if _, err := bot.Send(tgbotapi.NewMessage(Message.Chat.ID, fmt.Sprintf("搜尋完成，共 %d 筆吻合\n(結果在與bot的私訊中)", ResultCount))); err != nil {
 				log.Println(err)
 			}
-			if Message.Chat.ID == Message.From.ID {
+			if Message.Chat.ID != Message.From.ID {
 				if _, err := bot.Send(tgbotapi.NewMessage(Message.From.ID, fmt.Sprintf("搜尋完成，共 %d 筆吻合\n", ResultCount))); err != nil {
 					log.Println(err)
 				}
