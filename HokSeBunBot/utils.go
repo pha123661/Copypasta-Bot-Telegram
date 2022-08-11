@@ -36,7 +36,7 @@ func delExtension(fileName string) string {
 	return fileName
 }
 
-func trim_string(str string, length int) string {
+func trimString(str string, length int) string {
 	length = length - utf8.RuneCountInString("……")
 	if utf8.RuneCountInString(str) >= length {
 		r := []rune(str)[:length]
@@ -45,7 +45,7 @@ func trim_string(str string, length int) string {
 	return str
 }
 
-func build_cache() {
+func buildCache() {
 	// updates cache with existing files
 	files, err := os.ReadDir(CONFIG.FILE_LOCATION)
 	if err != nil {
