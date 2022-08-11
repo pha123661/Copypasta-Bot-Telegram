@@ -110,8 +110,8 @@ func handleUpdateMessage(bot *tgbotapi.BotAPI, Message *tgbotapi.Message) {
 		case "search": // fuzzy search both filename & content
 			var Keyword string = Message.CommandArguments()
 			var ResultCount int
-			if utf8.RuneCountInString(Keyword) <= 2 {
-				if _, err := bot.Send(tgbotapi.NewMessage(Message.Chat.ID, "搜尋關鍵字至少要三個字！")); err != nil {
+			if utf8.RuneCountInString(Keyword) < 2 {
+				if _, err := bot.Send(tgbotapi.NewMessage(Message.Chat.ID, "搜尋關鍵字至少要兩個字！")); err != nil {
 					log.Println(err)
 				}
 				return
@@ -120,7 +120,7 @@ func handleUpdateMessage(bot *tgbotapi.BotAPI, Message *tgbotapi.Message) {
 				log.Println(err)
 			}
 			for k, v := range CACHE {
-				if fuzzy.Match(Keyword, k) || fuzzy.Match(Keyword, v.content) || fuzzy.Match(Keyword, v.summarization) || fuzzy.Match(k, Keyword) {
+				if fuzzy.MatchNormalizedFold(Keyword, k) || fuzzy.MatchNormalizedFold(Keyword, v.content) || fuzzy.MatchNormalizedFold(Keyword, v.summarization) || fuzzy.MatchNormalizedFold(k, Keyword) {
 					ResultCount++
 					content := trimString(v.content, 100)
 					if _, err := bot.Send(tgbotapi.NewMessage(Message.Chat.ID, fmt.Sprintf("「%s」：「%s」", k, content))); err != nil {
@@ -156,15 +156,15 @@ func handleUpdateMessage(bot *tgbotapi.BotAPI, Message *tgbotapi.Message) {
 		// strings.Contains("AAABBBCCC", "AB") = true
 		var limit int = 3
 		for k, v := range CACHE {
-			if utf8.RuneCountInString(Message.Text) >= 3 {
-				// >= 3 字
-				if fuzzy.Match(k, Message.Text) || strings.Contains(v.summarization, Message.Text) || fuzzy.Match(Message.Text, k) {
+			if utf8.RuneCountInString(Message.Text) >= 2 {
+				// >= 2 字
+				if fuzzy.MatchNormalizedFold(k, Message.Text) || fuzzy.MatchNormalizedFold(Message.Text, v.summarization) || fuzzy.MatchNormalizedFold(Message.Text, k) {
 					send(Message.Chat.ID, CACHE[k].content)
 					limit--
 				}
 			} else {
-				// < 3 字
-				if fuzzy.Match(k, Message.Text) {
+				// < 2 字
+				if fuzzy.MatchNormalizedFold(k, Message.Text) {
 					send(Message.Chat.ID, CACHE[k].content)
 					limit--
 				}
