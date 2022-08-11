@@ -14,7 +14,6 @@ import (
 )
 
 var FILE_LOCATION string = "../HokSeBun_db"
-var CACHE = make(map[string]string)
 var tmp_content string // for override confirm
 
 func delExtension(fileName string) string {
@@ -25,7 +24,7 @@ func delExtension(fileName string) string {
 	return fileName
 }
 
-func build_cache() {
+func build_cache(CACHE map[string]string) {
 	// updates cache with existing files
 	files, err := os.ReadDir(FILE_LOCATION)
 	if err != nil {
@@ -39,7 +38,7 @@ func build_cache() {
 	}
 }
 
-func handleUpdate(bot *tgbotapi.BotAPI, update tgbotapi.Update) {
+func handleUpdate(bot *tgbotapi.BotAPI, update tgbotapi.Update, CACHE map[string]string) {
 	if update.Message.IsCommand() {
 		// handle commands
 		switch update.Message.Command() {
@@ -137,6 +136,7 @@ func main() {
 	go http.ListenAndServe(":9000", nil)
 
 	// initialize
+	var CACHE = make(map[string]string)
 	file, _ := os.OpenFile("log.log", os.O_RDWR|os.O_CREATE|os.O_APPEND, 0666)
 	defer file.Close()
 	log.SetOutput(file)
@@ -144,7 +144,7 @@ func main() {
 	if _, err := os.Stat(FILE_LOCATION); os.IsNotExist(err) {
 		os.Mkdir(FILE_LOCATION, 0755)
 	}
-	build_cache()
+	build_cache(CACHE)
 
 	// start bot
 	bot, err := tgbotapi.NewBotAPI(os.Getenv("TELEGRAM_API_TOKEN"))
@@ -163,7 +163,7 @@ func main() {
 	for update := range updates {
 		// ignore nil
 		if update.Message != nil {
-			handleUpdate(bot, update)
+			handleUpdate(bot, update, CACHE)
 		} else if update.CallbackQuery != nil {
 			if update.CallbackQuery.Data == "NIL" {
 				replyMsg := tgbotapi.NewMessage(update.CallbackQuery.Message.Chat.ID, "其實不按否也沒差啦 哈哈")
