@@ -73,8 +73,8 @@ func trimString(str string, length int) string {
 }
 
 func buildCache() {
-	fmt.Println("Building Cache……, this may take some time")
-	log.Panicln("Building Cache……")
+	fmt.Println("Building Cache..., this may take some time")
+	log.Println("Building Cache...")
 	// updates cache with existing files
 	files, err := os.ReadDir(CONFIG.FILE_LOCATION)
 	if err != nil {
