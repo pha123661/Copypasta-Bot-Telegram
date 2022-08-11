@@ -32,9 +32,10 @@ func init_utils() {
 }
 
 type Config struct {
-	TELEGRAM_API_TOKEN     string
 	FILE_LOCATION          string
 	SUMMARIZATION_LOCATION string
+	LOG_FILE               string
+	TELEGRAM_API_TOKEN     string
 	HUGGINGFACE_TOKENs     []string
 	HUGGINGFACE_MODEL      string
 }

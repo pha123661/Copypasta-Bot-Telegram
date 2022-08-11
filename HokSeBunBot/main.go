@@ -190,13 +190,12 @@ func handleUpdateCallbackQuery(bot *tgbotapi.BotAPI, CallbackQuery *tgbotapi.Cal
 
 func init() {
 	// initialize
-	// setup logging
-	file, _ := os.OpenFile("log.log", os.O_RDWR|os.O_CREATE|os.O_APPEND, 0666)
-	defer file.Close()
-	log.SetOutput(file)
-
 	init_utils()
 	init_nlp()
+	// setup logging
+	file, _ := os.OpenFile(CONFIG.LOG_FILE, os.O_RDWR|os.O_CREATE|os.O_APPEND, 0666)
+	defer file.Close()
+	log.SetOutput(file)
 
 	// build cache
 	if _, err := os.Stat(CONFIG.FILE_LOCATION); os.IsNotExist(err) {
