@@ -134,6 +134,9 @@ func handleUpdateMessage(bot *tgbotapi.BotAPI, Message *tgbotapi.Message) {
 		}
 	} else {
 		// search hok tse bun
+		if Message.Text == "" || Message.Text == " " {
+			return
+		}
 		for k := range CACHE {
 			if fuzzy.Match(k, Message.Text) || fuzzy.Match(Message.Text, k) {
 				// hit
