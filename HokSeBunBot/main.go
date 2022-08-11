@@ -137,13 +137,30 @@ func handleUpdateMessage(bot *tgbotapi.BotAPI, Message *tgbotapi.Message) {
 		if Message.Text == "" || Message.Text == " " {
 			return
 		}
+
+		send := func(ChatID int64, Content string) {
+			replyMsg := tgbotapi.NewMessage(ChatID, Content)
+			if _, err := bot.Send(replyMsg); err != nil {
+				log.Println(err)
+			}
+		}
+		// fuzzy.Match("abc", "a1b2c3") = true
+		// strings.Contains("AAABBBCCC", "AB") = true
+		var limit int = 3
 		for k, v := range CACHE {
-			if fuzzy.Match(k, Message.Text) || fuzzy.Match(Message.Text, v.summarization) || fuzzy.Match(Message.Text, k) {
-				// hit
-				replyMsg := tgbotapi.NewMessage(Message.Chat.ID, CACHE[k].content)
-				if _, err := bot.Send(replyMsg); err != nil {
-					log.Println(err)
+			if utf8.RuneCountInString(Message.Text) >= 3 {
+				if fuzzy.Match(k, Message.Text) || strings.Contains(v.summarization, Message.Text) || fuzzy.Match(Message.Text, k) {
+					send(Message.Chat.ID, CACHE[k].content)
+					limit--
 				}
+			} else {
+				if fuzzy.Match(k, Message.Text) {
+					send(Message.Chat.ID, CACHE[k].content)
+					limit--
+				}
+			}
+			if limit <= 0 {
+				break
 			}
 		}
 	}

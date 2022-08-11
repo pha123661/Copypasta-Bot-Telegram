@@ -1,7 +1,6 @@
 package main
 
 import (
-	"fmt"
 	"log"
 	"os"
 	"path"
@@ -10,10 +9,13 @@ import (
 )
 
 func init_nlp() {
+	setAvailableAPI()
+}
+
+func setAvailableAPI() {
 	var i int
 	for i = 0; i < len(CONFIG.HUGGINGFACE_TOKENs); i++ {
-		fmt.Println("Setting HF api:", CONFIG.HUGGINGFACE_TOKENs[i])
-		log.Println("Setting HF api:", CONFIG.HUGGINGFACE_TOKENs[i])
+		log.Println("Testing HF api:", CONFIG.HUGGINGFACE_TOKENs[i])
 		hfapigo.SetAPIKey(CONFIG.HUGGINGFACE_TOKENs[0])
 
 		if err := testHfAPI(); err == nil {
@@ -64,7 +66,9 @@ func getSingleSummarization(filename string, input string) string {
 			// input too long
 			content = ""
 		} else {
-			log.Panicln(err)
+			log.Println(err)
+			log.Println("[HuggingFace] API dead, switching token...")
+			setAvailableAPI()
 		}
 	} else {
 		content = sresps[0].SummaryText
