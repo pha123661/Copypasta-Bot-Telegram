@@ -105,6 +105,11 @@ func handleUpdateMessage(bot *tgbotapi.BotAPI, Message *tgbotapi.Message) {
 		case "search": // fuzzy search both filename & content
 			var Keyword string = Message.CommandArguments()
 			var ResultCount int
+			if utf8.RuneCountInString(Keyword) <= 2 {
+				if _, err := bot.Send(tgbotapi.NewMessage(Message.Chat.ID, "搜尋關鍵字至少要兩個字！")); err != nil {
+					log.Println(err)
+				}
+			}
 			if _, err := bot.Send(tgbotapi.NewMessage(Message.Chat.ID, "正在搜尋中…… 請稍後")); err != nil {
 				log.Println(err)
 			}
