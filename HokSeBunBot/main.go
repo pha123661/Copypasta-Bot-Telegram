@@ -29,8 +29,8 @@ func handleUpdateMessage(bot *tgbotapi.BotAPI, Message *tgbotapi.Message) {
 			}
 		case "new", "add": // new hok tse bun
 			// find file name
-			split_tmp := strings.Split(Message.Text, " ")
-			if len(split_tmp) <= 2 {
+			Command_Args := strings.Split(Message.CommandArguments(), " ")
+			if len(Command_Args) <= 1 {
 				replyMsg := tgbotapi.NewMessage(Message.Chat.ID, fmt.Sprintf("錯誤：新增格式爲 “/%s {關鍵字} {內容}”", Message.Command()))
 				replyMsg.ReplyToMessageID = Message.MessageID
 				if _, err := bot.Send(replyMsg); err != nil {
@@ -40,16 +40,15 @@ func handleUpdateMessage(bot *tgbotapi.BotAPI, Message *tgbotapi.Message) {
 			}
 
 			// check file existence
-			var filename string = split_tmp[1] + ".txt"
-			var content string = Message.Text[len(Message.Command())+len(filename)-1:]
-			content = strings.TrimSpace(content)
+			var filename string = Command_Args[0] + ".txt"
+			var content string = strings.TrimSpace(Command_Args[1])
 			if v, is_exist := CACHE[delExtension(filename)]; is_exist {
 				if utf8.RuneCountInString(v) >= 100 {
 					r := []rune(v)[:100]
 					v = string(r) + "……"
 				}
 				Queued_Overrides[filename] = content
-				replyMsg := tgbotapi.NewMessage(Message.Chat.ID, fmt.Sprintf("「%s」複製文已存在：「%s」，確認是否覆蓋？", split_tmp[1], v))
+				replyMsg := tgbotapi.NewMessage(Message.Chat.ID, fmt.Sprintf("「%s」複製文已存在：「%s」，確認是否覆蓋？", Command_Args[0], v))
 				replyMsg.ReplyMarkup = tgbotapi.NewInlineKeyboardMarkup(
 					tgbotapi.NewInlineKeyboardRow(
 						tgbotapi.NewInlineKeyboardButtonData("是", filename),
