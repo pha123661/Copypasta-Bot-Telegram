@@ -11,6 +11,7 @@ import (
 	"unicode/utf8"
 
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
+	fuzzy "github.com/lithammer/fuzzysearch/fuzzy"
 )
 
 // for override confirm
@@ -21,8 +22,8 @@ func handleUpdateMessage(bot *tgbotapi.BotAPI, Message *tgbotapi.Message) {
 	if Message.IsCommand() {
 		// handle commands
 		switch Message.Command() {
-		case "echo":
-			replyMsg := tgbotapi.NewMessage(Message.Chat.ID, Message.Text)
+		case "echo": // echo
+			replyMsg := tgbotapi.NewMessage(Message.Chat.ID, Message.CommandArguments())
 			replyMsg.ReplyToMessageID = Message.MessageID
 			if _, err := bot.Send(replyMsg); err != nil {
 				log.Println(err)
@@ -85,20 +86,40 @@ func handleUpdateMessage(bot *tgbotapi.BotAPI, Message *tgbotapi.Message) {
 			if _, err := bot.Send(replyMsg); err != nil {
 				log.Println(err)
 			}
-		case "random":
+		case "random": // random post
 			k := rand.Intn(len(CACHE))
+			var keyword string
 			var context string
-			for _, v := range CACHE {
+			for key, v := range CACHE {
 				if k == 0 {
+					keyword = key
 					context = v
 				}
 				k--
 			}
-			context = fmt.Sprintf("幫你從 %d 篇文章中精心選擇了：\n%s", len(CACHE), context)
+			context = fmt.Sprintf("幫你從 %d 篇文章中精心選擇了「%s」：\n%s", len(CACHE), keyword, context)
 			replyMsg := tgbotapi.NewMessage(Message.Chat.ID, context)
 			if _, err := bot.Send(replyMsg); err != nil {
 				log.Println(err)
 			}
+		case "search": // fuzzy search both filename & content
+			var Keyword string = Message.CommandArguments()
+			var ResultCount int
+			if _, err := bot.Send(tgbotapi.NewMessage(Message.Chat.ID, "正在搜尋中…… 請稍後")); err != nil {
+				log.Println(err)
+			}
+			for k, v := range CACHE {
+				if fuzzy.Match(Keyword, k) || fuzzy.Match(Keyword, v) {
+					ResultCount++
+					if _, err := bot.Send(tgbotapi.NewMessage(Message.Chat.ID, fmt.Sprintf("「%s」：「%s」", k, v))); err != nil {
+						log.Println(err)
+					}
+				}
+			}
+			if _, err := bot.Send(tgbotapi.NewMessage(Message.Chat.ID, fmt.Sprintf("搜尋完成，共 %d 筆吻合", ResultCount))); err != nil {
+				log.Println(err)
+			}
+
 		default:
 			replyMsg := tgbotapi.NewMessage(Message.Chat.ID, fmt.Sprintf("錯誤：我不會 “/%s” 啦", Message.Command()))
 			replyMsg.ReplyToMessageID = Message.MessageID
@@ -196,9 +217,9 @@ func main() {
 	for update := range updates {
 		// ignore nil
 		if update.Message != nil {
-			handleUpdateMessage(bot, update.Message)
+			go handleUpdateMessage(bot, update.Message)
 		} else if update.CallbackQuery != nil {
-			handleUpdateCallbackQuery(bot, update.CallbackQuery)
+			go handleUpdateCallbackQuery(bot, update.CallbackQuery)
 		}
 
 	}
