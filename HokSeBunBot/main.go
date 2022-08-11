@@ -38,6 +38,14 @@ func handleUpdateMessage(bot *tgbotapi.BotAPI, Message *tgbotapi.Message) {
 				}
 				return
 			}
+			if Command_Args[0] == " " || Command_Args[0] == "" {
+				replyMsg := tgbotapi.NewMessage(Message.Chat.ID, fmt.Sprintf("好好打字啦 /%s後面一個空格就夠了", Message.Command()))
+				replyMsg.ReplyToMessageID = Message.MessageID
+				if _, err := bot.Send(replyMsg); err != nil {
+					log.Println(err)
+				}
+				return
+			}
 
 			// check file existence
 			var filename string = Command_Args[0] + ".txt"
@@ -91,6 +99,13 @@ func handleUpdateMessage(bot *tgbotapi.BotAPI, Message *tgbotapi.Message) {
 			if _, err := bot.Send(replyMsg); err != nil {
 				log.Println(err)
 			}
+		default:
+			replyMsg := tgbotapi.NewMessage(Message.Chat.ID, fmt.Sprintf("錯誤：我不會 “/%s” 啦", Message.Command()))
+			replyMsg.ReplyToMessageID = Message.MessageID
+			if _, err := bot.Send(replyMsg); err != nil {
+				log.Println(err)
+			}
+			return
 		}
 	} else {
 		// search hok tse bun
