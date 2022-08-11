@@ -83,7 +83,7 @@ func handleUpdateMessage(bot *tgbotapi.BotAPI, Message *tgbotapi.Message) {
 			file.Close()
 
 			// update cache
-			CACHE[delExtension(filename)] = HokSeBun{content: content, summarization: getSingleSummarization(delExtension(filename), content)}
+			CACHE[delExtension(filename)] = HokSeBun{content: content, summarization: getSingleSummarization(filename, content)}
 
 			// send response to user
 			replyMsg := tgbotapi.NewMessage(Message.Chat.ID, fmt.Sprintf("新增複製文「%s」成功", delExtension(filename)))
@@ -207,7 +207,7 @@ func handleUpdateCallbackQuery(bot *tgbotapi.BotAPI, CallbackQuery *tgbotapi.Cal
 		file.Close()
 
 		// update cache
-		CACHE[delExtension(filename)] = HokSeBun{content: content, summarization: getSingleSummarization(delExtension(filename), content)}
+		CACHE[delExtension(filename)] = HokSeBun{content: content, summarization: getSingleSummarization(filename, content)}
 
 		// send response to user
 		replyMsg := tgbotapi.NewMessage(CallbackQuery.Message.Chat.ID, fmt.Sprintf("更新複製文「%s」成功", delExtension(filename)))
