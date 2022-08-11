@@ -13,35 +13,11 @@ import (
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
 )
 
-var FILE_LOCATION string = "../HokSeBun_db"
-
 // for override confirm
 // "existed_filename.txt": "new content"
 var Queued_Overrides = make(map[string]string)
 
-func delExtension(fileName string) string {
-	// utility for removing file extension from filename
-	if pos := strings.LastIndexByte(fileName, '.'); pos != -1 {
-		return fileName[:pos]
-	}
-	return fileName
-}
-
-func build_cache(CACHE map[string]string) {
-	// updates cache with existing files
-	files, err := os.ReadDir(FILE_LOCATION)
-	if err != nil {
-		log.Println(err)
-		return
-	}
-
-	for _, file := range files {
-		text, _ := os.ReadFile(path.Join(FILE_LOCATION, file.Name()))
-		CACHE[delExtension(file.Name())] = string(text) // text is []byte
-	}
-}
-
-func handleUpdate(bot *tgbotapi.BotAPI, update tgbotapi.Update, CACHE map[string]string) {
+func handleUpdate(bot *tgbotapi.BotAPI, update tgbotapi.Update) {
 	if update.Message.IsCommand() {
 		// handle commands
 		switch update.Message.Command() {
@@ -139,7 +115,6 @@ func main() {
 	go http.ListenAndServe(":9000", nil)
 
 	// initialize
-	var CACHE = make(map[string]string)
 	file, _ := os.OpenFile("log.log", os.O_RDWR|os.O_CREATE|os.O_APPEND, 0666)
 	defer file.Close()
 	log.SetOutput(file)
@@ -147,7 +122,7 @@ func main() {
 	if _, err := os.Stat(FILE_LOCATION); os.IsNotExist(err) {
 		os.Mkdir(FILE_LOCATION, 0755)
 	}
-	build_cache(CACHE)
+	build_cache()
 
 	// start bot
 	bot, err := tgbotapi.NewBotAPI(os.Getenv("TELEGRAM_API_TOKEN"))
@@ -166,7 +141,7 @@ func main() {
 	for update := range updates {
 		// ignore nil
 		if update.Message != nil {
-			handleUpdate(bot, update, CACHE)
+			handleUpdate(bot, update)
 		} else if update.CallbackQuery != nil {
 			if update.CallbackQuery.Data == "NIL" {
 				replyMsg := tgbotapi.NewMessage(update.CallbackQuery.Message.Chat.ID, "其實不按否也沒差啦 哈哈")
