@@ -107,6 +107,44 @@ func handleUpdateMessage(bot *tgbotapi.BotAPI, Message *tgbotapi.Message) {
 	}
 }
 
+func handleUpdateCallbackQuery(bot *tgbotapi.BotAPI, CallbackQuery *tgbotapi.CallbackQuery) {
+	if CallbackQuery.Data == "NIL" {
+		replyMsg := tgbotapi.NewMessage(CallbackQuery.Message.Chat.ID, "其實不按否也沒差啦 哈哈")
+		replyMsg.ReplyToMessageID = CallbackQuery.Message.MessageID
+		if _, err := bot.Send(replyMsg); err != nil {
+			log.Println(err)
+		}
+	} else {
+		var filename string = CallbackQuery.Data
+		var content string = Queued_Overrides[filename]
+		// write file
+		file, err := os.Create(path.Join(FILE_LOCATION, filename))
+		if err != nil {
+			panic(err)
+		}
+		file.WriteString(content)
+		file.Close()
+
+		// update cache
+		CACHE[delExtension(filename)] = content
+
+		// send response to user
+		replyMsg := tgbotapi.NewMessage(CallbackQuery.Message.Chat.ID, fmt.Sprintf("更新複製文「%s」成功", delExtension(filename)))
+		replyMsg.ReplyToMessageID = CallbackQuery.Message.MessageID
+		if _, err := bot.Send(replyMsg); err != nil {
+			log.Println(err)
+		}
+	}
+	editedMsg := tgbotapi.NewEditMessageReplyMarkup(
+		CallbackQuery.Message.Chat.ID,
+		CallbackQuery.Message.MessageID,
+		tgbotapi.InlineKeyboardMarkup{
+			InlineKeyboard: make([][]tgbotapi.InlineKeyboardButton, 0),
+		},
+	)
+	bot.Send(editedMsg)
+}
+
 func main() {
 	// keep alive
 	http.HandleFunc("/", func(res http.ResponseWriter, req *http.Request) {
@@ -143,41 +181,7 @@ func main() {
 		if update.Message != nil {
 			handleUpdateMessage(bot, update.Message)
 		} else if update.CallbackQuery != nil {
-			if update.CallbackQuery.Data == "NIL" {
-				replyMsg := tgbotapi.NewMessage(update.CallbackQuery.Message.Chat.ID, "其實不按否也沒差啦 哈哈")
-				replyMsg.ReplyToMessageID = update.CallbackQuery.Message.MessageID
-				if _, err := bot.Send(replyMsg); err != nil {
-					log.Println(err)
-				}
-			} else {
-				var filename string = update.CallbackQuery.Data
-				var content string = Queued_Overrides[filename]
-				// write file
-				file, err := os.Create(path.Join(FILE_LOCATION, filename))
-				if err != nil {
-					panic(err)
-				}
-				file.WriteString(content)
-				file.Close()
-
-				// update cache
-				CACHE[delExtension(filename)] = content
-
-				// send response to user
-				replyMsg := tgbotapi.NewMessage(update.CallbackQuery.Message.Chat.ID, fmt.Sprintf("更新複製文「%s」成功", delExtension(filename)))
-				replyMsg.ReplyToMessageID = update.CallbackQuery.Message.MessageID
-				if _, err := bot.Send(replyMsg); err != nil {
-					log.Println(err)
-				}
-			}
-			editedMsg := tgbotapi.NewEditMessageReplyMarkup(
-				update.CallbackQuery.Message.Chat.ID,
-				update.CallbackQuery.Message.MessageID,
-				tgbotapi.InlineKeyboardMarkup{
-					InlineKeyboard: make([][]tgbotapi.InlineKeyboardButton, 0),
-				},
-			)
-			bot.Send(editedMsg)
+			handleUpdateCallbackQuery(bot, update.CallbackQuery)
 		}
 
 	}
