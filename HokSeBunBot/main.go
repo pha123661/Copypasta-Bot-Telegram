@@ -120,10 +120,13 @@ func handleUpdateMessage(bot *tgbotapi.BotAPI, Message *tgbotapi.Message) {
 				log.Println(err)
 			}
 			for k, v := range CACHE {
-				if fuzzy.MatchNormalizedFold(Keyword, k) || fuzzy.MatchNormalizedFold(Keyword, v.content) || fuzzy.MatchNormalizedFold(Keyword, v.summarization) || fuzzy.MatchNormalizedFold(k, Keyword) {
+				fmt.Println(len(Keyword), Keyword)
+				fmt.Println(len(k), k)
+				fmt.Println(len(v.content), v.content)
+				if fuzzy.MatchNormalizedFold(Keyword, k) || fuzzy.MatchNormalizedFold(Keyword, v.content)  {
 					ResultCount++
 					content := trimString(v.content, 100)
-					if _, err := bot.Send(tgbotapi.NewMessage(Message.Chat.ID, fmt.Sprintf("「%s」\n「%s」：「%s」", k, v.summarization, content))); err != nil {
+					if _, err := bot.Send(tgbotapi.NewMessage(Message.Chat.ID, fmt.Sprintf("「%s」：「%s」", k, content))); err != nil {
 						log.Println(err)
 					}
 				}
