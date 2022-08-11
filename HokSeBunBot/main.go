@@ -66,6 +66,14 @@ func handleUpdateMessage(bot *tgbotapi.BotAPI, Message *tgbotapi.Message) {
 				}
 				return
 			}
+			if utf8.RuneCountInString(Message.Text) >= 100 {
+				replyMsg := tgbotapi.NewMessage(Message.Chat.ID, "運算中，請稍後……")
+				replyMsg.ReplyToMessageID = Message.MessageID
+				if _, err := bot.Send(replyMsg); err != nil {
+					log.Println(err)
+				}
+			}
+
 			// write file
 			file, err := os.Create(path.Join(CONFIG.FILE_LOCATION, filename))
 			if err != nil {
@@ -168,15 +176,26 @@ func handleUpdateMessage(bot *tgbotapi.BotAPI, Message *tgbotapi.Message) {
 
 func handleUpdateCallbackQuery(bot *tgbotapi.BotAPI, CallbackQuery *tgbotapi.CallbackQuery) {
 	if CallbackQuery.Data == "NIL" {
+		// 否
 		replyMsg := tgbotapi.NewMessage(CallbackQuery.Message.Chat.ID, "其實不按否也沒差啦 哈哈")
 		replyMsg.ReplyToMessageID = CallbackQuery.Message.MessageID
 		if _, err := bot.Send(replyMsg); err != nil {
 			log.Println(err)
 		}
 	} else {
+		// 是
 		// over write existing files
 		var filename string = CallbackQuery.Data
 		var content string = Queued_Overrides[filename]
+
+		if utf8.RuneCountInString(content) >= 100 {
+			replyMsg := tgbotapi.NewMessage(CallbackQuery.Message.Chat.ID, "運算中，請稍後……")
+			replyMsg.ReplyToMessageID = CallbackQuery.Message.MessageID
+			if _, err := bot.Send(replyMsg); err != nil {
+				log.Println(err)
+			}
+		}
+
 		// write file
 		file, err := os.Create(path.Join(CONFIG.FILE_LOCATION, filename))
 		if err != nil {
