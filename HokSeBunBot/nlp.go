@@ -50,6 +50,8 @@ func getSingleSummarization(filename string, input string) string {
 		return string(bytes)
 	}
 
+	fmt.Println("Requesting", filename)
+	var content string
 	sresps, err := hfapigo.SendSummarizationRequest(
 		CONFIG.HUGGINGFACE_MODEL,
 		&hfapigo.SummarizationRequest{
@@ -58,9 +60,15 @@ func getSingleSummarization(filename string, input string) string {
 		},
 	)
 	if err != nil {
-		log.Panicln(err)
+		if err.Error() == "Service Unavailable" {
+			// input too long
+			content = ""
+		} else {
+			log.Panicln(err)
+		}
+	} else {
+		content = sresps[0].SummaryText
 	}
-	var content string = sresps[0].SummaryText
 
 	// write summarization
 	file, err := os.Create(path.Join(CONFIG.SUMMARIZATION_LOCATION, filename))
