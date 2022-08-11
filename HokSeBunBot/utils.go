@@ -4,6 +4,7 @@ import (
 	"os"
 	"path"
 	"strings"
+	"unicode/utf8"
 
 	toml "github.com/BurntSushi/toml"
 )
@@ -33,6 +34,15 @@ func delExtension(fileName string) string {
 		return fileName[:pos]
 	}
 	return fileName
+}
+
+func trim_string(str string, length int) string {
+	length = length - utf8.RuneCountInString("……")
+	if utf8.RuneCountInString(str) >= length {
+		r := []rune(str)[:length]
+		str = string(r) + "……"
+	}
+	return str
 }
 
 func build_cache() {

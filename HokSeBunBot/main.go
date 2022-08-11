@@ -50,12 +50,9 @@ func handleUpdateMessage(bot *tgbotapi.BotAPI, Message *tgbotapi.Message) {
 
 			// check file existence
 			var filename string = Command_Args[0] + ".txt"
-			var content string = strings.TrimSpace(Command_Args[1])
+			var content string = strings.TrimSpace(Message.Text[len(Message.Command())+len(filename)-1:])
 			if v, is_exist := CACHE[delExtension(filename)]; is_exist {
-				if utf8.RuneCountInString(v) >= 100 {
-					r := []rune(v)[:100]
-					v = string(r) + "……"
-				}
+				v = trim_string(v, 100)
 				Queued_Overrides[filename] = content
 				replyMsg := tgbotapi.NewMessage(Message.Chat.ID, fmt.Sprintf("「%s」複製文已存在：「%s」，確認是否覆蓋？", Command_Args[0], v))
 				replyMsg.ReplyMarkup = tgbotapi.NewInlineKeyboardMarkup(
@@ -115,8 +112,9 @@ func handleUpdateMessage(bot *tgbotapi.BotAPI, Message *tgbotapi.Message) {
 				log.Println(err)
 			}
 			for k, v := range CACHE {
-				if fuzzy.Match(Keyword, k) || fuzzy.Match(Keyword, v) {
+				if fuzzy.Match(Keyword, k) || fuzzy.Match(Keyword, v) || fuzzy.Match(k, Keyword) {
 					ResultCount++
+					v = trim_string(v, 100)
 					if _, err := bot.Send(tgbotapi.NewMessage(Message.Chat.ID, fmt.Sprintf("「%s」：「%s」", k, v))); err != nil {
 						log.Println(err)
 					}
@@ -137,7 +135,7 @@ func handleUpdateMessage(bot *tgbotapi.BotAPI, Message *tgbotapi.Message) {
 	} else {
 		// search hok tse bun
 		for k := range CACHE {
-			if fuzzy.Match(k, Message.Text) {
+			if fuzzy.Match(k, Message.Text) || fuzzy.Match(Message.Text, k) {
 				// hit
 				replyMsg := tgbotapi.NewMessage(Message.Chat.ID, CACHE[k])
 				if _, err := bot.Send(replyMsg); err != nil {
