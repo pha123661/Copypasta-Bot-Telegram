@@ -131,7 +131,7 @@ func handleUpdateMessage(bot *tgbotapi.BotAPI, Message *tgbotapi.Message) {
 	} else {
 		// search hok tse bun
 		for k := range CACHE {
-			if strings.Contains(Message.Text, k) {
+			if fuzzy.Match(k, Message.Text) {
 				// hit
 				replyMsg := tgbotapi.NewMessage(Message.Chat.ID, CACHE[k])
 				if _, err := bot.Send(replyMsg); err != nil {
