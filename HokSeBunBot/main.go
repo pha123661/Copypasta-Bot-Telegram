@@ -157,11 +157,13 @@ func handleUpdateMessage(bot *tgbotapi.BotAPI, Message *tgbotapi.Message) {
 		var limit int = 3
 		for k, v := range CACHE {
 			if utf8.RuneCountInString(Message.Text) >= 3 {
+				// >= 3 字
 				if fuzzy.Match(k, Message.Text) || strings.Contains(v.summarization, Message.Text) || fuzzy.Match(Message.Text, k) {
 					send(Message.Chat.ID, CACHE[k].content)
 					limit--
 				}
 			} else {
+				// < 3 字
 				if fuzzy.Match(k, Message.Text) {
 					send(Message.Chat.ID, CACHE[k].content)
 					limit--
