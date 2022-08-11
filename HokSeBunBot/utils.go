@@ -19,7 +19,6 @@ func init_utils() {
 	CONFIG = initConfig("../config.toml")
 	fmt.Println("#####################")
 	fmt.Println("Loaded config:")
-	log.Println("Loaded config:")
 	fmt.Printf("%+v\n", CONFIG)
 	fmt.Println("#####################")
 	if CONFIG.FILE_LOCATION == "" || CONFIG.TELEGRAM_API_TOKEN == "" {
@@ -89,4 +88,6 @@ func buildCache() {
 		text, _ := os.ReadFile(path.Join(CONFIG.FILE_LOCATION, file.Name()))
 		CACHE[delExtension(file.Name())] = HokSeBun{content: string(text), summarization: getSingleSummarization(delExtension(file.Name()), string(text))} // text is []byte
 	}
+	fmt.Println("Building Cache Done")
+	log.Println("Building Cache Done")
 }
