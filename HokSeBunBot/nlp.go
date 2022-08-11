@@ -1,6 +1,7 @@
 package main
 
 import (
+	"fmt"
 	"log"
 	"os"
 	"path"
@@ -8,7 +9,8 @@ import (
 	hfapigo "github.com/TannerKvarfordt/hfapigo"
 )
 
-func init() {
+func init_nlp() {
+	fmt.Println("Setting HF api:", CONFIG.HUGGINGFACE_TOKENs[0])
 	hfapigo.SetAPIKey(CONFIG.HUGGINGFACE_TOKENs[0])
 }
 

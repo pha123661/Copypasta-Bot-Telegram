@@ -189,30 +189,15 @@ func handleUpdateCallbackQuery(bot *tgbotapi.BotAPI, CallbackQuery *tgbotapi.Cal
 }
 
 func init() {
-	// keep alive
-	http.HandleFunc("/", func(res http.ResponseWriter, req *http.Request) {
-		fmt.Fprint(res, "Hello World!")
-	})
-	go http.ListenAndServe(":9000", nil)
-
 	// initialize
 	// setup logging
 	file, _ := os.OpenFile("log.log", os.O_RDWR|os.O_CREATE|os.O_APPEND, 0666)
 	defer file.Close()
 	log.SetOutput(file)
-	// read config
-	CONFIG = initConfig("../config.toml")
-	fmt.Println("#####################")
-	fmt.Println("Loaded config:")
-	fmt.Printf("%+v\n", CONFIG)
-	fmt.Println("#####################")
-	if CONFIG.FILE_LOCATION == "" || CONFIG.TELEGRAM_API_TOKEN == "" {
-		fmt.Println("Please setup your config properly: Missing fields")
-		os.Exit(0)
-	}
-	if len(CONFIG.HUGGINGFACE_TOKENs) == 0 || CONFIG.SUMMARIZATION_LOCATION == "" {
-		fmt.Println("Please setup your config properly: NLP components will be disabled")
-	}
+
+	init_utils()
+	init_nlp()
+
 	// build cache
 	if _, err := os.Stat(CONFIG.FILE_LOCATION); os.IsNotExist(err) {
 		os.Mkdir(CONFIG.FILE_LOCATION, 0755)
@@ -221,9 +206,16 @@ func init() {
 		os.Mkdir(CONFIG.SUMMARIZATION_LOCATION, 0755)
 	}
 	buildCache()
+
 }
 
 func main() {
+	// keep alive
+	http.HandleFunc("/", func(res http.ResponseWriter, req *http.Request) {
+		fmt.Fprint(res, "Hello World!")
+	})
+	go http.ListenAndServe(":9000", nil)
+
 	// start bot
 	bot, err := tgbotapi.NewBotAPI(CONFIG.TELEGRAM_API_TOKEN)
 	if err != nil {

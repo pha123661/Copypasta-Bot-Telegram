@@ -1,6 +1,7 @@
 package main
 
 import (
+	"fmt"
 	"os"
 	"path"
 	"strings"
@@ -11,6 +12,22 @@ import (
 
 var CACHE = make(map[string]HokSeBun)
 var CONFIG Config
+
+func init_utils() {
+	// read config
+	CONFIG = initConfig("../config.toml")
+	fmt.Println("#####################")
+	fmt.Println("Loaded config:")
+	fmt.Printf("%+v\n", CONFIG)
+	fmt.Println("#####################")
+	if CONFIG.FILE_LOCATION == "" || CONFIG.TELEGRAM_API_TOKEN == "" {
+		fmt.Println("Please setup your config properly: Missing fields")
+		os.Exit(0)
+	}
+	if len(CONFIG.HUGGINGFACE_TOKENs) == 0 || CONFIG.SUMMARIZATION_LOCATION == "" {
+		fmt.Println("Please setup your config properly: NLP components will be disabled")
+	}
+}
 
 type Config struct {
 	TELEGRAM_API_TOKEN     string
