@@ -75,7 +75,7 @@ func handleUpdateMessage(bot *tgbotapi.BotAPI, Message *tgbotapi.Message) {
 			file.Close()
 
 			// update cache
-			CACHE[delExtension(filename)] = HokSeBun{content: content}
+			CACHE[delExtension(filename)] = HokSeBun{content: content, summarization: getSingleSummarization(delExtension(filename), content)}
 
 			// send response to user
 			replyMsg := tgbotapi.NewMessage(Message.Chat.ID, fmt.Sprintf("新增複製文「%s」成功", delExtension(filename)))
@@ -169,7 +169,7 @@ func handleUpdateCallbackQuery(bot *tgbotapi.BotAPI, CallbackQuery *tgbotapi.Cal
 		file.Close()
 
 		// update cache
-		CACHE[delExtension(filename)] = HokSeBun{content: content, summarization: CACHE[delExtension(filename)].summarization}
+		CACHE[delExtension(filename)] = HokSeBun{content: content, summarization: getSingleSummarization(delExtension(filename), content)}
 
 		// send response to user
 		replyMsg := tgbotapi.NewMessage(CallbackQuery.Message.Chat.ID, fmt.Sprintf("更新複製文「%s」成功", delExtension(filename)))
@@ -188,7 +188,7 @@ func handleUpdateCallbackQuery(bot *tgbotapi.BotAPI, CallbackQuery *tgbotapi.Cal
 	bot.Send(editedMsg)
 }
 
-func main() {
+func init() {
 	// keep alive
 	http.HandleFunc("/", func(res http.ResponseWriter, req *http.Request) {
 		fmt.Fprint(res, "Hello World!")
@@ -202,6 +202,17 @@ func main() {
 	log.SetOutput(file)
 	// read config
 	CONFIG = initConfig("../config.toml")
+	fmt.Println("#####################")
+	fmt.Println("Loaded config:")
+	fmt.Printf("%+v\n", CONFIG)
+	fmt.Println("#####################")
+	if CONFIG.FILE_LOCATION == "" || CONFIG.TELEGRAM_API_TOKEN == "" {
+		fmt.Println("Please setup your config properly: Missing fields")
+		os.Exit(0)
+	}
+	if len(CONFIG.HUGGINGFACE_TOKENs) == 0 || CONFIG.SUMMARIZATION_LOCATION == "" {
+		fmt.Println("Please setup your config properly: NLP components will be disabled")
+	}
 	// build cache
 	if _, err := os.Stat(CONFIG.FILE_LOCATION); os.IsNotExist(err) {
 		os.Mkdir(CONFIG.FILE_LOCATION, 0755)
@@ -210,7 +221,9 @@ func main() {
 		os.Mkdir(CONFIG.SUMMARIZATION_LOCATION, 0755)
 	}
 	buildCache()
+}
 
+func main() {
 	// start bot
 	bot, err := tgbotapi.NewBotAPI(CONFIG.TELEGRAM_API_TOKEN)
 	if err != nil {

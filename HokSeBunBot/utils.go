@@ -16,6 +16,8 @@ type Config struct {
 	TELEGRAM_API_TOKEN     string
 	FILE_LOCATION          string
 	SUMMARIZATION_LOCATION string
+	HUGGINGFACE_TOKENs     []string
+	HUGGINGFACE_MODEL      string
 }
 
 type HokSeBun struct {
@@ -59,7 +61,10 @@ func buildCache() {
 	}
 
 	for _, file := range files {
+		if file.IsDir() {
+			continue
+		}
 		text, _ := os.ReadFile(path.Join(CONFIG.FILE_LOCATION, file.Name()))
-		CACHE[delExtension(file.Name())] = HokSeBun{content: string(text)} // text is []byte
+		CACHE[delExtension(file.Name())] = HokSeBun{content: string(text), summarization: getSingleSummarization(delExtension(file.Name()), string(text))} // text is []byte
 	}
 }
