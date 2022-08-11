@@ -60,7 +60,9 @@ func getSingleSummarization(filename string, input string) string {
 		},
 	)
 	if err != nil {
-		if err.Error() == "Service Unavailable" {
+		fmt.Println(err.Error())
+		if err.Error() == `{"error":"Service Unavailable"}` {
+			log.Println(err)
 			// input too long
 			content = ""
 		} else {
