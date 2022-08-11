@@ -123,7 +123,7 @@ func handleUpdateMessage(bot *tgbotapi.BotAPI, Message *tgbotapi.Message) {
 				fmt.Println(len(Keyword), Keyword)
 				fmt.Println(len(k), k)
 				fmt.Println(len(v.content), v.content)
-				if fuzzy.MatchNormalizedFold(Keyword, k) || fuzzy.MatchNormalizedFold(Keyword, v.content)  {
+				if fuzzy.Match(Keyword, k) || fuzzy.Match(k, Keyword) || fuzzy.Match(Keyword, v.summarization) || fuzzy.Match(Keyword, v.content) {
 					ResultCount++
 					content := trimString(v.content, 100)
 					if _, err := bot.Send(tgbotapi.NewMessage(Message.Chat.ID, fmt.Sprintf("「%s」：「%s」", k, content))); err != nil {
@@ -161,13 +161,13 @@ func handleUpdateMessage(bot *tgbotapi.BotAPI, Message *tgbotapi.Message) {
 		for k, v := range CACHE {
 			if utf8.RuneCountInString(Message.Text) >= 2 {
 				// >= 2 字
-				if fuzzy.MatchNormalizedFold(k, Message.Text) || fuzzy.MatchNormalizedFold(Message.Text, v.summarization) || fuzzy.MatchNormalizedFold(Message.Text, k) {
+				if fuzzy.Match(k, Message.Text) || fuzzy.Match(Message.Text, k) || fuzzy.Match(Message.Text, v.summarization) {
 					send(Message.Chat.ID, CACHE[k].content)
 					limit--
 				}
 			} else {
 				// < 2 字
-				if fuzzy.MatchNormalizedFold(k, Message.Text) {
+				if strings.Contains(Message.Text, k) || strings.Contains(v.summarization, Message.Text) {
 					send(Message.Chat.ID, CACHE[k].content)
 					limit--
 				}
