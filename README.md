@@ -1,5 +1,5 @@
 # Hok_tse_bun_tgbot
-A Ho̍k tsè bûn, 「複製文」 in taiwanese, bot for telegram  
+A Ho̍k tsè bûn (copypasta in taiwanese) bot for telegram  
 
 
 # Deploy
@@ -9,5 +9,5 @@ A Ho̍k tsè bûn, 「複製文」 in taiwanese, bot for telegram
 # Usage
 Support three commands atm  
 1. echo: echo
-2. new/add: insert new 「複製文」 into the database
-3. random: select a 「複製文」 randomly and reply
+2. new/add: insert new Ho̍k tsè bûn into the database
+3. random: select a Ho̍k tsè bûn randomly and post it
