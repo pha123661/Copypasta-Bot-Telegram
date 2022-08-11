@@ -19,6 +19,7 @@ func init_utils() {
 	CONFIG = initConfig("../config.toml")
 	fmt.Println("#####################")
 	fmt.Println("Loaded config:")
+	log.Println("Loaded config:")
 	fmt.Printf("%+v\n", CONFIG)
 	fmt.Println("#####################")
 	if CONFIG.FILE_LOCATION == "" || CONFIG.TELEGRAM_API_TOKEN == "" {
@@ -72,6 +73,8 @@ func trimString(str string, length int) string {
 }
 
 func buildCache() {
+	fmt.Println("Building Cache……, this may take some time")
+	log.Panicln("Building Cache……")
 	// updates cache with existing files
 	files, err := os.ReadDir(CONFIG.FILE_LOCATION)
 	if err != nil {

@@ -11,6 +11,7 @@ import (
 
 func init_nlp() {
 	fmt.Println("Setting HF api:", CONFIG.HUGGINGFACE_TOKENs[0])
+	log.Println("Setting HF api:", CONFIG.HUGGINGFACE_TOKENs[0])
 	hfapigo.SetAPIKey(CONFIG.HUGGINGFACE_TOKENs[0])
 }
 
