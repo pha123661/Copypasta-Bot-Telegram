@@ -52,9 +52,9 @@ func handleUpdateMessage(bot *tgbotapi.BotAPI, Message *tgbotapi.Message) {
 			var filename string = Command_Args[0] + ".txt"
 			var content string = strings.TrimSpace(Message.Text[len(Message.Command())+len(filename)-1:])
 			if v, is_exist := CACHE[delExtension(filename)]; is_exist {
-				v = trimString(v, 100)
+				content = trimString(v.content, 100)
 				Queued_Overrides[filename] = content
-				replyMsg := tgbotapi.NewMessage(Message.Chat.ID, fmt.Sprintf("「%s」複製文已存在：「%s」，確認是否覆蓋？", Command_Args[0], v))
+				replyMsg := tgbotapi.NewMessage(Message.Chat.ID, fmt.Sprintf("「%s」複製文已存在：「%s」，確認是否覆蓋？", Command_Args[0], content))
 				replyMsg.ReplyMarkup = tgbotapi.NewInlineKeyboardMarkup(
 					tgbotapi.NewInlineKeyboardRow(
 						tgbotapi.NewInlineKeyboardButtonData("是", filename),
@@ -75,7 +75,7 @@ func handleUpdateMessage(bot *tgbotapi.BotAPI, Message *tgbotapi.Message) {
 			file.Close()
 
 			// update cache
-			CACHE[delExtension(filename)] = content
+			CACHE[delExtension(filename)] = HokSeBun{content: content}
 
 			// send response to user
 			replyMsg := tgbotapi.NewMessage(Message.Chat.ID, fmt.Sprintf("新增複製文「%s」成功", delExtension(filename)))
@@ -90,7 +90,7 @@ func handleUpdateMessage(bot *tgbotapi.BotAPI, Message *tgbotapi.Message) {
 			for key, v := range CACHE {
 				if k == 0 {
 					keyword = key
-					context = v
+					context = v.content
 				}
 				k--
 			}
@@ -112,10 +112,10 @@ func handleUpdateMessage(bot *tgbotapi.BotAPI, Message *tgbotapi.Message) {
 				log.Println(err)
 			}
 			for k, v := range CACHE {
-				if fuzzy.Match(Keyword, k) || fuzzy.Match(Keyword, v) || fuzzy.Match(k, Keyword) {
+				if fuzzy.Match(Keyword, k) || fuzzy.Match(Keyword, v.content) || fuzzy.Match(k, Keyword) {
 					ResultCount++
-					v = trimString(v, 100)
-					if _, err := bot.Send(tgbotapi.NewMessage(Message.Chat.ID, fmt.Sprintf("「%s」：「%s」", k, v))); err != nil {
+					content := trimString(v.content, 100)
+					if _, err := bot.Send(tgbotapi.NewMessage(Message.Chat.ID, fmt.Sprintf("「%s」：「%s」", k, content))); err != nil {
 						log.Println(err)
 					}
 				}
@@ -140,7 +140,7 @@ func handleUpdateMessage(bot *tgbotapi.BotAPI, Message *tgbotapi.Message) {
 		for k := range CACHE {
 			if fuzzy.Match(k, Message.Text) || fuzzy.Match(Message.Text, k) {
 				// hit
-				replyMsg := tgbotapi.NewMessage(Message.Chat.ID, CACHE[k])
+				replyMsg := tgbotapi.NewMessage(Message.Chat.ID, CACHE[k].content)
 				if _, err := bot.Send(replyMsg); err != nil {
 					log.Println(err)
 				}
@@ -157,6 +157,7 @@ func handleUpdateCallbackQuery(bot *tgbotapi.BotAPI, CallbackQuery *tgbotapi.Cal
 			log.Println(err)
 		}
 	} else {
+		// over write existing files
 		var filename string = CallbackQuery.Data
 		var content string = Queued_Overrides[filename]
 		// write file
@@ -168,7 +169,7 @@ func handleUpdateCallbackQuery(bot *tgbotapi.BotAPI, CallbackQuery *tgbotapi.Cal
 		file.Close()
 
 		// update cache
-		CACHE[delExtension(filename)] = content
+		CACHE[delExtension(filename)] = HokSeBun{content: content, summarization: CACHE[delExtension(filename)].summarization}
 
 		// send response to user
 		replyMsg := tgbotapi.NewMessage(CallbackQuery.Message.Chat.ID, fmt.Sprintf("更新複製文「%s」成功", delExtension(filename)))
@@ -204,6 +205,9 @@ func main() {
 	// build cache
 	if _, err := os.Stat(CONFIG.FILE_LOCATION); os.IsNotExist(err) {
 		os.Mkdir(CONFIG.FILE_LOCATION, 0755)
+	}
+	if _, err := os.Stat(CONFIG.SUMMARIZATION_LOCATION); os.IsNotExist(err) {
+		os.Mkdir(CONFIG.SUMMARIZATION_LOCATION, 0755)
 	}
 	buildCache()
 

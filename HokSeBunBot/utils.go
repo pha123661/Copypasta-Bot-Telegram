@@ -9,12 +9,18 @@ import (
 	toml "github.com/BurntSushi/toml"
 )
 
-var CACHE = make(map[string]string)
+var CACHE = make(map[string]HokSeBun)
 var CONFIG Config
 
 type Config struct {
-	TELEGRAM_API_TOKEN string
-	FILE_LOCATION      string
+	TELEGRAM_API_TOKEN     string
+	FILE_LOCATION          string
+	SUMMARIZATION_LOCATION string
+}
+
+type HokSeBun struct {
+	content       string
+	summarization string
 }
 
 func initConfig(CONFIG_PATH string) Config {
@@ -54,6 +60,6 @@ func buildCache() {
 
 	for _, file := range files {
 		text, _ := os.ReadFile(path.Join(CONFIG.FILE_LOCATION, file.Name()))
-		CACHE[delExtension(file.Name())] = string(text) // text is []byte
+		CACHE[delExtension(file.Name())] = HokSeBun{content: string(text)} // text is []byte
 	}
 }
