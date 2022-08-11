@@ -15,20 +15,20 @@ func init_nlp() {
 func setAvailableAPI() {
 	var i int
 	for i = 0; i < len(CONFIG.HUGGINGFACE_TOKENs); i++ {
-		log.Println("Testing HF api:", CONFIG.HUGGINGFACE_TOKENs[i])
+		log.Println("Testing HF api:", CONFIG.HUGGINGFACE_TOKENs[i][:8])
 		hfapigo.SetAPIKey(CONFIG.HUGGINGFACE_TOKENs[0])
 
 		if err := testHfAPI(); err == nil {
 			break
 		} else {
-			log.Printf("HF api \"%s\" not available: %s\n", CONFIG.HUGGINGFACE_TOKENs[i], err)
+			log.Printf("HF api \"%s\" not available: %s\n", CONFIG.HUGGINGFACE_TOKENs[i][:8], err)
 		}
 	}
 
 	if i == len(CONFIG.HUGGINGFACE_TOKENs) {
 		log.Panicln("No available hf api!")
 	} else {
-		log.Printf("Using HF api: \"%s\"\n", CONFIG.HUGGINGFACE_TOKENs[i])
+		log.Printf("Using HF api: \"%s\"\n", CONFIG.HUGGINGFACE_TOKENs[i][:8])
 	}
 }
 
