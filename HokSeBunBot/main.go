@@ -112,7 +112,7 @@ func handleUpdateMessage(bot *tgbotapi.BotAPI, Message *tgbotapi.Message) {
 				log.Println(err)
 			}
 			for k, v := range CACHE {
-				if fuzzy.Match(Keyword, k) || fuzzy.Match(Keyword, v.content) || fuzzy.Match(k, Keyword) {
+				if fuzzy.Match(Keyword, k) || fuzzy.Match(Keyword, v.summarization) || fuzzy.Match(k, Keyword) {
 					ResultCount++
 					content := trimString(v.content, 100)
 					if _, err := bot.Send(tgbotapi.NewMessage(Message.Chat.ID, fmt.Sprintf("「%s」：「%s」", k, content))); err != nil {
