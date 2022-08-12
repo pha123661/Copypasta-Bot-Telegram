@@ -322,7 +322,6 @@ func main() {
 		} else if update.CallbackQuery != nil {
 			handleUpdateCallbackQuery(bot, update.CallbackQuery)
 		}
-
 	}
 
 }
