@@ -5,8 +5,10 @@ import (
 	"log"
 	"math/rand"
 	"os"
+	"os/signal"
 	"path"
 	"strings"
+	"syscall"
 	"unicode/utf8"
 
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
@@ -206,6 +208,12 @@ func handleUpdateCallbackQuery(bot *tgbotapi.BotAPI, CallbackQuery *tgbotapi.Cal
 	bot.Send(editedMsg)
 	if CallbackQuery.Data == "NIL" {
 		// 否
+		// show respond
+		callback := tgbotapi.NewCallback(CallbackQuery.ID, "不覆蓋")
+		if _, err := bot.Request(callback); err != nil {
+			log.Println(err)
+		}
+
 		replyMsg := tgbotapi.NewMessage(CallbackQuery.Message.Chat.ID, "其實不按否也沒差啦 哈哈")
 		replyMsg.ReplyToMessageID = CallbackQuery.Message.MessageID
 		if _, err := bot.Send(replyMsg); err != nil {
@@ -213,6 +221,11 @@ func handleUpdateCallbackQuery(bot *tgbotapi.BotAPI, CallbackQuery *tgbotapi.Cal
 		}
 	} else {
 		// 是
+		// show respond
+		callback := tgbotapi.NewCallback(CallbackQuery.ID, "正在覆蓋中……")
+		if _, err := bot.Request(callback); err != nil {
+			log.Println(err)
+		}
 		// over write existing files
 		var filename string = CallbackQuery.Data
 		var content string = Queued_Overrides[filename].content
@@ -285,6 +298,16 @@ func main() {
 	}
 	bot.Debug = true
 	fmt.Println("***", "Sucessful logged in as", bot.Self.UserName, "***")
+
+	// close bot after ^C
+	sig_ch := make(chan os.Signal, 1)
+	signal.Notify(sig_ch, os.Interrupt, syscall.SIGTERM)
+	go func() {
+		<-sig_ch
+		fmt.Println("Closing bot")
+		bot.Request(tgbotapi.CloseConfig{})
+		os.Exit(0)
+	}()
 
 	// update config
 	updateConfig := tgbotapi.NewUpdate(0)
