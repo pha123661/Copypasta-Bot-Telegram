@@ -171,15 +171,19 @@ func handleUpdateMessage(bot *tgbotapi.BotAPI, Message *tgbotapi.Message) {
 		// strings.Contains("AAABBBCCC", "AB") = true
 		var runeLengthLimit int = 500
 		for k, v := range CACHE {
-			if utf8.RuneCountInString(Message.Text) >= 2 {
-				// >= 2 字
-				if fuzzy.Match(k, Message.Text) || (fuzzy.Match(Message.Text, k) && Abs(len(Message.Text)-len(k)) <= 3) || fuzzy.Match(Message.Text, v.summarization) {
+			switch {
+			case utf8.RuneCountInString(Message.Text) > 3:
+				if fuzzy.Match(k, Message.Text) || (fuzzy.Match(Message.Text, k) && Abs(len(Message.Text)-len(k)) <= 3) || strings.Contains(v.summarization, Message.Text) {
 					send(Message.Chat.ID, CACHE[k].content)
 					runeLengthLimit -= utf8.RuneCountInString(CACHE[k].content)
 				}
-			} else {
-				// < 2 字
-				if strings.Contains(Message.Text, k) || strings.Contains(v.summarization, Message.Text) {
+			case utf8.RuneCountInString(Message.Text) == 2:
+				if strings.Contains(Message.Text, k) || strings.Contains(k, Message.Text) {
+					send(Message.Chat.ID, CACHE[k].content)
+					runeLengthLimit -= utf8.RuneCountInString(CACHE[k].content)
+				}
+			case utf8.RuneCountInString(Message.Text) == 1:
+				if utf8.RuneCountInString(k) == 1 && Message.Text == k {
 					send(Message.Chat.ID, CACHE[k].content)
 					runeLengthLimit -= utf8.RuneCountInString(CACHE[k].content)
 				}
