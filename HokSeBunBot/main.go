@@ -301,12 +301,12 @@ func main() {
 
 	// close bot after ^C
 	sig_ch := make(chan os.Signal, 1)
-	signal.Notify(sig_ch, os.Interrupt, syscall.SIGTERM)
+	signal.Notify(sig_ch, os.Interrupt, syscall.SIGTERM, syscall.SIGHUP, syscall.SIGINT, syscall.SIGQUIT, syscall.SIGABRT, syscall.SIGTRAP)
 	go func() {
 		<-sig_ch
 		fmt.Println("Closing bot")
 		bot.Request(tgbotapi.CloseConfig{})
-		os.Exit(0)
+		os.Exit(1)
 	}()
 
 	// update config
