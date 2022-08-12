@@ -323,5 +323,4 @@ func main() {
 			handleUpdateCallbackQuery(bot, update.CallbackQuery)
 		}
 	}
-
 }
