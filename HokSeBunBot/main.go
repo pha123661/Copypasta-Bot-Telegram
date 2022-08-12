@@ -4,18 +4,15 @@ import (
 	"fmt"
 	"log"
 	"math/rand"
+	"net/http"
 	"os"
-	"os/signal"
 	"path"
 	"strings"
-	"syscall"
 	"unicode/utf8"
 
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
 	fuzzy "github.com/lithammer/fuzzysearch/fuzzy"
 )
-
-//TEST DEPLOY
 
 // for override confirm
 // "existed_filename.txt": "new content"
@@ -287,11 +284,11 @@ func init() {
 }
 
 func main() {
-	// // keep alive
-	// http.HandleFunc("/", func(res http.ResponseWriter, req *http.Request) {
-	// 	fmt.Fprint(res, "Hello World!")
-	// })
-	// go http.ListenAndServe(":9000", nil)
+	// keep alive
+	http.HandleFunc("/", func(res http.ResponseWriter, req *http.Request) {
+		fmt.Fprint(res, "Hello World!")
+	})
+	go http.ListenAndServe(":9000", nil)
 
 	// start bot
 	bot, err := tgbotapi.NewBotAPI(CONFIG.TELEGRAM_API_TOKEN)
@@ -300,16 +297,6 @@ func main() {
 	}
 	bot.Debug = true
 	fmt.Println("***", "Sucessful logged in as", bot.Self.UserName, "***")
-
-	// close bot after ^C
-	sig_ch := make(chan os.Signal, 1)
-	signal.Notify(sig_ch, os.Interrupt, syscall.SIGTERM, syscall.SIGHUP, syscall.SIGINT, syscall.SIGQUIT, syscall.SIGABRT, syscall.SIGTRAP)
-	go func() {
-		<-sig_ch
-		fmt.Println("Closing bot")
-		bot.Request(tgbotapi.CloseConfig{})
-		os.Exit(1)
-	}()
 
 	// update config
 	updateConfig := tgbotapi.NewUpdate(0)
