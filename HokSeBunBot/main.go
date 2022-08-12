@@ -295,9 +295,9 @@ func main() {
 	for update := range updates {
 		// ignore nil
 		if update.Message != nil {
-			go handleUpdateMessage(bot, update.Message)
+			handleUpdateMessage(bot, update.Message)
 		} else if update.CallbackQuery != nil {
-			go handleUpdateCallbackQuery(bot, update.CallbackQuery)
+			handleUpdateCallbackQuery(bot, update.CallbackQuery)
 		}
 
 	}
