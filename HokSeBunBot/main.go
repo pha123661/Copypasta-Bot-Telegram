@@ -169,7 +169,7 @@ func handleUpdateMessage(bot *tgbotapi.BotAPI, Message *tgbotapi.Message) {
 		}
 		// fuzzy.Match("abc", "a1b2c3") = true
 		// strings.Contains("AAABBBCCC", "AB") = true
-		var runeLengthLimit int = 500
+		var runeLengthLimit int = Min(500, 100*utf8.RuneCountInString(Message.Text))
 		for k, v := range CACHE {
 			switch {
 			case utf8.RuneCountInString(Message.Text) > 3:

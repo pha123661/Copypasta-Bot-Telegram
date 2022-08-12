@@ -63,6 +63,13 @@ func Abs(x int) int {
 	return x
 }
 
+func Min(a int, b int) int {
+	if a < b {
+		return a
+	}
+	return b
+}
+
 func delExtension(fileName string) string {
 	// utility for removing file extension from filename
 	if pos := strings.LastIndexByte(fileName, '.'); pos != -1 {
