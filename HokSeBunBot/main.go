@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"log"
 	"math/rand"
-	"net/http"
 	"os"
 	"path"
 	"strings"
@@ -273,11 +272,11 @@ func init() {
 }
 
 func main() {
-	// keep alive
-	http.HandleFunc("/", func(res http.ResponseWriter, req *http.Request) {
-		fmt.Fprint(res, "Hello World!")
-	})
-	go http.ListenAndServe(":9000", nil)
+	// // keep alive
+	// http.HandleFunc("/", func(res http.ResponseWriter, req *http.Request) {
+	// 	fmt.Fprint(res, "Hello World!")
+	// })
+	// go http.ListenAndServe(":9000", nil)
 
 	// start bot
 	bot, err := tgbotapi.NewBotAPI(CONFIG.TELEGRAM_API_TOKEN)

@@ -17,7 +17,7 @@ var CONFIG Config
 
 func init_utils() {
 	// read config
-	CONFIG = initConfig("../config.toml")
+	CONFIG = initConfig("./config.toml")
 	fmt.Println("#####################")
 	fmt.Println("Loaded config:")
 	fmt.Printf("%+v\n", CONFIG)
