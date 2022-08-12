@@ -173,7 +173,7 @@ func handleUpdateMessage(bot *tgbotapi.BotAPI, Message *tgbotapi.Message) {
 		for k, v := range CACHE {
 			switch {
 			case utf8.RuneCountInString(Message.Text) > 3:
-				if fuzzy.Match(k, Message.Text) || (fuzzy.Match(Message.Text, k) && Abs(len(Message.Text)-len(k)) <= 3) || strings.Contains(v.summarization, Message.Text) {
+				if fuzzy.Match(k, Message.Text) || (fuzzy.Match(Message.Text, k) && Abs(len(Message.Text)-len(k)) <= 3) || fuzzy.Match(Message.Text, v.summarization) {
 					send(Message.Chat.ID, CACHE[k].content)
 					runeLengthLimit -= utf8.RuneCountInString(CACHE[k].content)
 				}
