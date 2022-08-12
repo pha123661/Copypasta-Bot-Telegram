@@ -16,7 +16,12 @@ import (
 
 // for override confirm
 // "existed_filename.txt": "new content"
-var Queued_Overrides = make(map[string]string)
+var Queued_Overrides = make(map[string]*Queued_Override_Entity)
+
+type Queued_Override_Entity struct {
+	content string
+	done    bool
+}
 
 func handleUpdateMessage(bot *tgbotapi.BotAPI, Message *tgbotapi.Message) {
 	if Message.IsCommand() {
@@ -53,7 +58,7 @@ func handleUpdateMessage(bot *tgbotapi.BotAPI, Message *tgbotapi.Message) {
 			var content string = strings.TrimSpace(Message.Text[len(Message.Command())+len(filename)-1:])
 			if v, is_exist := CACHE[delExtension(filename)]; is_exist {
 				old_content := trimString(v.content, 100)
-				Queued_Overrides[filename] = content
+				Queued_Overrides[filename] = &Queued_Override_Entity{content, false}
 				replyMsg := tgbotapi.NewMessage(Message.Chat.ID, fmt.Sprintf("「%s」複製文已存在：「%s」，確認是否覆蓋？", Command_Args[0], old_content))
 				replyMsg.ReplyMarkup = tgbotapi.NewInlineKeyboardMarkup(
 					tgbotapi.NewInlineKeyboardRow(
@@ -187,6 +192,15 @@ func handleUpdateMessage(bot *tgbotapi.BotAPI, Message *tgbotapi.Message) {
 }
 
 func handleUpdateCallbackQuery(bot *tgbotapi.BotAPI, CallbackQuery *tgbotapi.CallbackQuery) {
+	// close the inline keyboard
+	editedMsg := tgbotapi.NewEditMessageReplyMarkup(
+		CallbackQuery.Message.Chat.ID,
+		CallbackQuery.Message.MessageID,
+		tgbotapi.InlineKeyboardMarkup{
+			InlineKeyboard: make([][]tgbotapi.InlineKeyboardButton, 0),
+		},
+	)
+	bot.Send(editedMsg)
 	if CallbackQuery.Data == "NIL" {
 		// 否
 		replyMsg := tgbotapi.NewMessage(CallbackQuery.Message.Chat.ID, "其實不按否也沒差啦 哈哈")
@@ -198,7 +212,11 @@ func handleUpdateCallbackQuery(bot *tgbotapi.BotAPI, CallbackQuery *tgbotapi.Cal
 		// 是
 		// over write existing files
 		var filename string = CallbackQuery.Data
-		var content string = Queued_Overrides[filename]
+		var content string = Queued_Overrides[filename].content
+		if Queued_Overrides[filename].done {
+			return
+		}
+		Queued_Overrides[filename].done = true
 		fmt.Println(filename, content)
 		if utf8.RuneCountInString(content) >= 100 {
 			replyMsg := tgbotapi.NewMessage(CallbackQuery.Message.Chat.ID, "運算中，請稍後……")
@@ -226,14 +244,6 @@ func handleUpdateCallbackQuery(bot *tgbotapi.BotAPI, CallbackQuery *tgbotapi.Cal
 			log.Println(err)
 		}
 	}
-	editedMsg := tgbotapi.NewEditMessageReplyMarkup(
-		CallbackQuery.Message.Chat.ID,
-		CallbackQuery.Message.MessageID,
-		tgbotapi.InlineKeyboardMarkup{
-			InlineKeyboard: make([][]tgbotapi.InlineKeyboardButton, 0),
-		},
-	)
-	bot.Send(editedMsg)
 }
 
 func init() {
