@@ -52,9 +52,9 @@ func handleUpdateMessage(bot *tgbotapi.BotAPI, Message *tgbotapi.Message) {
 			var filename string = Command_Args[0] + ".txt"
 			var content string = strings.TrimSpace(Message.Text[len(Message.Command())+len(filename)-1:])
 			if v, is_exist := CACHE[delExtension(filename)]; is_exist {
-				content = trimString(v.content, 100)
+				old_content := trimString(v.content, 100)
 				Queued_Overrides[filename] = content
-				replyMsg := tgbotapi.NewMessage(Message.Chat.ID, fmt.Sprintf("「%s」複製文已存在：「%s」，確認是否覆蓋？", Command_Args[0], content))
+				replyMsg := tgbotapi.NewMessage(Message.Chat.ID, fmt.Sprintf("「%s」複製文已存在：「%s」，確認是否覆蓋？", Command_Args[0], old_content))
 				replyMsg.ReplyMarkup = tgbotapi.NewInlineKeyboardMarkup(
 					tgbotapi.NewInlineKeyboardRow(
 						tgbotapi.NewInlineKeyboardButtonData("是", filename),
@@ -83,10 +83,10 @@ func handleUpdateMessage(bot *tgbotapi.BotAPI, Message *tgbotapi.Message) {
 			file.Close()
 
 			// update cache
-			CACHE[delExtension(filename)] = HokSeBun{content: content, summarization: getSingleSummarization(filename, content)}
+			CACHE[delExtension(filename)] = HokSeBun{content: content, summarization: getSingleSummarization(filename, content, true)}
 
 			// send response to user
-			replyMsg := tgbotapi.NewMessage(Message.Chat.ID, fmt.Sprintf("新增複製文「%s」成功", delExtension(filename)))
+			replyMsg := tgbotapi.NewMessage(Message.Chat.ID, fmt.Sprintf("新增複製文「%s」成功，\n自動生成的摘要如下：「%s」", delExtension(filename), CACHE[delExtension(filename)].summarization))
 			replyMsg.ReplyToMessageID = Message.MessageID
 			if _, err := bot.Send(replyMsg); err != nil {
 				log.Println(err)
@@ -199,7 +199,7 @@ func handleUpdateCallbackQuery(bot *tgbotapi.BotAPI, CallbackQuery *tgbotapi.Cal
 		// over write existing files
 		var filename string = CallbackQuery.Data
 		var content string = Queued_Overrides[filename]
-
+		fmt.Println(filename, content)
 		if utf8.RuneCountInString(content) >= 100 {
 			replyMsg := tgbotapi.NewMessage(CallbackQuery.Message.Chat.ID, "運算中，請稍後……")
 			replyMsg.ReplyToMessageID = CallbackQuery.Message.MessageID
@@ -217,10 +217,10 @@ func handleUpdateCallbackQuery(bot *tgbotapi.BotAPI, CallbackQuery *tgbotapi.Cal
 		file.Close()
 
 		// update cache
-		CACHE[delExtension(filename)] = HokSeBun{content: content, summarization: getSingleSummarization(filename, content)}
+		CACHE[delExtension(filename)] = HokSeBun{content: content, summarization: getSingleSummarization(filename, content, true)}
 
 		// send response to user
-		replyMsg := tgbotapi.NewMessage(CallbackQuery.Message.Chat.ID, fmt.Sprintf("更新複製文「%s」成功", delExtension(filename)))
+		replyMsg := tgbotapi.NewMessage(CallbackQuery.Message.Chat.ID, fmt.Sprintf("更新複製文「%s」成功，自動生成的摘要如下：「%s」", delExtension(filename), CACHE[delExtension(filename)].summarization))
 		replyMsg.ReplyToMessageID = CallbackQuery.Message.MessageID
 		if _, err := bot.Send(replyMsg); err != nil {
 			log.Println(err)

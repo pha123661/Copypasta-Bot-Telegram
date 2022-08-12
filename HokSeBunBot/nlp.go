@@ -43,8 +43,8 @@ func testHfAPI() error {
 	return err
 }
 
-func getSingleSummarization(filename string, input string) string {
-	if _, err := os.Stat(path.Join(CONFIG.SUMMARIZATION_LOCATION, filename)); err == nil {
+func getSingleSummarization(filename string, input string, forceUpdate bool) string {
+	if _, err := os.Stat(path.Join(CONFIG.SUMMARIZATION_LOCATION, filename)); !forceUpdate && err == nil {
 		bytes, err := os.ReadFile(path.Join(CONFIG.SUMMARIZATION_LOCATION, filename))
 		if err != nil {
 			log.Panicln(err)
@@ -69,7 +69,7 @@ func getSingleSummarization(filename string, input string) string {
 			log.Println(err)
 			log.Println("[HuggingFace] API dead, switching token...")
 			setAvailableAPI()
-			return getSingleSummarization(filename, input)
+			return getSingleSummarization(filename, input, forceUpdate)
 		}
 	} else {
 		content = sresps[0].SummaryText

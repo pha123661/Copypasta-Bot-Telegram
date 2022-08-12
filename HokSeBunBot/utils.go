@@ -95,7 +95,7 @@ func buildCache() {
 			continue
 		}
 		text, _ := os.ReadFile(path.Join(CONFIG.FILE_LOCATION, file.Name()))
-		CACHE[delExtension(file.Name())] = HokSeBun{content: string(text), summarization: getSingleSummarization(file.Name(), string(text))} // text is []byte
+		CACHE[delExtension(file.Name())] = HokSeBun{content: string(text), summarization: getSingleSummarization(file.Name(), string(text), false)} // text is []byte
 	}
 	fmt.Println("Building Cache Done")
 	log.Println("Building Cache Done")
