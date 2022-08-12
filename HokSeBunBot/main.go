@@ -71,13 +71,13 @@ func handleUpdateMessage(bot *tgbotapi.BotAPI, Message *tgbotapi.Message) {
 				}
 				return
 			}
-			if utf8.RuneCountInString(Message.Text) >= 100 {
-				replyMsg := tgbotapi.NewMessage(Message.Chat.ID, "運算中，請稍後……")
-				replyMsg.ReplyToMessageID = Message.MessageID
-				if _, err := bot.Send(replyMsg); err != nil {
-					log.Println(err)
-				}
+			replyMsg := tgbotapi.NewMessage(Message.Chat.ID, "運算中，請稍後……")
+			replyMsg.ReplyToMessageID = Message.MessageID
+			to_be_delete_message, err := bot.Send(replyMsg)
+			if err != nil {
+				log.Println(err)
 			}
+			to_be_delete_message_id := to_be_delete_message.MessageID
 
 			// write file
 			file, err := os.Create(path.Join(CONFIG.FILE_LOCATION, filename))
@@ -90,12 +90,16 @@ func handleUpdateMessage(bot *tgbotapi.BotAPI, Message *tgbotapi.Message) {
 			// update cache
 			CACHE[delExtension(filename)] = HokSeBun{content: content, summarization: getSingleSummarization(filename, content, true)}
 
+			// delete tmp message
+			bot.Request(tgbotapi.NewDeleteMessage(Message.Chat.ID, to_be_delete_message_id))
+
 			// send response to user
-			replyMsg := tgbotapi.NewMessage(Message.Chat.ID, fmt.Sprintf("新增複製文「%s」成功，\n自動生成的摘要如下：「%s」", delExtension(filename), CACHE[delExtension(filename)].summarization))
+			replyMsg = tgbotapi.NewMessage(Message.Chat.ID, fmt.Sprintf("新增複製文「%s」成功，\n自動生成的摘要如下：「%s」", delExtension(filename), CACHE[delExtension(filename)].summarization))
 			replyMsg.ReplyToMessageID = Message.MessageID
 			if _, err := bot.Send(replyMsg); err != nil {
 				log.Println(err)
 			}
+
 		case "random": // random post
 			k := rand.Intn(len(CACHE))
 			var keyword string
