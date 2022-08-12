@@ -56,6 +56,13 @@ func initConfig(CONFIG_PATH string) Config {
 	return CONFIG
 }
 
+func Abs(x int) int {
+	if x < 0 {
+		return -x
+	}
+	return x
+}
+
 func delExtension(fileName string) string {
 	// utility for removing file extension from filename
 	if pos := strings.LastIndexByte(fileName, '.'); pos != -1 {

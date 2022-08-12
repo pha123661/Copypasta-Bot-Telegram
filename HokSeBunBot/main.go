@@ -164,22 +164,22 @@ func handleUpdateMessage(bot *tgbotapi.BotAPI, Message *tgbotapi.Message) {
 		}
 		// fuzzy.Match("abc", "a1b2c3") = true
 		// strings.Contains("AAABBBCCC", "AB") = true
-		var limit int = 3
+		var runeLengthLimit int = 500
 		for k, v := range CACHE {
 			if utf8.RuneCountInString(Message.Text) >= 2 {
 				// >= 2 字
-				if fuzzy.Match(k, Message.Text) || fuzzy.Match(Message.Text, k) || fuzzy.Match(Message.Text, v.summarization) {
+				if fuzzy.Match(k, Message.Text) || (fuzzy.Match(Message.Text, k) && Abs(len(Message.Text)-len(k)) <= 3) || fuzzy.Match(Message.Text, v.summarization) {
 					send(Message.Chat.ID, CACHE[k].content)
-					limit--
+					runeLengthLimit -= utf8.RuneCountInString(CACHE[k].content)
 				}
 			} else {
 				// < 2 字
 				if strings.Contains(Message.Text, k) || strings.Contains(v.summarization, Message.Text) {
 					send(Message.Chat.ID, CACHE[k].content)
-					limit--
+					runeLengthLimit -= utf8.RuneCountInString(CACHE[k].content)
 				}
 			}
-			if limit <= 0 {
+			if runeLengthLimit <= 0 {
 				break
 			}
 		}
