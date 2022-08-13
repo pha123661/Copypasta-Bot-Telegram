@@ -270,9 +270,8 @@ func init() {
 	init_utils()
 	// setup logging
 	file, _ := os.OpenFile(CONFIG.LOG_FILE, os.O_RDWR|os.O_CREATE|os.O_APPEND, 0666)
-	defer file.Close()
 	log.SetOutput(file)
-	log.Println("Starting Server")
+	log.Println("*** Starting Server ***")
 
 	init_nlp()
 
