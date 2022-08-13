@@ -4,3 +4,5 @@ HokSeBun_db
 *.log
 config.toml
 **replit**
+go.mod
+go.sum
