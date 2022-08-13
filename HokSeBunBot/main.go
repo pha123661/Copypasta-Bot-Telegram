@@ -237,13 +237,15 @@ func handleUpdateCallbackQuery(bot *tgbotapi.BotAPI, CallbackQuery *tgbotapi.Cal
 		}
 		Queued_Overrides[filename].done = true
 		fmt.Println(filename, content)
-		if utf8.RuneCountInString(content) >= 100 {
-			replyMsg := tgbotapi.NewMessage(CallbackQuery.Message.Chat.ID, "運算中，請稍後……")
-			replyMsg.ReplyToMessageID = CallbackQuery.Message.MessageID
-			if _, err := bot.Send(replyMsg); err != nil {
-				log.Println(err)
-			}
+
+		replyMsg := tgbotapi.NewMessage(CallbackQuery.Message.Chat.ID, "運算中，請稍後……")
+		replyMsg.ReplyToMessageID = CallbackQuery.Message.MessageID
+		to_be_delete_message, err := bot.Send(replyMsg)
+		if err != nil {
+			log.Println(err)
 		}
+
+		to_be_delete_message_id := to_be_delete_message.MessageID
 
 		// write file
 		file, err := os.Create(path.Join(CONFIG.FILE_LOCATION, filename))
@@ -256,8 +258,11 @@ func handleUpdateCallbackQuery(bot *tgbotapi.BotAPI, CallbackQuery *tgbotapi.Cal
 		// update cache
 		CACHE[delExtension(filename)] = HokSeBun{content: content, summarization: getSingleSummarization(filename, content, true)}
 
+		// delete tmp message
+		bot.Request(tgbotapi.NewDeleteMessage(CallbackQuery.Message.Chat.ID, to_be_delete_message_id))
+
 		// send response to user
-		replyMsg := tgbotapi.NewMessage(CallbackQuery.Message.Chat.ID, fmt.Sprintf("更新複製文「%s」成功，自動生成的摘要如下：「%s」", delExtension(filename), CACHE[delExtension(filename)].summarization))
+		replyMsg = tgbotapi.NewMessage(CallbackQuery.Message.Chat.ID, fmt.Sprintf("更新複製文「%s」成功，自動生成的摘要如下：「%s」", delExtension(filename), CACHE[delExtension(filename)].summarization))
 		replyMsg.ReplyToMessageID = CallbackQuery.Message.MessageID
 		if _, err := bot.Send(replyMsg); err != nil {
 			log.Println(err)
