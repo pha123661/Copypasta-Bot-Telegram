@@ -43,12 +43,21 @@ Note: The model should support inference api to work.
 
 ---
 
-# Deploy
-1. setup your config file following the section above  
-2. run ``cd HokSeBunBot && go run main.go``
+# Deploy on [Replit.com](http://replit.com/)
+1. Import the repo into replit
+2. Setup your config file following the section above and move it to ``/HokSeBunBot``
+3. Run (first time only)
+```
+go mod init HokSeBunBot  
+go mod tidy
+```
+4. Make sure your replit run command is ``cd HokSeBunBot && go run .``
+5. (Optional) In order to make the bot work in group chat, turn off privacy mode for you bot (by using BotFother).
+6. Profit!  
 
 # Usage
-Support three commands atm  
+The bot posts relative copypasta for you whenever the bot detects matching keyword  
+Support four commands atm  
 1. echo: echo  
 2. new/add: insert new Ho̍k tsè bûn into the database  
 3. random: select a Ho̍k tsè bûn randomly and post it  
