@@ -1,7 +1,6 @@
 package main
 
 import (
-	"fmt"
 	"log"
 	"math/rand"
 	"os"
@@ -22,7 +21,6 @@ func setAvailableAPI() {
 	perm := rand.Perm(len(CONFIG.HUGGINGFACE_TOKENs))
 
 	for _, i := range perm {
-		fmt.Print(i)
 		log.Println("Testing HF api:", CONFIG.HUGGINGFACE_TOKENs[i][:8])
 		hfapigo.SetAPIKey(CONFIG.HUGGINGFACE_TOKENs[0])
 
