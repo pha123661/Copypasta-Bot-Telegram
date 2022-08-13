@@ -1,9 +1,12 @@
 package main
 
 import (
+	"fmt"
 	"log"
+	"math/rand"
 	"os"
 	"path"
+	"time"
 
 	hfapigo "github.com/TannerKvarfordt/hfapigo"
 )
@@ -13,22 +16,26 @@ func init_nlp() {
 }
 
 func setAvailableAPI() {
-	var i int
-	for i = 0; i < len(CONFIG.HUGGINGFACE_TOKENs); i++ {
+	var success bool = false
+
+	rand.Seed(time.Now().UTC().UnixNano())
+	perm := rand.Perm(len(CONFIG.HUGGINGFACE_TOKENs))
+
+	for _, i := range perm {
+		fmt.Print(i)
 		log.Println("Testing HF api:", CONFIG.HUGGINGFACE_TOKENs[i][:8])
 		hfapigo.SetAPIKey(CONFIG.HUGGINGFACE_TOKENs[0])
 
 		if err := testHfAPI(); err == nil {
+			success = true
 			break
 		} else {
 			log.Printf("HF api \"%s\" not available: %s\n", CONFIG.HUGGINGFACE_TOKENs[i][:8], err)
 		}
 	}
 
-	if i == len(CONFIG.HUGGINGFACE_TOKENs) {
+	if !success {
 		log.Panicln("No available hf api!")
-	} else {
-		log.Printf("Using HF api: \"%s\"\n", CONFIG.HUGGINGFACE_TOKENs[i][:8])
 	}
 }
 
