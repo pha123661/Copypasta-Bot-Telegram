@@ -16,17 +16,50 @@ import (
 
 // for override confirm
 // "existed_filename.txt": "new content"
-var Queued_Overrides = make(map[string]*Queued_Override_Entity)
+var Queued_Overrides = make(map[string]*Queued_Overwrite_Entity)
 
-type Queued_Override_Entity struct {
-	content string
-	done    bool
+type Queued_Overwrite_Entity struct {
+	// attribute
+	IsText  bool
+	IsImage bool
+
+	// file content
+	TextContent string
+	ImageFileID tgbotapi.FileID
+
+	// status
+	Done bool
+}
+
+func newOverwriteText(TextContent string) *Queued_Overwrite_Entity {
+	data := Queued_Overwrite_Entity{
+		IsText:      true,
+		IsImage:     false,
+		TextContent: TextContent,
+		Done:        false,
+	}
+	return &data
+}
+
+func newOverwriteImage(ImageFileID tgbotapi.FileID) *Queued_Overwrite_Entity {
+	data := Queued_Overwrite_Entity{
+		IsText:      false,
+		IsImage:     true,
+		ImageFileID: ImageFileID,
+		Done:        false,
+	}
+	return &data
 }
 
 func handleTextMessage(bot *tgbotapi.BotAPI, Message *tgbotapi.Message) {
 	if Message.IsCommand() {
 		// handle commands
 		switch Message.Command() {
+		case "start":
+			replyMsg := tgbotapi.NewMessage(Message.Chat.ID, "歡迎使用，使用方式可以參考我的github: https://github.com/pha123661/Hok_tse_bun_tgbot")
+			if _, err := bot.Send(replyMsg); err != nil {
+				log.Println(err)
+			}
 		case "echo": // echo
 			replyMsg := tgbotapi.NewMessage(Message.Chat.ID, Message.CommandArguments())
 			replyMsg.ReplyToMessageID = Message.MessageID
@@ -58,7 +91,7 @@ func handleTextMessage(bot *tgbotapi.BotAPI, Message *tgbotapi.Message) {
 			var content string = strings.TrimSpace(Message.Text[len(Message.Command())+len(filename)-1:])
 			if v, is_exist := CACHE[delExtension(filename)]; is_exist {
 				old_content := trimString(v.content, 100)
-				Queued_Overrides[filename] = &Queued_Override_Entity{content, false}
+				Queued_Overrides[filename] = newOverwriteText(content)
 				replyMsg := tgbotapi.NewMessage(Message.Chat.ID, fmt.Sprintf("「%s」複製文已存在：「%s」，確認是否覆蓋？", Command_Args[0], old_content))
 				replyMsg.ReplyMarkup = tgbotapi.NewInlineKeyboardMarkup(
 					tgbotapi.NewInlineKeyboardRow(
@@ -230,42 +263,54 @@ func handleCallbackQuery(bot *tgbotapi.BotAPI, CallbackQuery *tgbotapi.CallbackQ
 			log.Println(err)
 		}
 		// over write existing files
-		var filename string = CallbackQuery.Data
-		var content string = Queued_Overrides[filename].content
-		if Queued_Overrides[filename].done {
+		var Keyword string = CallbackQuery.Data
+		var Entity = Queued_Overrides[Keyword]
+		if Entity.Done {
 			return
 		}
-		Queued_Overrides[filename].done = true
-		fmt.Println(filename, content)
+		Queued_Overrides[Keyword].Done = true
 
-		replyMsg := tgbotapi.NewMessage(CallbackQuery.Message.Chat.ID, "運算中，請稍後……")
-		replyMsg.ReplyToMessageID = CallbackQuery.Message.MessageID
-		to_be_delete_message, err := bot.Send(replyMsg)
-		if err != nil {
-			log.Println(err)
-		}
+		if Entity.IsText {
+			var content = Entity.TextContent
+			replyMsg := tgbotapi.NewMessage(CallbackQuery.Message.Chat.ID, "運算中，請稍後……")
+			replyMsg.ReplyToMessageID = CallbackQuery.Message.MessageID
+			to_be_delete_message, err := bot.Send(replyMsg)
+			if err != nil {
+				log.Println(err)
+			}
 
-		to_be_delete_message_id := to_be_delete_message.MessageID
+			to_be_delete_message_id := to_be_delete_message.MessageID
 
-		// write file
-		file, err := os.Create(path.Join(CONFIG.FILE_LOCATION, filename))
-		if err != nil {
-			log.Panicln(err)
-		}
-		file.WriteString(content)
-		file.Close()
+			// write file
+			file, err := os.Create(path.Join(CONFIG.FILE_LOCATION, Keyword))
+			if err != nil {
+				log.Panicln(err)
+			}
+			file.WriteString(content)
+			file.Close()
 
-		// update cache
-		CACHE[delExtension(filename)] = HokSeBun{content: content, summarization: getSingleSummarization(filename, content, true)}
+			// update cache
+			CACHE[delExtension(Keyword)] = HokSeBun{content: content, summarization: getSingleSummarization(Keyword, content, true)}
 
-		// delete tmp message
-		bot.Request(tgbotapi.NewDeleteMessage(CallbackQuery.Message.Chat.ID, to_be_delete_message_id))
+			// delete tmp message
+			bot.Request(tgbotapi.NewDeleteMessage(CallbackQuery.Message.Chat.ID, to_be_delete_message_id))
 
-		// send response to user
-		replyMsg = tgbotapi.NewMessage(CallbackQuery.Message.Chat.ID, fmt.Sprintf("更新複製文「%s」成功，自動生成的摘要如下：「%s」", delExtension(filename), CACHE[delExtension(filename)].summarization))
-		replyMsg.ReplyToMessageID = CallbackQuery.Message.MessageID
-		if _, err := bot.Send(replyMsg); err != nil {
-			log.Println(err)
+			// send response to user
+			replyMsg = tgbotapi.NewMessage(CallbackQuery.Message.Chat.ID, fmt.Sprintf("更新複製文「%s」成功，自動生成的摘要如下：「%s」", delExtension(Keyword), CACHE[delExtension(Keyword)].summarization))
+			replyMsg.ReplyToMessageID = CallbackQuery.Message.MessageID
+			if _, err := bot.Send(replyMsg); err != nil {
+				log.Println(err)
+			}
+		} else if Entity.IsImage {
+			var FileID = Entity.ImageFileID
+			// add to cache
+			addToo2Cache(Keyword, newToo(FileID))
+
+			PhotoConfig := tgbotapi.NewPhoto(CallbackQuery.Message.Chat.ID, FileID)
+			PhotoConfig.Caption = fmt.Sprintf("成功更新圖片「%s」", Keyword)
+			if _, err := bot.Request(PhotoConfig); err != nil {
+				log.Println(err)
+			}
 		}
 	}
 }
@@ -306,7 +351,7 @@ func main() {
 	updates := bot.GetUpdatesChan(updateConfig)
 	for update := range updates {
 		// ignore nil
-		if update.Message.Photo != nil {
+		if update.Message != nil && update.Message.Photo != nil {
 			handleImageMessage(bot, update.Message)
 		} else if update.Message != nil {
 			go handleTextMessage(bot, update.Message)
