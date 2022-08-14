@@ -112,9 +112,15 @@ func handleImageMessage(bot *tgbotapi.BotAPI, Message *tgbotapi.Message) {
 	// add to cache
 	addToo2Cache(Keyword, newToo(FileID))
 
-	PhotoConfig := tgbotapi.NewPhoto(Message.Chat.ID, FileID)
-	PhotoConfig.Caption = fmt.Sprintf("成功新增圖片「%s」", Keyword)
-	if _, err := bot.Request(PhotoConfig); err != nil {
+	// PhotoConfig := tgbotapi.NewPhoto(Message.Chat.ID, FileID)
+	// PhotoConfig.Caption = fmt.Sprintf("成功新增圖片「%s」", Keyword)
+	// if _, err := bot.Request(PhotoConfig); err != nil {
+	// 	log.Println(err)
+	// }
+
+	replyMsg := tgbotapi.NewMessage(Message.Chat.ID, fmt.Sprintf("新增圖片「%s」成功", Keyword))
+	replyMsg.ReplyToMessageID = Message.MessageID
+	if _, err := bot.Send(replyMsg); err != nil {
 		log.Println(err)
 	}
 }
