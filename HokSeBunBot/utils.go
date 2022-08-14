@@ -5,6 +5,7 @@ import (
 	"log"
 	"os"
 	"path"
+	"path/filepath"
 	"strings"
 	"unicode/utf8"
 
@@ -13,7 +14,7 @@ import (
 )
 
 var CACHE = make(map[string]HokSeBun)
-var CONFIG Config
+var CONFIG Config_Type
 
 func init_utils() {
 	// read config
@@ -31,13 +32,17 @@ func init_utils() {
 	}
 }
 
-type Config struct {
+type Config_Type struct {
+	DB_LOCATION        string
+	LOG_FILE           string
+	TELEGRAM_API_TOKEN string
+	HUGGINGFACE_TOKENs []string
+	HUGGINGFACE_MODEL  string
+
+	// to be filled by program
 	FILE_LOCATION          string
 	SUMMARIZATION_LOCATION string
-	LOG_FILE               string
-	TELEGRAM_API_TOKEN     string
-	HUGGINGFACE_TOKENs     []string
-	HUGGINGFACE_MODEL      string
+	IMAGE_LOCATION         string
 }
 
 type HokSeBun struct {
@@ -45,7 +50,8 @@ type HokSeBun struct {
 	summarization string
 }
 
-func initConfig(CONFIG_PATH string) Config {
+func initConfig(CONFIG_PATH string) Config_Type {
+	// parse toml file
 	tomldata, err := os.ReadFile(CONFIG_PATH)
 	if err != nil {
 		log.Panicln(err)
@@ -53,6 +59,25 @@ func initConfig(CONFIG_PATH string) Config {
 	if _, err := toml.Decode(string(tomldata), &CONFIG); err != nil {
 		log.Panicln(err)
 	}
+
+	// add specific locations
+	CONFIG.FILE_LOCATION = filepath.Join(CONFIG.DB_LOCATION, "Text")
+	CONFIG.SUMMARIZATION_LOCATION = filepath.Join(CONFIG.DB_LOCATION, "Sum")
+	CONFIG.IMAGE_LOCATION = filepath.Join(CONFIG.DB_LOCATION, "Image", "ImageDB.gob")
+
+	var CreateIfNotExist = func(path string) error {
+		var error error
+		if _, err := os.Stat(path); os.IsNotExist(err) {
+			error = os.Mkdir(path, 0755)
+		}
+		return error
+	}
+
+	CreateIfNotExist(CONFIG.DB_LOCATION)
+	CreateIfNotExist(CONFIG.FILE_LOCATION)
+	CreateIfNotExist(CONFIG.SUMMARIZATION_LOCATION)
+	CreateIfNotExist(filepath.Dir(CONFIG.IMAGE_LOCATION)) // since IMAGE_LOCATION stands for a gob file
+
 	return CONFIG
 }
 

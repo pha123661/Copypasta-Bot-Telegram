@@ -23,7 +23,7 @@ type Queued_Override_Entity struct {
 	done    bool
 }
 
-func handleUpdateMessage(bot *tgbotapi.BotAPI, Message *tgbotapi.Message) {
+func handleTextMessage(bot *tgbotapi.BotAPI, Message *tgbotapi.Message) {
 	if Message.IsCommand() {
 		// handle commands
 		switch Message.Command() {
@@ -199,7 +199,7 @@ func handleUpdateMessage(bot *tgbotapi.BotAPI, Message *tgbotapi.Message) {
 	}
 }
 
-func handleUpdateCallbackQuery(bot *tgbotapi.BotAPI, CallbackQuery *tgbotapi.CallbackQuery) {
+func handleCallbackQuery(bot *tgbotapi.BotAPI, CallbackQuery *tgbotapi.CallbackQuery) {
 	// close the inline keyboard
 	editedMsg := tgbotapi.NewEditMessageReplyMarkup(
 		CallbackQuery.Message.Chat.ID,
@@ -279,16 +279,8 @@ func init() {
 	log.Println("*** Starting Server ***")
 
 	init_nlp()
-
-	// build cache
-	if _, err := os.Stat(CONFIG.FILE_LOCATION); os.IsNotExist(err) {
-		os.Mkdir(CONFIG.FILE_LOCATION, 0755)
-	}
-	if _, err := os.Stat(CONFIG.SUMMARIZATION_LOCATION); os.IsNotExist(err) {
-		os.Mkdir(CONFIG.SUMMARIZATION_LOCATION, 0755)
-	}
+	init_image()
 	buildCache()
-
 }
 
 func main() {
@@ -314,10 +306,12 @@ func main() {
 	updates := bot.GetUpdatesChan(updateConfig)
 	for update := range updates {
 		// ignore nil
-		if update.Message != nil {
-			go handleUpdateMessage(bot, update.Message)
+		if update.Message.Photo != nil {
+			handleImageMessage(bot, update.Message)
+		} else if update.Message != nil {
+			go handleTextMessage(bot, update.Message)
 		} else if update.CallbackQuery != nil {
-			go handleUpdateCallbackQuery(bot, update.CallbackQuery)
+			go handleCallbackQuery(bot, update.CallbackQuery)
 		}
 	}
 }
