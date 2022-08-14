@@ -6,3 +6,5 @@ config.toml
 **replit**
 go.mod
 go.sum
+testdata
+**tmp**
