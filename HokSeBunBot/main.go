@@ -215,7 +215,7 @@ func handleTextMessage(bot *tgbotapi.BotAPI, Message *tgbotapi.Message) {
 				if fuzzy.Match(Query, Key) || fuzzy.Match(Key, Query) || fuzzy.Match(Query, HST.summarization) {
 					ResultCount++
 
-					PhotoConfig := tgbotapi.NewPhoto(Message.Chat.ID, HST.FileID)
+					PhotoConfig := tgbotapi.NewPhoto(Message.From.ID, HST.FileID)
 					PhotoConfig.Caption = fmt.Sprintf("名稱：「%s」", Key)
 					if _, err := bot.Request(PhotoConfig); err != nil {
 						log.Println(err)
