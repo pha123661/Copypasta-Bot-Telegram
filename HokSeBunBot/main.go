@@ -134,21 +134,42 @@ func handleTextMessage(bot *tgbotapi.BotAPI, Message *tgbotapi.Message) {
 			}
 
 		case "random": // random post
-			k := rand.Intn(len(TEXT_CACHE))
-			var keyword string
-			var context string
-			for key, v := range TEXT_CACHE {
-				if k == 0 {
-					keyword = key
-					context = v.content
+			RandomIndex := rand.Intn(len(TEXT_CACHE) + len(IMAGE_CACHE))
+			if RandomIndex < len(TEXT_CACHE) {
+				var Keyword string
+				var Content string
+				for Key, HSB := range TEXT_CACHE {
+					if RandomIndex == 0 {
+						Keyword = Key
+						Content = HSB.content
+						break
+					}
+					RandomIndex--
 				}
-				k--
+				Content = fmt.Sprintf("幫你從 %d 篇文章中精心選擇了「%s」：\n%s", len(TEXT_CACHE), Keyword, Content)
+				replyMsg := tgbotapi.NewMessage(Message.Chat.ID, Content)
+				if _, err := bot.Send(replyMsg); err != nil {
+					log.Println(err)
+				}
+			} else {
+				RandomIndex = RandomIndex - len(TEXT_CACHE)
+				var Keyword string
+				var FileID tgbotapi.FileID
+				for Key, HST := range IMAGE_CACHE {
+					if RandomIndex == 0 {
+						Keyword = Key
+						FileID = HST.FileID
+						break
+					}
+					RandomIndex--
+				}
+				PhotoConfig := tgbotapi.NewPhoto(Message.Chat.ID, FileID)
+				PhotoConfig.Caption = fmt.Sprintf("幫你從 %d 張圖片中精心選擇了「%s」", len(IMAGE_CACHE), Keyword)
+				if _, err := bot.Request(PhotoConfig); err != nil {
+					log.Println(err)
+				}
 			}
-			context = fmt.Sprintf("幫你從 %d 篇文章中精心選擇了「%s」：\n%s", len(TEXT_CACHE), keyword, context)
-			replyMsg := tgbotapi.NewMessage(Message.Chat.ID, context)
-			if _, err := bot.Send(replyMsg); err != nil {
-				log.Println(err)
-			}
+
 		case "search": // fuzzy search both filename & content
 			var Query string = Message.CommandArguments()
 			var ResultCount int
