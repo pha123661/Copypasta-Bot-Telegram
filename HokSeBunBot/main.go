@@ -89,8 +89,8 @@ func handleTextMessage(bot *tgbotapi.BotAPI, Message *tgbotapi.Message) {
 			// check file existence
 			var filename string = Command_Args[0] + ".txt"
 			var content string = strings.TrimSpace(Message.Text[len(Message.Command())+len(filename)-1:])
-			if v, is_exist := CACHE[delExtension(filename)]; is_exist {
-				old_content := trimString(v.content, 100)
+			if HSB, is_exist := TEXT_CACHE[delExtension(filename)]; is_exist {
+				old_content := trimString(HSB.content, 100)
 				Queued_Overrides[filename] = newOverwriteText(content)
 				replyMsg := tgbotapi.NewMessage(Message.Chat.ID, fmt.Sprintf("「%s」複製文已存在：「%s」，確認是否覆蓋？", Command_Args[0], old_content))
 				replyMsg.ReplyMarkup = tgbotapi.NewInlineKeyboardMarkup(
@@ -121,38 +121,38 @@ func handleTextMessage(bot *tgbotapi.BotAPI, Message *tgbotapi.Message) {
 			file.Close()
 
 			// update cache
-			CACHE[delExtension(filename)] = HokSeBun{content: content, summarization: getSingleSummarization(filename, content, true)}
+			TEXT_CACHE[delExtension(filename)] = HokSeBun{content: content, summarization: getSingleSummarization(filename, content, true)}
 
 			// delete tmp message
 			bot.Request(tgbotapi.NewDeleteMessage(Message.Chat.ID, to_be_delete_message_id))
 
 			// send response to user
-			replyMsg = tgbotapi.NewMessage(Message.Chat.ID, fmt.Sprintf("新增複製文「%s」成功，\n自動生成的摘要如下：「%s」", delExtension(filename), CACHE[delExtension(filename)].summarization))
+			replyMsg = tgbotapi.NewMessage(Message.Chat.ID, fmt.Sprintf("新增複製文「%s」成功，\n自動生成的摘要如下：「%s」", delExtension(filename), TEXT_CACHE[delExtension(filename)].summarization))
 			replyMsg.ReplyToMessageID = Message.MessageID
 			if _, err := bot.Send(replyMsg); err != nil {
 				log.Println(err)
 			}
 
 		case "random": // random post
-			k := rand.Intn(len(CACHE))
+			k := rand.Intn(len(TEXT_CACHE))
 			var keyword string
 			var context string
-			for key, v := range CACHE {
+			for key, v := range TEXT_CACHE {
 				if k == 0 {
 					keyword = key
 					context = v.content
 				}
 				k--
 			}
-			context = fmt.Sprintf("幫你從 %d 篇文章中精心選擇了「%s」：\n%s", len(CACHE), keyword, context)
+			context = fmt.Sprintf("幫你從 %d 篇文章中精心選擇了「%s」：\n%s", len(TEXT_CACHE), keyword, context)
 			replyMsg := tgbotapi.NewMessage(Message.Chat.ID, context)
 			if _, err := bot.Send(replyMsg); err != nil {
 				log.Println(err)
 			}
 		case "search": // fuzzy search both filename & content
-			var Keyword string = Message.CommandArguments()
+			var Query string = Message.CommandArguments()
 			var ResultCount int
-			if utf8.RuneCountInString(Keyword) < 2 {
+			if utf8.RuneCountInString(Query) < 2 {
 				if _, err := bot.Send(tgbotapi.NewMessage(Message.Chat.ID, "搜尋關鍵字至少要兩個字！")); err != nil {
 					log.Println(err)
 				}
@@ -162,19 +162,36 @@ func handleTextMessage(bot *tgbotapi.BotAPI, Message *tgbotapi.Message) {
 				log.Println(err)
 			}
 			if Message.Chat.ID != Message.From.ID {
-				if _, err := bot.Send(tgbotapi.NewMessage(Message.From.ID, fmt.Sprintf("「%s」的搜尋結果如下：", Keyword))); err != nil {
+				if _, err := bot.Send(tgbotapi.NewMessage(Message.From.ID, fmt.Sprintf("「%s」的搜尋結果如下：", Query))); err != nil {
 					log.Println(err)
 				}
 			}
-			for k, v := range CACHE {
-				if fuzzy.Match(Keyword, k) || fuzzy.Match(k, Keyword) || fuzzy.Match(Keyword, v.summarization) || fuzzy.Match(Keyword, v.content) {
+
+			// search text
+			for Key, HSB := range TEXT_CACHE {
+				if fuzzy.Match(Query, Key) || fuzzy.Match(Key, Query) || fuzzy.Match(Query, HSB.summarization) || fuzzy.Match(Query, HSB.content) {
 					ResultCount++
-					content := trimString(v.content, 100)
-					if _, err := bot.Send(tgbotapi.NewMessage(Message.From.ID, fmt.Sprintf("名稱：「%s」\n摘要：「%s」\n內容：「%s」", k, v.summarization, content))); err != nil {
+
+					content := trimString(HSB.content, 100)
+					if _, err := bot.Send(tgbotapi.NewMessage(Message.From.ID, fmt.Sprintf("名稱：「%s」\n摘要：「%s」\n內容：「%s」", Key, HSB.summarization, content))); err != nil {
 						log.Println(err)
 					}
 				}
 			}
+
+			// search image
+			for Key, HST := range IMAGE_CACHE {
+				if fuzzy.Match(Query, Key) || fuzzy.Match(Key, Query) || fuzzy.Match(Query, HST.summarization) {
+					ResultCount++
+
+					PhotoConfig := tgbotapi.NewPhoto(Message.Chat.ID, HST.FileID)
+					PhotoConfig.Caption = fmt.Sprintf("名稱：「%s」", Key)
+					if _, err := bot.Request(PhotoConfig); err != nil {
+						log.Println(err)
+					}
+				}
+			}
+
 			if _, err := bot.Send(tgbotapi.NewMessage(Message.Chat.ID, fmt.Sprintf("搜尋完成，共 %d 筆吻合\n(結果在與bot的私訊中)", ResultCount))); err != nil {
 				log.Println(err)
 			}
@@ -210,22 +227,22 @@ func handleTextMessage(bot *tgbotapi.BotAPI, Message *tgbotapi.Message) {
 			// strings.Contains("AAABBBCCC", "AB") = true
 			var Query = Message.Text
 			var RuneLengthLimit int = Min(500, 100*utf8.RuneCountInString(Query))
-			for Key, HSB := range CACHE {
+			for Key, HSB := range TEXT_CACHE {
 				switch {
 				case utf8.RuneCountInString(Query) >= 3:
 					if fuzzy.Match(Key, Query) || (fuzzy.Match(Query, Key) && Abs(len(Query)-len(Key)) <= 3) || fuzzy.Match(Query, HSB.summarization) {
-						SendTextResult(Message.Chat.ID, CACHE[Key].content)
-						RuneLengthLimit -= utf8.RuneCountInString(CACHE[Key].content)
+						SendTextResult(Message.Chat.ID, TEXT_CACHE[Key].content)
+						RuneLengthLimit -= utf8.RuneCountInString(TEXT_CACHE[Key].content)
 					}
 				case utf8.RuneCountInString(Query) >= 2:
 					if strings.Contains(Query, Key) || strings.Contains(Key, Query) {
-						SendTextResult(Message.Chat.ID, CACHE[Key].content)
-						RuneLengthLimit -= utf8.RuneCountInString(CACHE[Key].content)
+						SendTextResult(Message.Chat.ID, TEXT_CACHE[Key].content)
+						RuneLengthLimit -= utf8.RuneCountInString(TEXT_CACHE[Key].content)
 					}
 				case utf8.RuneCountInString(Query) == 1:
 					if utf8.RuneCountInString(Key) == 1 && Query == Key {
-						SendTextResult(Message.Chat.ID, CACHE[Key].content)
-						RuneLengthLimit -= utf8.RuneCountInString(CACHE[Key].content)
+						SendTextResult(Message.Chat.ID, TEXT_CACHE[Key].content)
+						RuneLengthLimit -= utf8.RuneCountInString(TEXT_CACHE[Key].content)
 					}
 				}
 				if RuneLengthLimit <= 0 {
@@ -330,13 +347,13 @@ func handleCallbackQuery(bot *tgbotapi.BotAPI, CallbackQuery *tgbotapi.CallbackQ
 			file.Close()
 
 			// update cache
-			CACHE[delExtension(Keyword)] = HokSeBun{content: content, summarization: getSingleSummarization(Keyword, content, true)}
+			TEXT_CACHE[delExtension(Keyword)] = HokSeBun{content: content, summarization: getSingleSummarization(Keyword, content, true)}
 
 			// delete tmp message
 			bot.Request(tgbotapi.NewDeleteMessage(CallbackQuery.Message.Chat.ID, to_be_delete_message_id))
 
 			// send response to user
-			replyMsg = tgbotapi.NewMessage(CallbackQuery.Message.Chat.ID, fmt.Sprintf("更新複製文「%s」成功，自動生成的摘要如下：「%s」", delExtension(Keyword), CACHE[delExtension(Keyword)].summarization))
+			replyMsg = tgbotapi.NewMessage(CallbackQuery.Message.Chat.ID, fmt.Sprintf("更新複製文「%s」成功，自動生成的摘要如下：「%s」", delExtension(Keyword), TEXT_CACHE[delExtension(Keyword)].summarization))
 			replyMsg.ReplyToMessageID = CallbackQuery.Message.MessageID
 			if _, err := bot.Send(replyMsg); err != nil {
 				log.Println(err)
