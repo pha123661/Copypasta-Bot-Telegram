@@ -10,11 +10,34 @@ import (
 	"unicode/utf8"
 
 	toml "github.com/BurntSushi/toml"
+	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
 	pb "github.com/schollz/progressbar/v2"
 )
 
 var CACHE = make(map[string]HokSeBun)
+var IMAGE_CACHE map[string]HokSeToo
 var CONFIG Config_Type
+
+type HokSeBun struct {
+	content       string
+	summarization string
+}
+type HokSeToo struct {
+	FileID        tgbotapi.FileID
+	summarization string
+}
+type Config_Type struct {
+	DB_LOCATION        string
+	LOG_FILE           string
+	TELEGRAM_API_TOKEN string
+	HUGGINGFACE_TOKENs []string
+	HUGGINGFACE_MODEL  string
+
+	// to be filled by program
+	FILE_LOCATION          string
+	SUMMARIZATION_LOCATION string
+	IMAGE_LOCATION         string
+}
 
 func init_utils() {
 	// read config
@@ -30,24 +53,6 @@ func init_utils() {
 	if len(CONFIG.HUGGINGFACE_TOKENs) == 0 || CONFIG.SUMMARIZATION_LOCATION == "" {
 		fmt.Println("Please setup your config properly: NLP components will be disabled")
 	}
-}
-
-type Config_Type struct {
-	DB_LOCATION        string
-	LOG_FILE           string
-	TELEGRAM_API_TOKEN string
-	HUGGINGFACE_TOKENs []string
-	HUGGINGFACE_MODEL  string
-
-	// to be filled by program
-	FILE_LOCATION          string
-	SUMMARIZATION_LOCATION string
-	IMAGE_LOCATION         string
-}
-
-type HokSeBun struct {
-	content       string
-	summarization string
 }
 
 func initConfig(CONFIG_PATH string) Config_Type {

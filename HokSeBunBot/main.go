@@ -198,37 +198,77 @@ func handleTextMessage(bot *tgbotapi.BotAPI, Message *tgbotapi.Message) {
 			return
 		}
 
-		send := func(ChatID int64, Content string) {
-			replyMsg := tgbotapi.NewMessage(ChatID, Content)
-			if _, err := bot.Send(replyMsg); err != nil {
-				log.Println(err)
-			}
-		}
-		// fuzzy.Match("abc", "a1b2c3") = true
-		// strings.Contains("AAABBBCCC", "AB") = true
-		var runeLengthLimit int = Min(500, 100*utf8.RuneCountInString(Message.Text))
-		for k, v := range CACHE {
-			switch {
-			case utf8.RuneCountInString(Message.Text) >= 3:
-				if fuzzy.Match(k, Message.Text) || (fuzzy.Match(Message.Text, k) && Abs(len(Message.Text)-len(k)) <= 3) || fuzzy.Match(Message.Text, v.summarization) {
-					send(Message.Chat.ID, CACHE[k].content)
-					runeLengthLimit -= utf8.RuneCountInString(CACHE[k].content)
-				}
-			case utf8.RuneCountInString(Message.Text) >= 2:
-				if strings.Contains(Message.Text, k) || strings.Contains(k, Message.Text) {
-					send(Message.Chat.ID, CACHE[k].content)
-					runeLengthLimit -= utf8.RuneCountInString(CACHE[k].content)
-				}
-			case utf8.RuneCountInString(Message.Text) == 1:
-				if utf8.RuneCountInString(k) == 1 && Message.Text == k {
-					send(Message.Chat.ID, CACHE[k].content)
-					runeLengthLimit -= utf8.RuneCountInString(CACHE[k].content)
+		// search text
+		go func() {
+			SendTextResult := func(ChatID int64, Content string) {
+				replyMsg := tgbotapi.NewMessage(ChatID, Content)
+				if _, err := bot.Send(replyMsg); err != nil {
+					log.Println(err)
 				}
 			}
-			if runeLengthLimit <= 0 {
-				break
+			// fuzzy.Match("abc", "a1b2c3") = true
+			// strings.Contains("AAABBBCCC", "AB") = true
+			var Query = Message.Text
+			var RuneLengthLimit int = Min(500, 100*utf8.RuneCountInString(Query))
+			for Key, HSB := range CACHE {
+				switch {
+				case utf8.RuneCountInString(Query) >= 3:
+					if fuzzy.Match(Key, Query) || (fuzzy.Match(Query, Key) && Abs(len(Query)-len(Key)) <= 3) || fuzzy.Match(Query, HSB.summarization) {
+						SendTextResult(Message.Chat.ID, CACHE[Key].content)
+						RuneLengthLimit -= utf8.RuneCountInString(CACHE[Key].content)
+					}
+				case utf8.RuneCountInString(Query) >= 2:
+					if strings.Contains(Query, Key) || strings.Contains(Key, Query) {
+						SendTextResult(Message.Chat.ID, CACHE[Key].content)
+						RuneLengthLimit -= utf8.RuneCountInString(CACHE[Key].content)
+					}
+				case utf8.RuneCountInString(Query) == 1:
+					if utf8.RuneCountInString(Key) == 1 && Query == Key {
+						SendTextResult(Message.Chat.ID, CACHE[Key].content)
+						RuneLengthLimit -= utf8.RuneCountInString(CACHE[Key].content)
+					}
+				}
+				if RuneLengthLimit <= 0 {
+					break
+				}
 			}
-		}
+		}()
+
+		// search image
+		go func() {
+			SendImageResult := func(ChatID int64, FileID tgbotapi.FileID, Keyword string) {
+				PhotoConfig := tgbotapi.NewPhoto(ChatID, FileID)
+				PhotoConfig.Caption = Keyword
+				if _, err := bot.Request(PhotoConfig); err != nil {
+					log.Println(err)
+				}
+			}
+
+			var Query = Message.Text
+			var ImageCountLimit int = 2
+			for Key, HST := range IMAGE_CACHE {
+				switch {
+				case utf8.RuneCountInString(Query) >= 3:
+					if fuzzy.Match(Key, Query) || (fuzzy.Match(Query, Key) && Abs(len(Query)-len(Key)) <= 3) || fuzzy.Match(Query, HST.summarization) {
+						SendImageResult(Message.Chat.ID, IMAGE_CACHE[Key].FileID, Key)
+						ImageCountLimit--
+					}
+				case utf8.RuneCountInString(Query) >= 2:
+					if strings.Contains(Query, Key) || strings.Contains(Key, Query) {
+						SendImageResult(Message.Chat.ID, IMAGE_CACHE[Key].FileID, Key)
+						ImageCountLimit--
+					}
+				case utf8.RuneCountInString(Query) == 1:
+					if utf8.RuneCountInString(Key) == 1 && Query == Key {
+						SendImageResult(Message.Chat.ID, IMAGE_CACHE[Key].FileID, Key)
+						ImageCountLimit--
+					}
+				}
+				if ImageCountLimit <= 0 {
+					break
+				}
+			}
+		}()
 	}
 }
 

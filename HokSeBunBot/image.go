@@ -10,13 +10,6 @@ import (
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
 )
 
-var IMAGE_CACHE map[string]HokSeToo
-
-type HokSeToo struct {
-	FileID        tgbotapi.FileID
-	summarization string
-}
-
 func init_image() {
 	if _, err := os.Stat(CONFIG.IMAGE_LOCATION); errors.Is(err, os.ErrNotExist) {
 		// no file
@@ -121,5 +114,7 @@ func handleImageMessage(bot *tgbotapi.BotAPI, Message *tgbotapi.Message) {
 
 	PhotoConfig := tgbotapi.NewPhoto(Message.Chat.ID, FileID)
 	PhotoConfig.Caption = fmt.Sprintf("成功新增圖片「%s」", Keyword)
-	bot.Request(PhotoConfig)
+	if _, err := bot.Request(PhotoConfig); err != nil {
+		log.Println(err)
+	}
 }
