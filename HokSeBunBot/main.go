@@ -152,6 +152,8 @@ func handleTextMessage(bot *tgbotapi.BotAPI, Message *tgbotapi.Message) {
 		case "search": // fuzzy search both filename & content
 			var Query string = Message.CommandArguments()
 			var ResultCount int
+			var Limit_Reached bool = false
+			const MaxResults = 25
 			if utf8.RuneCountInString(Query) < 2 {
 				if _, err := bot.Send(tgbotapi.NewMessage(Message.Chat.ID, "搜尋關鍵字至少要兩個字！")); err != nil {
 					log.Println(err)
@@ -169,6 +171,10 @@ func handleTextMessage(bot *tgbotapi.BotAPI, Message *tgbotapi.Message) {
 
 			// search text
 			for Key, HSB := range TEXT_CACHE {
+				if ResultCount >= MaxResults {
+					Limit_Reached = true
+					break
+				}
 				if fuzzy.Match(Query, Key) || fuzzy.Match(Key, Query) || fuzzy.Match(Query, HSB.summarization) || fuzzy.Match(Query, HSB.content) {
 					ResultCount++
 
@@ -181,6 +187,10 @@ func handleTextMessage(bot *tgbotapi.BotAPI, Message *tgbotapi.Message) {
 
 			// search image
 			for Key, HST := range IMAGE_CACHE {
+				if ResultCount >= MaxResults {
+					Limit_Reached = true
+					break
+				}
 				if fuzzy.Match(Query, Key) || fuzzy.Match(Key, Query) || fuzzy.Match(Query, HST.summarization) {
 					ResultCount++
 
@@ -191,13 +201,23 @@ func handleTextMessage(bot *tgbotapi.BotAPI, Message *tgbotapi.Message) {
 					}
 				}
 			}
-
-			if _, err := bot.Send(tgbotapi.NewMessage(Message.Chat.ID, fmt.Sprintf("搜尋完成，共 %d 筆吻合\n(結果在與bot的私訊中)", ResultCount))); err != nil {
-				log.Println(err)
-			}
-			if Message.Chat.ID != Message.From.ID {
-				if _, err := bot.Send(tgbotapi.NewMessage(Message.From.ID, fmt.Sprintf("搜尋完成，共 %d 筆吻合\n", ResultCount))); err != nil {
+			if !Limit_Reached {
+				if _, err := bot.Send(tgbotapi.NewMessage(Message.Chat.ID, fmt.Sprintf("搜尋完成，共 %d 筆吻合\n(結果在與bot的私訊中)", ResultCount))); err != nil {
 					log.Println(err)
+				}
+				if Message.Chat.ID != Message.From.ID {
+					if _, err := bot.Send(tgbotapi.NewMessage(Message.From.ID, fmt.Sprintf("搜尋完成，共 %d 筆吻合\n", ResultCount))); err != nil {
+						log.Println(err)
+					}
+				}
+			} else {
+				if _, err := bot.Send(tgbotapi.NewMessage(Message.Chat.ID, fmt.Sprintf("搜尋完成，結果超過上限%d筆，請嘗試更換關鍵字\n(結果在與bot的私訊中)", MaxResults))); err != nil {
+					log.Println(err)
+				}
+				if Message.Chat.ID != Message.From.ID {
+					if _, err := bot.Send(tgbotapi.NewMessage(Message.From.ID, fmt.Sprintf("搜尋完成，結果超過上限%d筆，請嘗試更換關鍵字", MaxResults))); err != nil {
+						log.Println(err)
+					}
 				}
 			}
 
