@@ -513,6 +513,7 @@ func handleCallbackQuery(CallbackQuery *tgbotapi.CallbackQuery) {
 				log.Println("[CallBQ]", err)
 				return
 			}
+			log.Printf("[DELETE] \"%s\" has been deleted!\n", DEntity.Keyword)
 			replyMsg := tgbotapi.NewMessage(CallbackQuery.Message.Chat.ID, fmt.Sprintf("已成功刪除「%s」", DEntity.Keyword))
 			replyMsg.ReplyToMessageID = CallbackQuery.Message.MessageID
 			if _, err := bot.Send(replyMsg); err != nil {
