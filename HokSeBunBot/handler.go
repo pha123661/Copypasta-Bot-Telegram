@@ -160,6 +160,13 @@ func handleCommand(Message *tgbotapi.Message) {
 		if _, err := bot.Send(replyMsg); err != nil {
 			log.Println("[new]", err)
 		}
+	default:
+		replyMsg := tgbotapi.NewMessage(Message.Chat.ID, fmt.Sprintf("錯誤：我不會 “/%s” 啦", Message.Command()))
+		replyMsg.ReplyToMessageID = Message.MessageID
+		if _, err := bot.Send(replyMsg); err != nil {
+			log.Println(err)
+		}
+		return
 	}
 }
 func handleTextMessage(Message *tgbotapi.Message) {
