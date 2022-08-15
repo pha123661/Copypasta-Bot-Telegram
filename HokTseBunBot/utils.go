@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"log"
 	"os"
+	"strings"
 	"unicode/utf8"
 
 	toml "github.com/BurntSushi/toml"
@@ -61,8 +62,9 @@ func InitConfig(CONFIG_PATH string) {
 }
 
 func TruncateString(text string, width int) string {
+	text = strings.TrimSpace(text)
 	width = width - utf8.RuneCountInString("……")
-	if utf8.RuneCountInString(text) >= width {
+	if utf8.RuneCountInString(text) > width {
 		r := []rune(text)[:width]
 		text = string(r) + "……"
 	}

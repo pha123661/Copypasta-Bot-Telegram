@@ -22,16 +22,7 @@ Doc format:
 		}
 */
 
-var Queued_Overwrites = make(map[string]*OverwriteEntity)
 var bot *tgbotapi.BotAPI
-
-type OverwriteEntity struct {
-	Type    int64
-	Keyword string
-	Content string
-	From    int64
-	Done    bool // prevent multiple clicks
-}
 
 func init() {
 	InitConfig("./config.toml")

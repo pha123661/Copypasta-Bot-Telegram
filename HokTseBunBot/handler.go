@@ -12,6 +12,23 @@ import (
 	c "github.com/ostafen/clover/v2"
 )
 
+var Queued_Overwrites = make(map[string]*OverwriteEntity) // Keyword: OverwriteEntity
+var Queued_Deletes = make(map[string]*DeleteEntity)       // UID: DeleteEntity
+
+type OverwriteEntity struct {
+	Type    int64
+	Keyword string
+	Content string
+	From    int64
+	Done    bool // prevent multiple clicks
+}
+
+type DeleteEntity struct {
+	Keyword   string
+	Confirmed bool
+	Done      bool
+}
+
 func handleCommand(Message *tgbotapi.Message) {
 	// handle commands
 	switch Message.Command() {
@@ -112,7 +129,7 @@ func handleCommand(Message *tgbotapi.Message) {
 					replyMsg := tgbotapi.NewMessage(Message.Chat.ID, "傳過了啦 腦霧?")
 					replyMsg.ReplyToMessageID = Message.MessageID
 					if _, err := bot.Send(replyMsg); err != nil {
-						log.Println(err)
+						log.Println("[new]", err)
 					}
 					return
 				}
@@ -219,13 +236,43 @@ func handleCommand(Message *tgbotapi.Message) {
 				}
 			}
 		}
+	case "delete":
+		var BeDeletedKeyword = Message.CommandArguments()
+		Criteria := c.Field("Keyword").Eq(BeDeletedKeyword)
+		docs, err := DB.FindAll(c.NewQuery(CONFIG.DB.COLLECTION).Where(Criteria))
+		if err != nil {
+			log.Println("[delete]", err)
+		}
+		if len(docs) <= 0 {
+			replyMsg := tgbotapi.NewMessage(Message.Chat.ID, "沒有文章符合關鍵字")
+			replyMsg.ReplyToMessageID = Message.MessageID
+			if _, err := bot.Send(replyMsg); err != nil {
+				log.Println("[delete]", err)
+			}
+			return
+		}
+
+		ReplyMarkup := make([][]tgbotapi.InlineKeyboardButton, 0, len(docs))
+		HTB := &HokTseBun{}
+		for idx, doc := range docs {
+			doc.Unmarshal(HTB)
+			fmt.Printf("%d. %s", idx+1, TruncateString(HTB.Content, 15))
+			ReplyMarkup = append(ReplyMarkup, tgbotapi.NewInlineKeyboardRow(tgbotapi.NewInlineKeyboardButtonData(fmt.Sprintf("%d. %s", idx+1, TruncateString(HTB.Content, 15)), HTB.UID)))
+			Queued_Deletes[HTB.UID] = &DeleteEntity{Keyword: HTB.Keyword}
+		}
+		ReplyMarkup = append(ReplyMarkup, tgbotapi.NewInlineKeyboardRow(tgbotapi.NewInlineKeyboardButtonData("取消", "NIL")))
+		replyMsg := tgbotapi.NewMessage(Message.Chat.ID, "請選擇要刪除以下哪一篇文章？")
+		replyMsg.ReplyMarkup = tgbotapi.NewInlineKeyboardMarkup(ReplyMarkup...)
+		if _, err := bot.Send(replyMsg); err != nil {
+			log.Println("[delete]", err)
+		}
+
 	default:
 		replyMsg := tgbotapi.NewMessage(Message.Chat.ID, fmt.Sprintf("錯誤：我不會 “/%s” 啦", Message.Command()))
 		replyMsg.ReplyToMessageID = Message.MessageID
 		if _, err := bot.Send(replyMsg); err != nil {
 			log.Println(err)
 		}
-		return
 	}
 }
 func handleTextMessage(Message *tgbotapi.Message) {
@@ -374,22 +421,21 @@ func handleCallbackQuery(CallbackQuery *tgbotapi.CallbackQuery) {
 			log.Println("[CallBQ]", err)
 		}
 
-		replyMsg := tgbotapi.NewMessage(CallbackQuery.Message.Chat.ID, "其實不按否也沒差啦 哈哈")
+		replyMsg := tgbotapi.NewMessage(CallbackQuery.Message.Chat.ID, "其實不按也沒差啦 哈哈")
 		replyMsg.ReplyToMessageID = CallbackQuery.Message.MessageID
 		if _, err := bot.Send(replyMsg); err != nil {
 			log.Println("[CallBQ]", err)
 		}
-	} else {
-		// 是
+	} else if OW_Entity, ok := Queued_Overwrites[CallbackQuery.Data]; ok {
+		// 是 & in overwrite
 		// show respond
+		if OW_Entity.Done {
+			return
+		}
+
 		callback := tgbotapi.NewCallback(CallbackQuery.ID, "正在新增中……")
 		if _, err := bot.Request(callback); err != nil {
 			log.Println("[CallBQ]", err)
-		}
-
-		OW_Entity := Queued_Overwrites[CallbackQuery.Data]
-		if OW_Entity.Done {
-			return
 		}
 		OW_Entity.Done = true
 
@@ -409,16 +455,61 @@ func handleCallbackQuery(CallbackQuery *tgbotapi.CallbackQuery) {
 		)
 		if err != nil {
 			log.Println("[CallBQ]", err)
+			return
 		}
 
 		// delete tmp message
 		bot.Request(tgbotapi.NewDeleteMessage(CallbackQuery.Message.Chat.ID, to_be_delete_message_id))
 
 		// send response to user
-		replyMsg = tgbotapi.NewMessage(CallbackQuery.Message.Chat.ID, fmt.Sprintf("更新複製文「%s」成功，自動生成的摘要如下：「%s」", OW_Entity.Keyword, Sum))
+		replyMsg = tgbotapi.NewMessage(CallbackQuery.Message.Chat.ID, fmt.Sprintf("新增複製文「%s」成功，\n自動生成的摘要如下：「%s」", OW_Entity.Keyword, Sum))
 		replyMsg.ReplyToMessageID = CallbackQuery.Message.MessageID
 		if _, err := bot.Send(replyMsg); err != nil {
 			log.Println("[CallBQ]", err)
+		}
+	} else if DEntity, ok := Queued_Deletes[CallbackQuery.Data]; true {
+		fmt.Printf("%+v\n", Queued_Deletes)
+		fmt.Println(ok)
+		fmt.Println(CallbackQuery.Data, DEntity.Keyword)
+
+		var UID = CallbackQuery.Data
+		if !DEntity.Confirmed {
+			DEntity.Confirmed = true
+			// find HTB
+			doc, err := DB.FindById(CONFIG.DB.COLLECTION, UID)
+			if err != nil {
+				log.Println("[CallBQ]", err)
+				return
+			}
+			if doc == nil {
+				return
+			}
+
+			HTB := &HokTseBun{}
+			doc.Unmarshal(HTB)
+			// send confirmation
+			replyMsg := tgbotapi.NewMessage(CallbackQuery.Message.Chat.ID, fmt.Sprintf("請再次確認是否要刪除「%s」：\n「%s」？", HTB.Keyword, HTB.Content))
+			replyMsg.ReplyToMessageID = CallbackQuery.Message.MessageID
+			replyMsg.ReplyMarkup = tgbotapi.NewInlineKeyboardMarkup(
+				tgbotapi.NewInlineKeyboardRow(
+					tgbotapi.NewInlineKeyboardButtonData("是", UID),
+					tgbotapi.NewInlineKeyboardButtonData("否", "NIL"),
+				),
+			)
+			if _, err := bot.Send(replyMsg); err != nil {
+				log.Println("[CallBQ]", err)
+			}
+		} else if !DEntity.Done {
+			DEntity.Done = true
+			if err := DB.DeleteById(CONFIG.DB.COLLECTION, UID); err != nil {
+				log.Println("[CallBQ]", err)
+				return
+			}
+			replyMsg := tgbotapi.NewMessage(CallbackQuery.Message.Chat.ID, fmt.Sprintf("已成功刪除「%s」", DEntity.Keyword))
+			replyMsg.ReplyToMessageID = CallbackQuery.Message.MessageID
+			if _, err := bot.Send(replyMsg); err != nil {
+				log.Println("[CallBQ]", err)
+			}
 		}
 	}
 }
