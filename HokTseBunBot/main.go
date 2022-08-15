@@ -34,11 +34,11 @@ type OverwriteEntity struct {
 }
 
 func init() {
+	InitConfig("./config.toml")
 	// setup log file
-	file, _ := os.OpenFile(CONFIG.LOCATION.LOG_FILE, os.O_RDWR|os.O_CREATE|os.O_APPEND, 0666)
+	file, _ := os.OpenFile(CONFIG.SETTING.LOG_FILE, os.O_RDWR|os.O_CREATE|os.O_APPEND, 0666)
 	log.SetOutput(file)
 	log.Println("*** Starting Server ***")
-	InitConfig("./config.toml")
 	InitDB()
 	InitNLP()
 }

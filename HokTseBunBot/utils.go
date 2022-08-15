@@ -13,7 +13,7 @@ import (
 var CONFIG Config_Type
 
 type Config_Type struct {
-	LOCATION struct {
+	SETTING struct {
 		LOG_FILE string
 	}
 
@@ -32,12 +32,6 @@ type Config_Type struct {
 		DIR        string
 		COLLECTION string
 	}
-
-	// to be filled by program
-	DB_FILE   string
-	TEXT_DIR  string
-	SUM_DIR   string
-	IMAGE_DIR string
 }
 
 func InitConfig(CONFIG_PATH string) {
