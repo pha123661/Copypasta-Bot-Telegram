@@ -12,5 +12,5 @@
     MODEL = "csebuetnlp/mT5_multilingual_XLSum" # any chinese summarizatino model should work
 
 [DB]
-  DIR = "../HokSeBun_db"
+  DIR = "../HokTseBun_db"
   COLLECTION = "Copypasta"

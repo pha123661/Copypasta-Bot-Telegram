@@ -1,11 +1,12 @@
-/.vscode
-HokSeBun_db
-*.exe
-*.log
+.vscode
+HokTseBun_db
 config.toml
-**replit**
 go.mod
 go.sum
 testdata
+
+*.exe
+*.log
+**replit**
 **tmp**
 **BACKUP**
