@@ -42,7 +42,7 @@ func InsertCP(FromID int64, Keyword, Content string, Type int) (string, error) {
 		"Summarization": Summarization,
 		"Content":       Content,
 		"From":          FromID,
-		"CreateTime":    time.Now().Format("2006-01-02 15:04:05"),
+		"CreateTime":    time.Now(),
 	})
 
 	_, err := DB.InsertOne(CONFIG.DB.COLLECTION, doc)

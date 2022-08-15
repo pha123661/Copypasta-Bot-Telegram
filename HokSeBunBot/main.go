@@ -40,6 +40,7 @@ func handleTextMessage(bot *tgbotapi.BotAPI, Message *tgbotapi.Message) {
 			if _, err := bot.Send(replyMsg); err != nil {
 				log.Println("[echo]", err)
 			}
+
 		case "random":
 			docs, err := DB.FindAll(c.NewQuery(CONFIG.DB.COLLECTION))
 			if err != nil {
@@ -105,12 +106,22 @@ func handleTextMessage(bot *tgbotapi.BotAPI, Message *tgbotapi.Message) {
 			if len(docs) > 0 {
 				Reply_Content := fmt.Sprintf("相同關鍵字的複製文已有 %d 篇（內容如下），是否繼續添加？", len(docs))
 				for idx, doc := range docs {
+					// same keyword & content
+					if doc.Get("Content").(string) == Content {
+						replyMsg := tgbotapi.NewMessage(Message.Chat.ID, "傳過了啦 腦霧?")
+						replyMsg.ReplyToMessageID = Message.MessageID
+						if _, err := bot.Send(replyMsg); err != nil {
+							log.Println(err)
+						}
+						return
+					}
 					Reply_Content += fmt.Sprintf("\n%d.「%s」", idx+1, TruncateString(doc.Get("Content").(string), 30))
 				}
 
 				// TODO: staged changes
 
 				replyMsg := tgbotapi.NewMessage(Message.Chat.ID, Reply_Content)
+				replyMsg.ReplyToMessageID = Message.MessageID
 				replyMsg.ReplyMarkup = tgbotapi.NewInlineKeyboardMarkup(
 					tgbotapi.NewInlineKeyboardRow(
 						tgbotapi.NewInlineKeyboardButtonData("是", Keyword),
@@ -149,6 +160,47 @@ func handleTextMessage(bot *tgbotapi.BotAPI, Message *tgbotapi.Message) {
 	}
 }
 
+func handleImageMessage(bot *tgbotapi.BotAPI, Message *tgbotapi.Message) {
+	if Message.Caption == "" {
+		return
+	}
+	var (
+		Keyword  string = strings.TrimSpace(Message.Caption)
+		Content  string
+		max_area int = 0
+	)
+
+	for _, image := range Message.Photo {
+		if image.Width*image.Height >= max_area {
+			max_area = image.Width * image.Height
+			Content = image.FileID
+		}
+	}
+
+	// find existing images
+	doc, err := DB.FindFirst(c.NewQuery(CONFIG.DB.COLLECTION).Where(
+		c.Field("Keyword").Eq(Keyword).And(c.Field("Content").Eq(Content))))
+	if err != nil {
+		log.Println("[newImage]", err)
+		return
+	}
+	if doc != nil {
+		replyMsg := tgbotapi.NewMessage(Message.Chat.ID, "傳過了啦 腦霧?")
+		replyMsg.ReplyToMessageID = Message.MessageID
+		if _, err := bot.Send(replyMsg); err != nil {
+			log.Println(err)
+		}
+		return
+	}
+
+	InsertCP(Message.From.ID, Keyword, Content, 2)
+	replyMsg := tgbotapi.NewMessage(Message.Chat.ID, fmt.Sprintf("新增圖片「%s」成功", Keyword))
+	replyMsg.ReplyToMessageID = Message.MessageID
+	if _, err := bot.Send(replyMsg); err != nil {
+		log.Println(err)
+	}
+
+}
 func main() {
 	// keep alive
 	http.HandleFunc("/", func(res http.ResponseWriter, req *http.Request) {
@@ -175,6 +227,7 @@ func main() {
 		case update.Message != nil:
 			if update.Message.Photo != nil {
 				// handle image updates
+				go handleImageMessage(bot, update.Message)
 			} else {
 				// handle text updates
 				go handleTextMessage(bot, update.Message)
