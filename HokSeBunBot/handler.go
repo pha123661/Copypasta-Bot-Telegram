@@ -51,14 +51,14 @@ func handleCommand(bot *tgbotapi.BotAPI, Message *tgbotapi.Message) {
 		}
 		switch Type {
 		case 1:
-			Content = fmt.Sprintf("幫你從 %d 篇文章中精心選擇了「%s」：\n%s", len(docs), Keyword, Content)
+			Content = fmt.Sprintf("幫你從 %d 坨大便中精心選擇了「%s」：\n%s", len(docs), Keyword, Content)
 			replyMsg := tgbotapi.NewMessage(Message.Chat.ID, Content)
 			if _, err := bot.Send(replyMsg); err != nil {
 				log.Println("[random]", err)
 			}
 		case 2:
 			PhotoConfig := tgbotapi.NewPhoto(Message.Chat.ID, tgbotapi.FileID(Content))
-			PhotoConfig.Caption = fmt.Sprintf("幫你從 %d 張圖片中精心選擇了「%s」", len(docs), Keyword)
+			PhotoConfig.Caption = fmt.Sprintf("幫你從 %d 坨大便中精心選擇了「%s」", len(docs), Keyword)
 			if _, err := bot.Request(PhotoConfig); err != nil {
 				log.Println("[random]", err)
 			}

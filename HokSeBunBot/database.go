@@ -18,6 +18,7 @@ type HokTseBun struct {
 	Content       string    `json:"Content"`
 	From          int64     `json:"From"`
 	CreateTime    time.Time `json:"CreateTime"`
+	Uid           string    `json:"_id"`
 }
 
 func InitDB() {
