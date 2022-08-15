@@ -70,8 +70,13 @@ func main() {
 				// handle image updates
 				go handleImageMessage(bot, update.Message)
 			} else {
-				// handle text updates
-				go handleTextMessage(bot, update.Message)
+				if update.Message.IsCommand() {
+					// handle commands
+					go handleCommand(bot, update.Message)
+				} else {
+					// handle text updates
+					go handleTextMessage(bot, update.Message)
+				}
 			}
 		case update.CallbackQuery != nil:
 			// handle callback query

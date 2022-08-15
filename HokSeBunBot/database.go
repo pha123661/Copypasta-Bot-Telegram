@@ -11,6 +11,14 @@ import (
 var DB *c.DB
 
 type Dict map[string]interface{}
+type HokTseBun struct {
+	Type          int       `json:"Type"`
+	Keyword       string    `json:"Keyword"`
+	Summarization string    `json:"Summarization"`
+	Content       string    `json:"Content"`
+	From          int64     `json:"From"`
+	CreateTime    time.Time `json:"CreateTime"`
+}
 
 func InitDB() {
 	// Open DB and create documents
@@ -20,6 +28,19 @@ func InitDB() {
 		log.Panicln("[InitDB]", err)
 	}
 	DB.CreateCollection(CONFIG.DB.COLLECTION)
+
+	docs, _ := DB.FindAll(c.NewQuery(CONFIG.DB.COLLECTION))
+	for _, doc := range docs {
+		var todo *HokTseBun = &HokTseBun{}
+		fmt.Println(doc.Get("_id").(string))
+		err := doc.Unmarshal(todo)
+		if err != nil {
+			fmt.Println(err)
+			panic(err)
+		}
+		fmt.Printf("%+v\n", todo)
+		fmt.Println(doc)
+	}
 }
 
 func InsertCP(FromID int64, Keyword, Content string, Type int64) (string, error) {

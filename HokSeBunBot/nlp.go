@@ -34,6 +34,7 @@ func SetHFAPI() {
 		hfapigo.SetAPIKey(CONFIG.API.HF.TOKENs[0])
 
 		if err := TestHFAPI(); err == nil {
+			CONFIG.API.HF.CURRENT_TOKEN = CONFIG.API.HF.TOKENs[i]
 			success = true
 			break
 		} else {
@@ -42,6 +43,7 @@ func SetHFAPI() {
 	}
 
 	if !success {
+		CONFIG.API.HF.CURRENT_TOKEN = ""
 		log.Panicln("No available hf api!")
 	}
 }

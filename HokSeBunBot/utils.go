@@ -22,8 +22,9 @@ type Config_Type struct {
 			TOKEN string
 		}
 		HF struct {
-			TOKENs []string
-			MODEL  string
+			TOKENs        []string
+			CURRENT_TOKEN string
+			MODEL         string
 		}
 	}
 
@@ -72,4 +73,18 @@ func TruncateString(text string, width int) string {
 		text = string(r) + "……"
 	}
 	return text
+}
+
+func Abs(x int) int {
+	if x < 0 {
+		return -x
+	}
+	return x
+}
+
+func Min(a int, b int) int {
+	if a < b {
+		return a
+	}
+	return b
 }
