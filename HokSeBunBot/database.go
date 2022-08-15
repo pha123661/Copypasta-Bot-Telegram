@@ -21,12 +21,12 @@ type HokTseBun struct {
 	Uid           string    `json:"_id"`
 }
 
-func (self *HokTseBun) IsText() bool {
-	return (self.Type == 1)
+func (HTB *HokTseBun) IsText() bool {
+	return (HTB.Type == 1)
 }
 
-func (self *HokTseBun) IsImage() bool {
-	return (self.Type == 2)
+func (HTB *HokTseBun) IsImage() bool {
+	return (HTB.Type == 2)
 }
 
 func InitDB() {

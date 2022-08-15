@@ -44,28 +44,23 @@ func handleCommand(Message *tgbotapi.Message) {
 		}
 		RandomIndex := rand.Intn(len(docs))
 
-		var Keyword, Content string
-		var Type int
 		var HTB *HokTseBun = &HokTseBun{}
 		for idx, doc := range docs {
 			if idx == RandomIndex {
 				doc.Unmarshal(HTB)
-				Keyword = HTB.Keyword
-				Content = HTB.Content
-				Type = HTB.Type
 				break
 			}
 		}
-		switch Type {
-		case 1:
-			Content = fmt.Sprintf("幫你從 %d 坨大便中精心選擇了「%s」：\n%s", len(docs), Keyword, Content)
+		switch {
+		case HTB.IsText():
+			Content := fmt.Sprintf("幫你從 %d 坨大便中精心選擇了「%s」：\n%s", len(docs), HTB.Keyword, HTB.Content)
 			replyMsg := tgbotapi.NewMessage(Message.Chat.ID, Content)
 			if _, err := bot.Send(replyMsg); err != nil {
 				log.Println("[random]", err)
 			}
-		case 2:
-			PhotoConfig := tgbotapi.NewPhoto(Message.Chat.ID, tgbotapi.FileID(Content))
-			PhotoConfig.Caption = fmt.Sprintf("幫你從 %d 坨大便中精心選擇了「%s」", len(docs), Keyword)
+		case HTB.IsImage():
+			PhotoConfig := tgbotapi.NewPhoto(Message.Chat.ID, tgbotapi.FileID(HTB.Content))
+			PhotoConfig.Caption = fmt.Sprintf("幫你從 %d 坨大便中精心選擇了「%s」", len(docs), HTB.Keyword)
 			if _, err := bot.Request(PhotoConfig); err != nil {
 				log.Println("[random]", err)
 			}
@@ -187,7 +182,7 @@ func handleCommand(Message *tgbotapi.Message) {
 				break
 			}
 			doc.Unmarshal(HTB)
-			if fuzzy.Match(Query, HTB.Keyword) || fuzzy.Match(HTB.Keyword, Query) || fuzzy.Match(Query, HTB.Summarization) || (fuzzy.Match(Query, HTB.Content) && HTB.Type == 1) {
+			if fuzzy.Match(Query, HTB.Keyword) || fuzzy.Match(HTB.Keyword, Query) || fuzzy.Match(Query, HTB.Summarization) || (fuzzy.Match(Query, HTB.Content) && HTB.IsText()) {
 				if HTB.IsText() {
 					Msg := fmt.Sprintf("名稱：「%s」\n摘要：「%s」\n內容：「%s」", HTB.Keyword, HTB.Summarization, HTB.Content)
 					if _, err := bot.Send(tgbotapi.NewMessage(Message.From.ID, Msg)); err != nil {
@@ -274,12 +269,12 @@ func handleTextMessage(Message *tgbotapi.Message) {
 			switch {
 			case utf8.RuneCountInString(Query) >= 3:
 				if fuzzy.Match(HTB.Keyword, Query) || (fuzzy.Match(Query, HTB.Keyword) && Abs(len(Query)-len(HTB.Keyword)) <= 3) || fuzzy.Match(Query, HTB.Summarization) {
-					switch HTB.Type {
-					case 1:
+					switch {
+					case HTB.IsText():
 						// text
 						go SendTextResult(Message.Chat.ID, HTB.Content)
 						Limit -= utf8.RuneCountInString(HTB.Content)
-					case 2:
+					case HTB.IsImage():
 						// image
 						go SendImageResult(Message.Chat.ID, HTB.Keyword, HTB.Content)
 						Limit -= RunesPerImage
@@ -287,12 +282,12 @@ func handleTextMessage(Message *tgbotapi.Message) {
 				}
 			case utf8.RuneCountInString(Query) >= 2:
 				if strings.Contains(Query, HTB.Keyword) || strings.Contains(HTB.Keyword, Query) {
-					switch HTB.Type {
-					case 1:
+					switch {
+					case HTB.IsText():
 						// text
 						go SendTextResult(Message.Chat.ID, HTB.Content)
 						Limit -= utf8.RuneCountInString(HTB.Content)
-					case 2:
+					case HTB.IsImage():
 						// image
 						go SendImageResult(Message.Chat.ID, HTB.Keyword, HTB.Content)
 						Limit -= RunesPerImage
@@ -300,12 +295,12 @@ func handleTextMessage(Message *tgbotapi.Message) {
 				}
 			case utf8.RuneCountInString(Query) == 1:
 				if utf8.RuneCountInString(HTB.Keyword) == 1 && Query == HTB.Keyword {
-					switch HTB.Type {
-					case 1:
+					switch {
+					case HTB.IsText():
 						// text
 						go SendTextResult(Message.Chat.ID, HTB.Content)
 						Limit -= utf8.RuneCountInString(HTB.Content)
-					case 2:
+					case HTB.IsImage():
 						// image
 						go SendImageResult(Message.Chat.ID, HTB.Keyword, HTB.Content)
 						Limit -= RunesPerImage
