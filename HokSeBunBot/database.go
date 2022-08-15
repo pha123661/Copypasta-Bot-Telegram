@@ -29,19 +29,20 @@ func InitDB() {
 		log.Panicln("[InitDB]", err)
 	}
 	DB.CreateCollection(CONFIG.DB.COLLECTION)
+	DB.ExportCollection(CONFIG.DB.COLLECTION, fmt.Sprintf("../BACKUP_%s.json", CONFIG.DB.COLLECTION))
 
-	docs, _ := DB.FindAll(c.NewQuery(CONFIG.DB.COLLECTION))
-	for _, doc := range docs {
-		var todo *HokTseBun = &HokTseBun{}
-		fmt.Println(doc.Get("_id").(string))
-		err := doc.Unmarshal(todo)
-		if err != nil {
-			fmt.Println(err)
-			panic(err)
-		}
-		fmt.Printf("%+v\n", todo)
-		fmt.Println(doc)
-	}
+	// docs, _ := DB.FindAll(c.NewQuery(CONFIG.DB.COLLECTION))
+	// for _, doc := range docs {
+	// 	var todo *HokTseBun = &HokTseBun{}
+	// 	fmt.Println(doc.Get("_id").(string))
+	// 	err := doc.Unmarshal(todo)
+	// 	if err != nil {
+	// 		fmt.Println(err)
+	// 		panic(err)
+	// 	}
+	// 	fmt.Printf("%+v\n", todo)
+	// 	fmt.Println(doc)
+	// }
 }
 
 func InsertCP(FromID int64, Keyword, Content string, Type int64) (string, error) {
