@@ -238,6 +238,14 @@ func handleCommand(Message *tgbotapi.Message) {
 		}
 	case "delete":
 		var BeDeletedKeyword = Message.CommandArguments()
+		if BeDeletedKeyword == "" {
+			replyMsg := tgbotapi.NewMessage(Message.Chat.ID, "請輸入關鍵字")
+			replyMsg.ReplyToMessageID = Message.MessageID
+			if _, err := bot.Send(replyMsg); err != nil {
+				log.Println("[delete]", err)
+			}
+			return
+		}
 		Criteria := c.Field("Keyword").Eq(BeDeletedKeyword)
 		docs, err := DB.FindAll(c.NewQuery(CONFIG.DB.COLLECTION).Where(Criteria))
 		if err != nil {
