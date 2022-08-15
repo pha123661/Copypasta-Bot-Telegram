@@ -21,6 +21,14 @@ type HokTseBun struct {
 	Uid           string    `json:"_id"`
 }
 
+func (self *HokTseBun) IsText() bool {
+	return (self.Type == 1)
+}
+
+func (self *HokTseBun) IsImage() bool {
+	return (self.Type == 2)
+}
+
 func InitDB() {
 	// Open DB and create documents
 	var err error

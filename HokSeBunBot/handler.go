@@ -160,6 +160,70 @@ func handleCommand(Message *tgbotapi.Message) {
 		if _, err := bot.Send(replyMsg); err != nil {
 			log.Println("[new]", err)
 		}
+
+	case "search":
+		var (
+			Query       string = Message.CommandArguments()
+			ResultCount int    = 0
+			MaxResults         = 25
+		)
+
+		if _, err := bot.Send(tgbotapi.NewMessage(Message.From.ID, fmt.Sprintf("「%s」的搜尋結果如下：", Query))); err != nil {
+			log.Println("[search]", err)
+		}
+
+		if Message.Chat.ID != Message.From.ID {
+			if _, err := bot.Send(tgbotapi.NewMessage(Message.Chat.ID, "正在搜尋中…… 請稍後")); err != nil {
+				log.Println("[search]", err)
+			}
+		}
+
+		// search
+		docs, _ := DB.FindAll(c.NewQuery(CONFIG.DB.COLLECTION))
+		HTB := &HokTseBun{}
+		for _, doc := range docs {
+			if ResultCount >= MaxResults {
+				ResultCount++
+				break
+			}
+			doc.Unmarshal(HTB)
+			if fuzzy.Match(Query, HTB.Keyword) || fuzzy.Match(HTB.Keyword, Query) || fuzzy.Match(Query, HTB.Summarization) || (fuzzy.Match(Query, HTB.Content) && HTB.Type == 1) {
+				if HTB.IsText() {
+					Msg := fmt.Sprintf("名稱：「%s」\n摘要：「%s」\n內容：「%s」", HTB.Keyword, HTB.Summarization, HTB.Content)
+					if _, err := bot.Send(tgbotapi.NewMessage(Message.From.ID, Msg)); err != nil {
+						log.Println("[search]", err)
+					}
+				} else if HTB.IsImage() {
+					PhotoConfig := tgbotapi.NewPhoto(Message.From.ID, tgbotapi.FileID(HTB.Content))
+					PhotoConfig.Caption = fmt.Sprintf("名稱：「%s」", HTB.Keyword)
+					if _, err := bot.Request(PhotoConfig); err != nil {
+						log.Println("[search]", err)
+					}
+				}
+				ResultCount++
+			}
+		}
+
+		if ResultCount <= MaxResults {
+			if _, err := bot.Send(tgbotapi.NewMessage(Message.From.ID, fmt.Sprintf("搜尋完成，共 %d 筆吻合\n", ResultCount))); err != nil {
+				log.Println(err)
+			}
+			if Message.Chat.ID != Message.From.ID {
+				if _, err := bot.Send(tgbotapi.NewMessage(Message.Chat.ID, fmt.Sprintf("搜尋完成，共 %d 筆吻合\n(結果在與bot的私訊中)", ResultCount))); err != nil {
+					log.Println(err)
+				}
+			}
+		} else {
+
+			if _, err := bot.Send(tgbotapi.NewMessage(Message.From.ID, fmt.Sprintf("搜尋完成，結果超過上限%d筆，請嘗試更換關鍵字", MaxResults))); err != nil {
+				log.Println(err)
+			}
+			if Message.Chat.ID != Message.From.ID {
+				if _, err := bot.Send(tgbotapi.NewMessage(Message.Chat.ID, fmt.Sprintf("搜尋完成，結果超過上限%d筆，請嘗試更換關鍵字\n(結果在與bot的私訊中)", MaxResults))); err != nil {
+					log.Println(err)
+				}
+			}
+		}
 	default:
 		replyMsg := tgbotapi.NewMessage(Message.Chat.ID, fmt.Sprintf("錯誤：我不會 “/%s” 啦", Message.Command()))
 		replyMsg.ReplyToMessageID = Message.MessageID
