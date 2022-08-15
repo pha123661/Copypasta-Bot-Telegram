@@ -35,6 +35,13 @@ func handleCommand(Message *tgbotapi.Message) {
 			log.Println("[random]", err)
 			return
 		}
+		if len(docs) <= 0 {
+			replyMsg := tgbotapi.NewMessage(Message.Chat.ID, "資料庫沒東西是在抽屁")
+			if _, err := bot.Send(replyMsg); err != nil {
+				log.Println("[random]", err)
+			}
+			return
+		}
 		RandomIndex := rand.Intn(len(docs))
 
 		var Keyword, Content string
