@@ -22,7 +22,7 @@ func InitDB() {
 	DB.CreateCollection(CONFIG.DB.COLLECTION)
 }
 
-func InsertCP(FromID int64, Keyword, Content string, Type int) (string, error) {
+func InsertCP(FromID int64, Keyword, Content string, Type int64) (string, error) {
 	var Summarization string
 	switch Type {
 	case 0:
@@ -37,7 +37,7 @@ func InsertCP(FromID int64, Keyword, Content string, Type int) (string, error) {
 	}
 	doc := c.NewDocument()
 	doc.SetAll(Dict{
-		"Type":          Type,
+		"Type":          Type, // clover only supports int64
 		"Keyword":       Keyword,
 		"Summarization": Summarization,
 		"Content":       Content,
