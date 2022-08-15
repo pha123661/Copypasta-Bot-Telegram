@@ -2,6 +2,7 @@ package main
 
 func init() {
 	InitConfig("./config.toml")
+	InitDB()
 }
 
 func main() {
