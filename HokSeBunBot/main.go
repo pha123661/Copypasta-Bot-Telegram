@@ -23,6 +23,7 @@ Doc format:
 */
 
 var Queued_Overwrites = make(map[string]*OverwriteEntity)
+var bot *tgbotapi.BotAPI
 
 type OverwriteEntity struct {
 	Type    int64
@@ -49,8 +50,9 @@ func main() {
 	})
 	go http.ListenAndServe(":9000", nil)
 
+	var err error
 	// start bot
-	bot, err := tgbotapi.NewBotAPI(CONFIG.API.TG.TOKEN)
+	bot, err = tgbotapi.NewBotAPI(CONFIG.API.TG.TOKEN)
 	if err != nil {
 		log.Panicln(err)
 	}
@@ -68,19 +70,19 @@ func main() {
 		case update.Message != nil:
 			if update.Message.Photo != nil {
 				// handle image updates
-				go handleImageMessage(bot, update.Message)
+				go handleImageMessage(update.Message)
 			} else {
 				if update.Message.IsCommand() {
 					// handle commands
-					go handleCommand(bot, update.Message)
+					go handleCommand(update.Message)
 				} else {
 					// handle text updates
-					go handleTextMessage(bot, update.Message)
+					go handleTextMessage(update.Message)
 				}
 			}
 		case update.CallbackQuery != nil:
 			// handle callback query
-			go handleCallbackQuery(bot, update.CallbackQuery)
+			go handleCallbackQuery(update.CallbackQuery)
 		}
 	}
 }

@@ -46,6 +46,7 @@ func InitDB() {
 
 func InsertCP(FromID int64, Keyword, Content string, Type int64) (string, error) {
 	var Summarization string
+	var URL string
 	switch Type {
 	case 0:
 		// Reserved
@@ -53,9 +54,11 @@ func InsertCP(FromID int64, Keyword, Content string, Type int64) (string, error)
 	case 1:
 		// Text
 		Summarization = GetOneSummarization(Keyword, Content)
+		URL = ""
 	case 2:
 		// Image
 		Summarization = ""
+		URL, _ = bot.GetFileDirectURL(Content)
 	}
 	doc := c.NewDocument()
 	doc.SetAll(Dict{
@@ -63,6 +66,7 @@ func InsertCP(FromID int64, Keyword, Content string, Type int64) (string, error)
 		"Keyword":       Keyword,
 		"Summarization": Summarization,
 		"Content":       Content,
+		"URL":           URL,
 		"From":          FromID,
 		"CreateTime":    time.Now(),
 	})

@@ -12,7 +12,7 @@ import (
 	c "github.com/ostafen/clover/v2"
 )
 
-func handleCommand(bot *tgbotapi.BotAPI, Message *tgbotapi.Message) {
+func handleCommand(Message *tgbotapi.Message) {
 	// handle commands
 	switch Message.Command() {
 	case "start":
@@ -155,7 +155,7 @@ func handleCommand(bot *tgbotapi.BotAPI, Message *tgbotapi.Message) {
 		}
 	}
 }
-func handleTextMessage(bot *tgbotapi.BotAPI, Message *tgbotapi.Message) {
+func handleTextMessage(Message *tgbotapi.Message) {
 	if Message.Text == "" || Message.Text == " " {
 		return
 	}
@@ -241,7 +241,7 @@ func handleTextMessage(bot *tgbotapi.BotAPI, Message *tgbotapi.Message) {
 	}()
 }
 
-func handleImageMessage(bot *tgbotapi.BotAPI, Message *tgbotapi.Message) {
+func handleImageMessage(Message *tgbotapi.Message) {
 	if Message.Caption == "" {
 		return
 	}
@@ -283,7 +283,7 @@ func handleImageMessage(bot *tgbotapi.BotAPI, Message *tgbotapi.Message) {
 
 }
 
-func handleCallbackQuery(bot *tgbotapi.BotAPI, CallbackQuery *tgbotapi.CallbackQuery) {
+func handleCallbackQuery(CallbackQuery *tgbotapi.CallbackQuery) {
 	// close the inline keyboard
 	editMsg := tgbotapi.NewEditMessageReplyMarkup(
 		CallbackQuery.Message.Chat.ID,
