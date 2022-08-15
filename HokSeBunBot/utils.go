@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"log"
 	"os"
+	"unicode/utf8"
 
 	toml "github.com/BurntSushi/toml"
 )
@@ -62,4 +63,13 @@ func InitConfig(CONFIG_PATH string) {
 	// }
 
 	// CreateDirIfNotExist(CONFIG.DB.DIR)
+}
+
+func TruncateString(text string, width int) string {
+	width = width - utf8.RuneCountInString("……")
+	if utf8.RuneCountInString(text) >= width {
+		r := []rune(text)[:width]
+		text = string(r) + "……"
+	}
+	return text
 }

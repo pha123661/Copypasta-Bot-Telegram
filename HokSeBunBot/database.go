@@ -1,6 +1,7 @@
 package main
 
 import (
+	"fmt"
 	"log"
 	"time"
 
@@ -21,16 +22,18 @@ func InitDB() {
 	DB.CreateCollection(CONFIG.DB.COLLECTION)
 }
 
-func InsertCP(FromID int, Keyword, Content string, Type int) error {
+func InsertCP(FromID int64, Keyword, Content string, Type int) (string, error) {
 	var Summarization string
 	switch Type {
 	case 0:
 		// Reserved
+		return "", fmt.Errorf(`"InsertCP" not implemented for type 0`)
 	case 1:
 		// Text
 		Summarization = GetOneSummarization(Keyword, Content)
 	case 2:
 		// Image
+		Summarization = ""
 	}
 	doc := c.NewDocument()
 	doc.SetAll(Dict{
@@ -46,5 +49,5 @@ func InsertCP(FromID int, Keyword, Content string, Type int) error {
 	if err != nil {
 		log.Println("[InsertCP]", err)
 	}
-	return err
+	return Summarization, err
 }
