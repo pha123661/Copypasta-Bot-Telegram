@@ -62,7 +62,7 @@ func InsertCP(FromID int64, Keyword, Content string, Type int64) (string, error)
 		return "", fmt.Errorf(`"InsertCP" not implemented for type 0`)
 	case 1:
 		// Text
-		Summarization = GetOneSummarization(Keyword, Content)
+		Summarization = TextSummarization(Keyword, Content)
 		URL = ""
 	case 2:
 		// Image

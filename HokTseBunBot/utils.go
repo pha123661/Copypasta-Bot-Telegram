@@ -26,7 +26,8 @@ type Config_Type struct {
 		HF struct {
 			TOKENs        []string
 			CURRENT_TOKEN string
-			MODEL         string
+			SUM_MODEL     string
+			MT_MODEL      string
 		}
 	}
 
@@ -58,8 +59,6 @@ func InitConfig(CONFIG_PATH string) {
 	// 		}
 	// 	}
 	// }
-
-	// CreateDirIfNotExist(CONFIG.DB.DIR)
 }
 
 func TruncateString(text string, width int) string {
