@@ -46,8 +46,21 @@ func handleCommand(Message *tgbotapi.Message) {
 			log.Println("[echo]", err)
 		}
 
-	case "random":
-		docs, err := DB.FindAll(c.NewQuery(CONFIG.DB.COLLECTION))
+	case "random", "randomImage", "randomText":
+		var Query *c.Query
+		switch Message.Command() {
+		case "random":
+			Query = c.NewQuery(CONFIG.DB.COLLECTION)
+		case "randomImage":
+			Criteria := c.Field("Type").Eq(2)
+			Query = c.NewQuery(CONFIG.DB.COLLECTION).Where(Criteria)
+		case "randomText":
+			Criteria := c.Field("Type").Eq(1)
+			Query = c.NewQuery(CONFIG.DB.COLLECTION).Where(Criteria)
+		default:
+			Query = c.NewQuery(CONFIG.DB.COLLECTION)
+		}
+		docs, err := DB.FindAll(Query)
 		if err != nil {
 			log.Println("[random]", err)
 			return
@@ -76,11 +89,7 @@ func handleCommand(Message *tgbotapi.Message) {
 				log.Println("[random]", err)
 			}
 		case HTB.IsImage():
-			PhotoConfig := tgbotapi.NewPhoto(Message.Chat.ID, tgbotapi.FileID(HTB.Content))
-			PhotoConfig.Caption = fmt.Sprintf("幫你從 %d 坨大便中精心選擇了「%s」", len(docs), HTB.Keyword)
-			if _, err := bot.Request(PhotoConfig); err != nil {
-				log.Println("[random]", err)
-			}
+			SendImageResult(Message.Chat.ID, fmt.Sprintf("幫你從 %d 坨大便中精心選擇了「%s」", len(docs), HTB.Keyword), HTB.Content)
 		}
 
 	case "new", "add": // new hok tse bun
@@ -206,11 +215,7 @@ func handleCommand(Message *tgbotapi.Message) {
 						log.Println("[search]", err)
 					}
 				} else if HTB.IsImage() {
-					PhotoConfig := tgbotapi.NewPhoto(Message.From.ID, tgbotapi.FileID(HTB.Content))
-					PhotoConfig.Caption = fmt.Sprintf("名稱：「%s」", HTB.Keyword)
-					if _, err := bot.Request(PhotoConfig); err != nil {
-						log.Println("[search]", err)
-					}
+					SendImageResult(Message.From.ID, fmt.Sprintf("名稱：「%s」", HTB.Keyword), HTB.Content)
 				}
 				ResultCount++
 			}
@@ -290,27 +295,12 @@ func handleTextMessage(Message *tgbotapi.Message) {
 
 	// asyc search
 	go func() {
-		// helper functions
-		SendTextResult := func(ChatID int64, Content string) {
-			replyMsg := tgbotapi.NewMessage(ChatID, Content)
-			if _, err := bot.Send(replyMsg); err != nil {
-				log.Println(err)
-			}
-		}
-		SendImageResult := func(ChatID int64, Keyword string, Content string) {
-			FileID := tgbotapi.FileID(Content)
-			PhotoConfig := tgbotapi.NewPhoto(ChatID, FileID)
-			PhotoConfig.Caption = Keyword
-			if _, err := bot.Request(PhotoConfig); err != nil {
-				log.Println(err)
-			}
-		}
-
 		var (
-			Query = Message.Text
-			Limit = Min(500, 100*utf8.RuneCountInString(Query))
+			Query         = Message.Text
+			Limit         = Min(500, 100*utf8.RuneCountInString(Query))
+			RunesPerImage = 200
 		)
-		const RunesPerImage = 200
+
 		docs, err := DB.FindAll(c.NewQuery(CONFIG.DB.COLLECTION))
 		if err != nil {
 			log.Println("[Normal]", err)
@@ -327,11 +317,11 @@ func handleTextMessage(Message *tgbotapi.Message) {
 					switch {
 					case HTB.IsText():
 						// text
-						go SendTextResult(Message.Chat.ID, HTB.Content)
+						go SendTextResult(Message.Chat.ID, HTB.Content, 0)
 						Limit -= utf8.RuneCountInString(HTB.Content)
 					case HTB.IsImage():
 						// image
-						go SendImageResult(Message.Chat.ID, HTB.Keyword, HTB.Content)
+						go SendImageResult(Message.Chat.ID, HTB.Content, HTB.Keyword)
 						Limit -= RunesPerImage
 					}
 				}
@@ -340,11 +330,11 @@ func handleTextMessage(Message *tgbotapi.Message) {
 					switch {
 					case HTB.IsText():
 						// text
-						go SendTextResult(Message.Chat.ID, HTB.Content)
+						go SendTextResult(Message.Chat.ID, HTB.Content, 0)
 						Limit -= utf8.RuneCountInString(HTB.Content)
 					case HTB.IsImage():
 						// image
-						go SendImageResult(Message.Chat.ID, HTB.Keyword, HTB.Content)
+						go SendImageResult(Message.Chat.ID, HTB.Content, HTB.Keyword)
 						Limit -= RunesPerImage
 					}
 				}
@@ -353,11 +343,11 @@ func handleTextMessage(Message *tgbotapi.Message) {
 					switch {
 					case HTB.IsText():
 						// text
-						go SendTextResult(Message.Chat.ID, HTB.Content)
+						go SendTextResult(Message.Chat.ID, HTB.Content, 0)
 						Limit -= utf8.RuneCountInString(HTB.Content)
 					case HTB.IsImage():
 						// image
-						go SendImageResult(Message.Chat.ID, HTB.Keyword, HTB.Content)
+						go SendImageResult(Message.Chat.ID, HTB.Content, HTB.Keyword)
 						Limit -= RunesPerImage
 					}
 				}
@@ -387,13 +377,8 @@ func handleImageMessage(Message *tgbotapi.Message) {
 	}
 
 	// find existing images
-	doc, err := DB.FindFirst(c.NewQuery(CONFIG.DB.COLLECTION).Where(
-		c.Field("Keyword").Eq(Keyword).And(c.Field("Content").Eq(Content))))
-	if err != nil {
-		log.Println("[newImage]", err)
-		return
-	}
-	if doc != nil {
+	Criteria := c.Field("Keyword").Eq(Keyword).And(c.Field("Content").Eq(Content))
+	if doc, _ := DB.FindFirst(c.NewQuery(CONFIG.DB.COLLECTION).Where(Criteria)); doc != nil {
 		replyMsg := tgbotapi.NewMessage(Message.Chat.ID, "傳過了啦 腦霧?")
 		replyMsg.ReplyToMessageID = Message.MessageID
 		if _, err := bot.Send(replyMsg); err != nil {
@@ -420,7 +405,9 @@ func handleCallbackQuery(CallbackQuery *tgbotapi.CallbackQuery) {
 			InlineKeyboard: make([][]tgbotapi.InlineKeyboardButton, 0),
 		},
 	)
-	bot.Send(editMsg)
+	if _, err := bot.Send(editMsg); err != nil {
+		log.Println("[CallQ]", err)
+	}
 	if CallbackQuery.Data == "NIL" {
 		// 否
 		// show respond
@@ -428,12 +415,7 @@ func handleCallbackQuery(CallbackQuery *tgbotapi.CallbackQuery) {
 		if _, err := bot.Request(callback); err != nil {
 			log.Println("[CallBQ]", err)
 		}
-
-		replyMsg := tgbotapi.NewMessage(CallbackQuery.Message.Chat.ID, "其實不按也沒差啦 哈哈")
-		replyMsg.ReplyToMessageID = CallbackQuery.Message.MessageID
-		if _, err := bot.Send(replyMsg); err != nil {
-			log.Println("[CallBQ]", err)
-		}
+		SendTextResult(CallbackQuery.Message.Chat.ID, "其實不按也沒差啦 哈哈", 0)
 	} else if OW_Entity, ok := Queued_Overwrites[CallbackQuery.Data]; ok {
 		// 是 & in overwrite
 		// show respond
@@ -470,16 +452,8 @@ func handleCallbackQuery(CallbackQuery *tgbotapi.CallbackQuery) {
 		bot.Request(tgbotapi.NewDeleteMessage(CallbackQuery.Message.Chat.ID, to_be_delete_message_id))
 
 		// send response to user
-		replyMsg = tgbotapi.NewMessage(CallbackQuery.Message.Chat.ID, fmt.Sprintf("新增複製文「%s」成功，\n自動生成的摘要如下：「%s」", OW_Entity.Keyword, Sum))
-		replyMsg.ReplyToMessageID = CallbackQuery.Message.MessageID
-		if _, err := bot.Send(replyMsg); err != nil {
-			log.Println("[CallBQ]", err)
-		}
-	} else if DEntity, ok := Queued_Deletes[CallbackQuery.Data]; true {
-		fmt.Printf("%+v\n", Queued_Deletes)
-		fmt.Println(ok)
-		fmt.Println(CallbackQuery.Data, DEntity.Keyword)
-
+		SendTextResult(CallbackQuery.Message.Chat.ID, fmt.Sprintf("新增複製文「%s」成功，\n自動生成的摘要如下：「%s」", OW_Entity.Keyword, Sum), CallbackQuery.Message.MessageID)
+	} else if DEntity, ok := Queued_Deletes[CallbackQuery.Data]; ok {
 		var UID = CallbackQuery.Data
 		if !DEntity.Confirmed {
 			DEntity.Confirmed = true
@@ -514,11 +488,7 @@ func handleCallbackQuery(CallbackQuery *tgbotapi.CallbackQuery) {
 				return
 			}
 			log.Printf("[DELETE] \"%s\" has been deleted!\n", DEntity.Keyword)
-			replyMsg := tgbotapi.NewMessage(CallbackQuery.Message.Chat.ID, fmt.Sprintf("已成功刪除「%s」", DEntity.Keyword))
-			replyMsg.ReplyToMessageID = CallbackQuery.Message.MessageID
-			if _, err := bot.Send(replyMsg); err != nil {
-				log.Println("[CallBQ]", err)
-			}
+			SendTextResult(CallbackQuery.Message.Chat.ID, fmt.Sprintf("已成功刪除「%s」", DEntity.Keyword), CallbackQuery.Message.MessageID)
 		}
 	}
 }

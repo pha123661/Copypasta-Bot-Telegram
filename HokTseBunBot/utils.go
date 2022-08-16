@@ -9,6 +9,7 @@ import (
 	"unicode/utf8"
 
 	toml "github.com/BurntSushi/toml"
+	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
 )
 
 var CONFIG Config_Type
@@ -83,4 +84,23 @@ func Min(a int, b int) int {
 		return a
 	}
 	return b
+}
+
+// helper functions
+func SendTextResult(ChatID int64, Content string, ReplyMsgID int) {
+	replyMsg := tgbotapi.NewMessage(ChatID, Content)
+	if ReplyMsgID != 0 {
+		replyMsg.ReplyToMessageID = ReplyMsgID
+	}
+	if _, err := bot.Send(replyMsg); err != nil {
+		log.Println("[SendTR]", err)
+	}
+}
+func SendImageResult(ChatID int64, Caption string, Content string) {
+	FileID := tgbotapi.FileID(Content)
+	PhotoConfig := tgbotapi.NewPhoto(ChatID, FileID)
+	PhotoConfig.Caption = Caption
+	if _, err := bot.Request(PhotoConfig); err != nil {
+		log.Println("[SendIR]", err)
+	}
 }
