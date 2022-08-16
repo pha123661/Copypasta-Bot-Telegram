@@ -7,6 +7,7 @@ import (
 	"os"
 
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
+	xurls "mvdan.cc/xurls/v2"
 )
 
 /*
@@ -68,6 +69,10 @@ func main() {
 			case update.Message.IsCommand():
 				go handleCommand(update.Message)
 			default:
+				if xurls.Relaxed().FindString(update.Message.Text) != "" {
+					// messages contain url are ignored
+					break
+				}
 				go handleTextMessage(update.Message)
 			}
 		case update.CallbackQuery != nil:
