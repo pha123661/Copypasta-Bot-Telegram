@@ -1,4 +1,4 @@
-# Hok_tse_bun_tgbot
+# What Is This?
 A "Ho̍k tsè bûn" / "copypasta" / "複製文" bot for telegram  
 
 # Features
@@ -10,13 +10,13 @@ The bot also utlizes top-of-the-line DL models to generate summarization (or cap
 [`#TextSummarization`](https://paperswithcode.com/task/text-summarization)  
 
 # DEMO
-## Insert copypasta
-### Text:  
+### Insert Text   
 ![Imgur](https://imgur.com/s2z5lsH.jpg)  
-### Media:  
+### Insert Media  
 ![Imgur](https://imgur.com/WYzxE6R.jpg)  
-## Post copypasta
-![Imgur](https://imgur.com/uKzFxLT.jpg)
+### Post copypasta
+![Imgur](https://imgur.com/uKzFxLT.jpg)  
+and more......  
 
 # Usage  
 Supported commands atm:  
