@@ -47,7 +47,7 @@ func InitDB() {
 	// update out-dated documents
 	var wg = &sync.WaitGroup{}
 
-	semaphore := make(chan struct{}, 3) // 3: maximum limit of chan, blocks when full
+	semaphore := make(chan struct{}, 5) // maximum limit of chan, blocks when full
 
 	docs, _ := DB.FindAll(c.NewQuery(CONFIG.DB.COLLECTION))
 	for _, doc := range docs {
@@ -61,13 +61,14 @@ func InitDB() {
 			wg.Add(1)
 			// add caption
 			go func() {
-				fmt.Printf("[Updating] Image %s\n", HTB.Keyword)
+				semaphore <- struct{}{} // acquire to work (channel), blocks when the channel is full
 				defer func() {
 					wg.Done()
 					<-semaphore // release
 					fmt.Printf("[Done] Image %s\n", HTB.Keyword)
 				}()
-				semaphore <- struct{}{} // acquire to work (channel), blocks when the channel is full
+				
+				fmt.Printf("[Updating] Image %s\n", HTB.Keyword)
 				if HTB.URL == "" {
 					URL, err := bot.GetFileDirectURL(HTB.Content)
 					if err != nil {
@@ -83,7 +84,7 @@ func InitDB() {
 				json.Unmarshal(tmp_bytes, tmp_map)
 				DB.UpdateById(CONFIG.DB.COLLECTION, HTB.UID, *tmp_map)
 			}()
-			time.Sleep(5 * time.Second)
+			time.Sleep(2 * time.Second)
 		}
 	}
 	wg.Wait() // wait for all updates to finish

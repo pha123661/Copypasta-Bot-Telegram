@@ -172,7 +172,7 @@ func handleCommand(Message *tgbotapi.Message) {
 				if HTB.IsText() {
 					SendTextResult(Message.From.ID, fmt.Sprintf("名稱：「%s」\n摘要：「%s」\n內容：「%s」", HTB.Keyword, HTB.Summarization, HTB.Content), 0)
 				} else if HTB.IsImage() {
-					SendImageResult(Message.From.ID, fmt.Sprintf("名稱：「%s」", HTB.Keyword), HTB.Content)
+					SendImageResult(Message.From.ID, fmt.Sprintf("名稱：「%s」\n描述：「%s」", HTB.Keyword, HTB.Summarization), HTB.Content)
 				}
 				ResultCount++
 			}
