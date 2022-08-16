@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"log"
+	"sync"
 	"time"
 
 	c "github.com/ostafen/clover/v2"
@@ -38,10 +39,16 @@ func InitDB() {
 	if err != nil {
 		log.Panicln("[InitDB]", err)
 	}
-	DB.CreateCollection(CONFIG.DB.COLLECTION)
-	DB.ExportCollection(CONFIG.DB.COLLECTION, fmt.Sprintf("../BACKUP_%s.json", CONFIG.DB.COLLECTION))
+	// DB.CreateCollection(CONFIG.DB.COLLECTION)
+	// DB.ExportCollection(CONFIG.DB.COLLECTION, fmt.Sprintf("../BACKUP_%s.json", CONFIG.DB.COLLECTION))
+	DB.DropCollection(CONFIG.DB.COLLECTION)
+	DB.ImportCollection(CONFIG.DB.COLLECTION, "../123123123.json")
 
 	// update out-dated documents
+	var wg = &sync.WaitGroup{}
+
+	semaphore := make(chan struct{}, 3) // 3: maximum limit of chan, blocks when full
+
 	docs, _ := DB.FindAll(c.NewQuery(CONFIG.DB.COLLECTION))
 	for _, doc := range docs {
 		HTB := &HokTseBun{}
@@ -51,11 +58,16 @@ func InitDB() {
 		}
 		// Update image captions
 		if HTB.IsImage() && HTB.Summarization == "" {
+			wg.Add(1)
 			// add caption
-			func() {
-				fmt.Println("#########更新文件如下：#########")
-				fmt.Println(HTB.IsImage(), HTB.IsText())
-				fmt.Printf("%+v\n\n", HTB)
+			go func() {
+				fmt.Printf("[Updating] Image %s\n", HTB.Keyword)
+				defer func() {
+					wg.Done()
+					<-semaphore // release
+					fmt.Printf("[Done] Image %s\n", HTB.Keyword)
+				}()
+				semaphore <- struct{}{} // acquire to work (channel), blocks when the channel is full
 				if HTB.URL == "" {
 					URL, err := bot.GetFileDirectURL(HTB.Content)
 					if err != nil {
@@ -64,15 +76,17 @@ func InitDB() {
 					HTB.URL = URL
 				}
 				Cap := ImageCaptioning(HTB.Keyword, HTB.URL)
+
 				HTB.Summarization = Cap
 				tmp_map := &Dict{}
 				tmp_bytes, _ := json.Marshal(HTB)
 				json.Unmarshal(tmp_bytes, tmp_map)
-				fmt.Printf("%+v\n\n", tmp_map)
 				DB.UpdateById(CONFIG.DB.COLLECTION, HTB.UID, *tmp_map)
 			}()
+			time.Sleep(5 * time.Second)
 		}
 	}
+	wg.Wait() // wait for all updates to finish
 }
 
 func InsertCP(FromID int64, Keyword, Content string, Type int64) (string, error) {
