@@ -9,8 +9,8 @@
         "YOUR_HUGGINGFACETOKEN1", 
         "YOUR_HUGGINGFACETOKEN2", 
     ]
-    MODEL = "csebuetnlp/mT5_multilingual_XLSum" # any chinese summarizatino model should work
-
+    SUM_MODEL = "csebuetnlp/mT5_multilingual_XLSum"
+    MT_MODEL = "Helsinki-NLP/opus-mt-en-zh" # not used, using google translation atm
 [DB]
   DIR = "../HokTseBun_db"
   COLLECTION = "Copypasta"
