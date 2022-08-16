@@ -70,7 +70,6 @@ func InitDB() {
 		if err != nil {
 			fmt.Println(err)
 		}
-		fmt.Println(HTB.Summarization, HTB.URL)
 		// Update media files' URLs
 		if HTB.IsMultiMedia() && HTB.URL == "" {
 			func() {
@@ -87,6 +86,10 @@ func InitDB() {
 				json.Unmarshal(tmp_bytes, tmp_map)
 				DB.UpdateById(CONFIG.DB.COLLECTION, HTB.UID, *tmp_map)
 			}()
+		}
+		// User re-upload
+		if (HTB.IsAnimation() || HTB.IsVideo()) && HTB.Summarization == "" {
+			fmt.Println(HTB.Keyword, "has no summarization")
 		}
 		// Update image captions
 		if HTB.IsImage() && HTB.Summarization == "" {
