@@ -1,6 +1,7 @@
 package main
 
 import (
+	"encoding/json"
 	"fmt"
 	"log"
 	"time"
@@ -19,6 +20,7 @@ type HokTseBun struct {
 	From          int64     `json:"From"`
 	CreateTime    time.Time `json:"CreateTime"`
 	UID           string    `json:"_id"`
+	URL           string    `json:"URL"`
 }
 
 func (HTB *HokTseBun) IsText() bool {
@@ -39,18 +41,38 @@ func InitDB() {
 	DB.CreateCollection(CONFIG.DB.COLLECTION)
 	DB.ExportCollection(CONFIG.DB.COLLECTION, fmt.Sprintf("../BACKUP_%s.json", CONFIG.DB.COLLECTION))
 
-	// docs, _ := DB.FindAll(c.NewQuery(CONFIG.DB.COLLECTION))
-	// for _, doc := range docs {
-	// 	var todo *HokTseBun = &HokTseBun{}
-	// 	fmt.Println(doc.Get("_id").(string))
-	// 	err := doc.Unmarshal(todo)
-	// 	if err != nil {
-	// 		fmt.Println(err)
-	// 		panic(err)
-	// 	}
-	// 	fmt.Printf("%+v\n", todo)
-	// 	fmt.Println(doc)
-	// }
+	// update out-dated documents
+	docs, _ := DB.FindAll(c.NewQuery(CONFIG.DB.COLLECTION))
+	for _, doc := range docs {
+		HTB := &HokTseBun{}
+		err := doc.Unmarshal(HTB)
+		if err != nil {
+			fmt.Println(err)
+		}
+		// Update image captions
+		if HTB.IsImage() && HTB.Summarization == "" {
+			// add caption
+			func() {
+				fmt.Println("#########更新文件如下：#########")
+				fmt.Println(HTB.IsImage(), HTB.IsText())
+				fmt.Printf("%+v\n\n", HTB)
+				if HTB.URL == "" {
+					URL, err := bot.GetFileDirectURL(HTB.Content)
+					if err != nil {
+						return // give up
+					}
+					HTB.URL = URL
+				}
+				Cap := ImageCaptioning(HTB.Keyword, HTB.URL)
+				HTB.Summarization = Cap
+				tmp_map := &Dict{}
+				tmp_bytes, _ := json.Marshal(HTB)
+				json.Unmarshal(tmp_bytes, tmp_map)
+				fmt.Printf("%+v\n\n", tmp_map)
+				DB.UpdateById(CONFIG.DB.COLLECTION, HTB.UID, *tmp_map)
+			}()
+		}
+	}
 }
 
 func InsertCP(FromID int64, Keyword, Content string, Type int64) (string, error) {
@@ -70,7 +92,7 @@ func InsertCP(FromID int64, Keyword, Content string, Type int64) (string, error)
 			log.Println("[InsertCP]", err)
 			break // do not do summarization
 		}
-		Summarization = ImageSummarization(Keyword, URL)
+		Summarization = ImageCaptioning(Keyword, URL)
 	}
 	doc := c.NewDocument()
 	doc.SetAll(Dict{

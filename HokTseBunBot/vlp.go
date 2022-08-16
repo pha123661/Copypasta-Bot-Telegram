@@ -82,7 +82,7 @@ func TextSummarization(Keyword, Content string) string {
 	return Summarization
 }
 
-func ImageSummarization(Keyword, Image_URL string) string {
+func ImageCaptioning(Keyword, Image_URL string) string {
 	/*
 		Preprocessing:
 		1. Download image (as []byte) by given url
