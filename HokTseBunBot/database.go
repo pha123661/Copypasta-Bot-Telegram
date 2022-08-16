@@ -39,10 +39,10 @@ func InitDB() {
 	if err != nil {
 		log.Panicln("[InitDB]", err)
 	}
-	// DB.CreateCollection(CONFIG.DB.COLLECTION)
-	// DB.ExportCollection(CONFIG.DB.COLLECTION, fmt.Sprintf("../BACKUP_%s.json", CONFIG.DB.COLLECTION))
-	DB.DropCollection(CONFIG.DB.COLLECTION)
-	DB.ImportCollection(CONFIG.DB.COLLECTION, "../123123123.json")
+	DB.CreateCollection(CONFIG.DB.COLLECTION)
+	DB.ExportCollection(CONFIG.DB.COLLECTION, fmt.Sprintf("../BACKUP_%s.json", CONFIG.DB.COLLECTION))
+	// DB.DropCollection(CONFIG.DB.COLLECTION)
+	// DB.ImportCollection(CONFIG.DB.COLLECTION, "../BACKUP_Copypasta.json")
 
 	// update out-dated documents
 	var wg = &sync.WaitGroup{}
@@ -67,7 +67,7 @@ func InitDB() {
 					<-semaphore // release
 					fmt.Printf("[Done] Image %s\n", HTB.Keyword)
 				}()
-				
+
 				fmt.Printf("[Updating] Image %s\n", HTB.Keyword)
 				if HTB.URL == "" {
 					URL, err := bot.GetFileDirectURL(HTB.Content)
