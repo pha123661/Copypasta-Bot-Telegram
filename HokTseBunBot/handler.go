@@ -340,10 +340,12 @@ func handleAnimatedMessage(Message *tgbotapi.Message) {
 	// Send tmp message
 	to_be_delete_message := SendText(Message.Chat.ID, "運算中，請稍後……", Message.MessageID)
 
-	Cap, _ := InsertCP(Message.From.ID, Keyword, Content, Type, Message)
-
+	Cap, err := InsertCP(Message.From.ID, Keyword, Content, Type, Message)
 	// Delete tmp message
 	bot.Request(tgbotapi.NewDeleteMessage(Message.Chat.ID, to_be_delete_message.MessageID))
+	if err != nil {
+		SendText(Message.Chat.ID, fmt.Sprintf("新增動圖「%s」失敗：%s", Keyword, err), Message.MessageID)
+	}
 	SendText(Message.Chat.ID, fmt.Sprintf("新增動圖「%s」成功，\n自動生成的描述如下：「%s」", Keyword, Cap), Message.MessageID)
 }
 

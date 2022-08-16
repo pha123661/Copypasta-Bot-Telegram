@@ -6,6 +6,8 @@ import (
 	"net/http"
 	"os"
 
+	_ "net/http/pprof"
+
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
 	xurls "mvdan.cc/xurls/v2"
 )
@@ -35,10 +37,10 @@ func init() {
 
 func main() {
 	// keep alive
-	http.HandleFunc("/", func(res http.ResponseWriter, req *http.Request) {
-		fmt.Fprint(res, "Hello World!")
-	})
-	go http.ListenAndServe(":9000", nil)
+	// http.HandleFunc("/", func(res http.ResponseWriter, req *http.Request) {
+	// 	fmt.Fprint(res, "Hello World!")
+	// })
+	go http.ListenAndServe(":6060", nil)
 
 	var err error
 	// start bot

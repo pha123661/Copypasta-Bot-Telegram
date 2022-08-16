@@ -75,7 +75,6 @@ func InitDB() {
 			func() {
 				defer func() { fmt.Printf("[Done] Update URL for %s, %s\n", HTB.Keyword, HTB.URL) }()
 
-				fmt.Printf("%+v\n", HTB)
 				URL, err := bot.GetFileDirectURL(HTB.Content)
 				if err != nil {
 					return // give up
@@ -145,6 +144,11 @@ func InsertCP(FromID int64, Keyword, Content string, Type int64, Message *tgbota
 		Summarization = ImageCaptioning(Keyword, URL)
 	case 3:
 		// 3: animation
+		if Message.Animation.FileSize >= 20000 {
+			// too large
+			return "", fmt.Errorf("file size %d is too large", Message.Animation.FileSize)
+		}
+
 		var err error
 		URL, err = bot.GetFileDirectURL(Content)
 		if err != nil {
@@ -163,6 +167,11 @@ func InsertCP(FromID int64, Keyword, Content string, Type int64, Message *tgbota
 		Summarization = ImageCaptioning(Keyword, Thumb_URL)
 	case 4:
 		// 4: video
+		if Message.Video.FileSize >= 20000 {
+			// too large
+			return "", fmt.Errorf("file size %d is too large", Message.Video.FileSize)
+		}
+
 		var err error
 		URL, err = bot.GetFileDirectURL(Content)
 		if err != nil {
