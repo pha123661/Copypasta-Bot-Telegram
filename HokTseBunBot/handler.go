@@ -34,18 +34,10 @@ func handleCommand(Message *tgbotapi.Message) {
 	switch Message.Command() {
 	case "start":
 		// Startup
-		replyMsg := tgbotapi.NewMessage(Message.Chat.ID, "歡迎使用，使用方式可以參考我的github: https://github.com/pha123661/Hok_tse_bun_tgbot")
-		if _, err := bot.Send(replyMsg); err != nil {
-			log.Println("[start]", err)
-		}
+		SendTextResult(Message.Chat.ID, "歡迎使用，使用方式可以參考我的github: https://github.com/pha123661/Hok_tse_bun_tgbot", 0)
 	case "echo":
 		// Echo
-		replyMsg := tgbotapi.NewMessage(Message.Chat.ID, Message.CommandArguments())
-		replyMsg.ReplyToMessageID = Message.MessageID
-		if _, err := bot.Send(replyMsg); err != nil {
-			log.Println("[echo]", err)
-		}
-
+		SendTextResult(Message.Chat.ID, Message.CommandArguments(), Message.MessageID)
 	case "random", "randomImage", "randomText":
 		var Query *c.Query
 		switch Message.Command() {
@@ -66,10 +58,7 @@ func handleCommand(Message *tgbotapi.Message) {
 			return
 		}
 		if len(docs) <= 0 {
-			replyMsg := tgbotapi.NewMessage(Message.Chat.ID, "資料庫沒東西是在抽屁")
-			if _, err := bot.Send(replyMsg); err != nil {
-				log.Println("[random]", err)
-			}
+			SendTextResult(Message.Chat.ID, "資料庫沒東西是在抽屁", 0)
 			return
 		}
 		RandomIndex := rand.Intn(len(docs))
@@ -83,11 +72,7 @@ func handleCommand(Message *tgbotapi.Message) {
 		}
 		switch {
 		case HTB.IsText():
-			Content := fmt.Sprintf("幫你從 %d 坨大便中精心選擇了「%s」：\n%s", len(docs), HTB.Keyword, HTB.Content)
-			replyMsg := tgbotapi.NewMessage(Message.Chat.ID, Content)
-			if _, err := bot.Send(replyMsg); err != nil {
-				log.Println("[random]", err)
-			}
+			SendTextResult(Message.Chat.ID, fmt.Sprintf("幫你從 %d 坨大便中精心選擇了「%s」：\n%s", len(docs), HTB.Keyword, HTB.Content), 0)
 		case HTB.IsImage():
 			SendImageResult(Message.Chat.ID, fmt.Sprintf("幫你從 %d 坨大便中精心選擇了「%s」", len(docs), HTB.Keyword), HTB.Content)
 		}
@@ -96,22 +81,14 @@ func handleCommand(Message *tgbotapi.Message) {
 		// Parse command
 		Command_Args := strings.Fields(Message.CommandArguments())
 		if len(Command_Args) <= 1 {
-			replyMsg := tgbotapi.NewMessage(Message.Chat.ID, fmt.Sprintf("錯誤：新增格式爲 “/%s {關鍵字} {內容}”", Message.Command()))
-			replyMsg.ReplyToMessageID = Message.MessageID
-			if _, err := bot.Send(replyMsg); err != nil {
-				log.Println("[new]", err)
-			}
+			SendTextResult(Message.Chat.ID, fmt.Sprintf("錯誤：新增格式爲 “/%s {關鍵字} {內容}”", Message.Command()), Message.MessageID)
 			return
 		}
 		var Keyword string = Command_Args[0]
 		var Content string = strings.TrimSpace(Message.Text[strings.Index(Message.Text, Command_Args[1]):])
 
 		if utf8.RuneCountInString(Keyword) >= 30 {
-			replyMsg := tgbotapi.NewMessage(Message.Chat.ID, fmt.Sprintf("關鍵字長度不可大於 30, 目前爲 %d 字”", utf8.RuneCountInString(Keyword)))
-			replyMsg.ReplyToMessageID = Message.MessageID
-			if _, err := bot.Send(replyMsg); err != nil {
-				log.Println("[new]", err)
-			}
+			SendTextResult(Message.Chat.ID, fmt.Sprintf("關鍵字長度不可大於 30, 目前爲 %d 字”", utf8.RuneCountInString(Keyword)), Message.MessageID)
 			return
 		}
 
@@ -135,11 +112,7 @@ func handleCommand(Message *tgbotapi.Message) {
 			for idx, doc := range docs {
 				// same keyword & content
 				if doc.Get("Content").(string) == Content {
-					replyMsg := tgbotapi.NewMessage(Message.Chat.ID, "傳過了啦 腦霧?")
-					replyMsg.ReplyToMessageID = Message.MessageID
-					if _, err := bot.Send(replyMsg); err != nil {
-						log.Println("[new]", err)
-					}
+					SendTextResult(Message.Chat.ID, "傳過了啦 腦霧?", Message.MessageID)
 					return
 				}
 				Reply_Content += fmt.Sprintf("\n%d.「%s」", idx+1, TruncateString(doc.Get("Content").(string), 30))
@@ -160,12 +133,7 @@ func handleCommand(Message *tgbotapi.Message) {
 		}
 
 		// Create tmp message
-		replyMsg := tgbotapi.NewMessage(Message.Chat.ID, "運算中，請稍後……")
-		replyMsg.ReplyToMessageID = Message.MessageID
-		to_be_delete_message, err := bot.Send(replyMsg)
-		if err != nil {
-			log.Println("[new]", err)
-		}
+		to_be_delete_message := SendTextResult(Message.Chat.ID, "運算中，請稍後……", Message.MessageID)
 		to_be_delete_message_id := to_be_delete_message.MessageID
 		// Insert CP
 		Sum, err := InsertCP(Message.From.ID, Keyword, Content, 1)
@@ -176,11 +144,7 @@ func handleCommand(Message *tgbotapi.Message) {
 		// Delete tmp message
 		bot.Request(tgbotapi.NewDeleteMessage(Message.Chat.ID, to_be_delete_message_id))
 		// send response to user
-		replyMsg = tgbotapi.NewMessage(Message.Chat.ID, fmt.Sprintf("新增複製文「%s」成功，\n自動生成的摘要如下：「%s」", Keyword, Sum))
-		replyMsg.ReplyToMessageID = Message.MessageID
-		if _, err := bot.Send(replyMsg); err != nil {
-			log.Println("[new]", err)
-		}
+		SendTextResult(Message.Chat.ID, fmt.Sprintf("新增複製文「%s」成功，\n自動生成的摘要如下：「%s」", Keyword, Sum), Message.MessageID)
 
 	case "search":
 		var (
@@ -189,14 +153,10 @@ func handleCommand(Message *tgbotapi.Message) {
 			MaxResults         = 25
 		)
 
-		if _, err := bot.Send(tgbotapi.NewMessage(Message.From.ID, fmt.Sprintf("「%s」的搜尋結果如下：", Query))); err != nil {
-			log.Println("[search]", err)
-		}
+		SendTextResult(Message.From.ID, fmt.Sprintf("「%s」的搜尋結果如下：", Query), 0)
 
 		if Message.Chat.ID != Message.From.ID {
-			if _, err := bot.Send(tgbotapi.NewMessage(Message.Chat.ID, "正在搜尋中…… 請稍後")); err != nil {
-				log.Println("[search]", err)
-			}
+			SendTextResult(Message.Chat.ID, "正在搜尋中…… 請稍後", 0)
 		}
 
 		// search
@@ -210,10 +170,7 @@ func handleCommand(Message *tgbotapi.Message) {
 			doc.Unmarshal(HTB)
 			if fuzzy.Match(Query, HTB.Keyword) || fuzzy.Match(HTB.Keyword, Query) || fuzzy.Match(Query, HTB.Summarization) || (fuzzy.Match(Query, HTB.Content) && HTB.IsText()) {
 				if HTB.IsText() {
-					Msg := fmt.Sprintf("名稱：「%s」\n摘要：「%s」\n內容：「%s」", HTB.Keyword, HTB.Summarization, HTB.Content)
-					if _, err := bot.Send(tgbotapi.NewMessage(Message.From.ID, Msg)); err != nil {
-						log.Println("[search]", err)
-					}
+					SendTextResult(Message.From.ID, fmt.Sprintf("名稱：「%s」\n摘要：「%s」\n內容：「%s」", HTB.Keyword, HTB.Summarization, HTB.Content), 0)
 				} else if HTB.IsImage() {
 					SendImageResult(Message.From.ID, fmt.Sprintf("名稱：「%s」", HTB.Keyword), HTB.Content)
 				}
@@ -222,33 +179,20 @@ func handleCommand(Message *tgbotapi.Message) {
 		}
 
 		if ResultCount <= MaxResults {
-			if _, err := bot.Send(tgbotapi.NewMessage(Message.From.ID, fmt.Sprintf("搜尋完成，共 %d 筆吻合\n", ResultCount))); err != nil {
-				log.Println(err)
-			}
+			SendTextResult(Message.From.ID, fmt.Sprintf("搜尋完成，共 %d 筆吻合\n", ResultCount), 0)
 			if Message.Chat.ID != Message.From.ID {
-				if _, err := bot.Send(tgbotapi.NewMessage(Message.Chat.ID, fmt.Sprintf("搜尋完成，共 %d 筆吻合\n(結果在與bot的私訊中)", ResultCount))); err != nil {
-					log.Println(err)
-				}
+				SendTextResult(Message.Chat.ID, fmt.Sprintf("搜尋完成，共 %d 筆吻合\n(結果在與bot的私訊中)", ResultCount), 0)
 			}
 		} else {
-
-			if _, err := bot.Send(tgbotapi.NewMessage(Message.From.ID, fmt.Sprintf("搜尋完成，結果超過上限%d筆，請嘗試更換關鍵字", MaxResults))); err != nil {
-				log.Println(err)
-			}
+			SendTextResult(Message.From.ID, fmt.Sprintf("搜尋完成，結果超過上限%d筆，請嘗試更換關鍵字", MaxResults), 0)
 			if Message.Chat.ID != Message.From.ID {
-				if _, err := bot.Send(tgbotapi.NewMessage(Message.Chat.ID, fmt.Sprintf("搜尋完成，結果超過上限%d筆，請嘗試更換關鍵字\n(結果在與bot的私訊中)", MaxResults))); err != nil {
-					log.Println(err)
-				}
+				SendTextResult(Message.Chat.ID, fmt.Sprintf("搜尋完成，結果超過上限%d筆，請嘗試更換關鍵字\n(結果在與bot的私訊中)", MaxResults), 0)
 			}
 		}
 	case "delete":
 		var BeDeletedKeyword = Message.CommandArguments()
 		if BeDeletedKeyword == "" {
-			replyMsg := tgbotapi.NewMessage(Message.Chat.ID, "請輸入關鍵字")
-			replyMsg.ReplyToMessageID = Message.MessageID
-			if _, err := bot.Send(replyMsg); err != nil {
-				log.Println("[delete]", err)
-			}
+			SendTextResult(Message.Chat.ID, "請輸入關鍵字", Message.MessageID)
 			return
 		}
 		Criteria := c.Field("Keyword").Eq(BeDeletedKeyword)
@@ -257,11 +201,7 @@ func handleCommand(Message *tgbotapi.Message) {
 			log.Println("[delete]", err)
 		}
 		if len(docs) <= 0 {
-			replyMsg := tgbotapi.NewMessage(Message.Chat.ID, "沒有文章符合關鍵字")
-			replyMsg.ReplyToMessageID = Message.MessageID
-			if _, err := bot.Send(replyMsg); err != nil {
-				log.Println("[delete]", err)
-			}
+			SendTextResult(Message.Chat.ID, "沒有文章符合關鍵字", Message.MessageID)
 			return
 		}
 
@@ -281,11 +221,7 @@ func handleCommand(Message *tgbotapi.Message) {
 		}
 
 	default:
-		replyMsg := tgbotapi.NewMessage(Message.Chat.ID, fmt.Sprintf("錯誤：我不會 “/%s” 啦", Message.Command()))
-		replyMsg.ReplyToMessageID = Message.MessageID
-		if _, err := bot.Send(replyMsg); err != nil {
-			log.Println(err)
-		}
+		SendTextResult(Message.Chat.ID, fmt.Sprintf("錯誤：我不會 “/%s” 啦", Message.Command()), Message.MessageID)
 	}
 }
 func handleTextMessage(Message *tgbotapi.Message) {
@@ -379,21 +315,12 @@ func handleImageMessage(Message *tgbotapi.Message) {
 	// find existing images
 	Criteria := c.Field("Keyword").Eq(Keyword).And(c.Field("Content").Eq(Content))
 	if doc, _ := DB.FindFirst(c.NewQuery(CONFIG.DB.COLLECTION).Where(Criteria)); doc != nil {
-		replyMsg := tgbotapi.NewMessage(Message.Chat.ID, "傳過了啦 腦霧?")
-		replyMsg.ReplyToMessageID = Message.MessageID
-		if _, err := bot.Send(replyMsg); err != nil {
-			log.Println("[newImage]", err)
-		}
+		SendTextResult(Message.Chat.ID, "傳過了啦 腦霧?", Message.MessageID)
 		return
 	}
 
 	InsertCP(Message.From.ID, Keyword, Content, 2)
-	replyMsg := tgbotapi.NewMessage(Message.Chat.ID, fmt.Sprintf("新增圖片「%s」成功", Keyword))
-	replyMsg.ReplyToMessageID = Message.MessageID
-	if _, err := bot.Send(replyMsg); err != nil {
-		log.Println("[newImage]", err)
-	}
-
+	SendTextResult(Message.Chat.ID, fmt.Sprintf("新增圖片「%s」成功", Keyword), Message.MessageID)
 }
 
 func handleCallbackQuery(CallbackQuery *tgbotapi.CallbackQuery) {
@@ -429,12 +356,7 @@ func handleCallbackQuery(CallbackQuery *tgbotapi.CallbackQuery) {
 		}
 		OW_Entity.Done = true
 
-		replyMsg := tgbotapi.NewMessage(CallbackQuery.Message.Chat.ID, "運算中，請稍後……")
-		replyMsg.ReplyToMessageID = CallbackQuery.Message.MessageID
-		to_be_delete_message, err := bot.Send(replyMsg)
-		if err != nil {
-			log.Println("[CallBQ]", err)
-		}
+		to_be_delete_message := SendTextResult(CallbackQuery.Message.Chat.ID, "運算中，請稍後……", CallbackQuery.Message.MessageID)
 		to_be_delete_message_id := to_be_delete_message.MessageID
 
 		Sum, err := InsertCP(

@@ -87,20 +87,25 @@ func Min(a int, b int) int {
 }
 
 // helper functions
-func SendTextResult(ChatID int64, Content string, ReplyMsgID int) {
+func SendTextResult(ChatID int64, Content string, ReplyMsgID int) tgbotapi.Message {
 	replyMsg := tgbotapi.NewMessage(ChatID, Content)
 	if ReplyMsgID != 0 {
 		replyMsg.ReplyToMessageID = ReplyMsgID
 	}
-	if _, err := bot.Send(replyMsg); err != nil {
+	Msg, err := bot.Send(replyMsg)
+	if err != nil {
 		log.Println("[SendTR]", err)
 	}
+	return Msg
 }
-func SendImageResult(ChatID int64, Caption string, Content string) {
+
+func SendImageResult(ChatID int64, Caption string, Content string) *tgbotapi.APIResponse {
 	FileID := tgbotapi.FileID(Content)
 	PhotoConfig := tgbotapi.NewPhoto(ChatID, FileID)
 	PhotoConfig.Caption = Caption
-	if _, err := bot.Request(PhotoConfig); err != nil {
+	Msg, err := bot.Request(PhotoConfig)
+	if err != nil {
 		log.Println("[SendIR]", err)
 	}
+	return Msg
 }
