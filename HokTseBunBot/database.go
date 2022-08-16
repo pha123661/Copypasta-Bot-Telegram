@@ -65,7 +65,7 @@ func InitDB() {
 				defer func() {
 					wg.Done()
 					<-semaphore // release
-					fmt.Printf("[Done] Image %s\n", HTB.Keyword)
+					fmt.Printf("[Done] Image %s: %s\n", HTB.Keyword, HTB.Summarization)
 				}()
 
 				fmt.Printf("[Updating] Image %s\n", HTB.Keyword)
