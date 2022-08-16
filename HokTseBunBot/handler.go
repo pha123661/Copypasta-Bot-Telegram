@@ -135,7 +135,7 @@ func handleCommand(Message *tgbotapi.Message) {
 		// Create tmp message
 		to_be_delete_message := SendText(Message.Chat.ID, "運算中，請稍後……", Message.MessageID)
 		// Insert CP
-		Sum, err := InsertCP(Message.From.ID, Keyword, Content, 1)
+		Sum, err := InsertCP(Message.From.ID, Keyword, Content, 1, nil)
 		if err != nil {
 			log.Println("[new]", err)
 			return
@@ -311,7 +311,7 @@ func handleImageMessage(Message *tgbotapi.Message) {
 	// Send tmp message
 	to_be_delete_message := SendText(Message.Chat.ID, "運算中，請稍後……", Message.MessageID)
 
-	Cap, _ := InsertCP(Message.From.ID, Keyword, Content, 2)
+	Cap, _ := InsertCP(Message.From.ID, Keyword, Content, 2, nil)
 
 	// Delete tmp message
 	bot.Request(tgbotapi.NewDeleteMessage(Message.Chat.ID, to_be_delete_message.MessageID))
@@ -337,9 +337,14 @@ func handleAnimatedMessage(Message *tgbotapi.Message) {
 		Content = Message.Video.FileID
 		Type = 4
 	}
+	// Send tmp message
+	to_be_delete_message := SendText(Message.Chat.ID, "運算中，請稍後……", Message.MessageID)
 
-	InsertCP(Message.From.ID, Keyword, Content, Type)
-	SendText(Message.Chat.ID, fmt.Sprintf("新增動圖「%s」成功", Keyword), Message.MessageID)
+	Cap, _ := InsertCP(Message.From.ID, Keyword, Content, Type, Message)
+
+	// Delete tmp message
+	bot.Request(tgbotapi.NewDeleteMessage(Message.Chat.ID, to_be_delete_message.MessageID))
+	SendText(Message.Chat.ID, fmt.Sprintf("新增動圖「%s」成功，\n自動生成的描述如下：「%s」", Keyword, Cap), Message.MessageID)
 }
 
 func handleCallbackQuery(CallbackQuery *tgbotapi.CallbackQuery) {
@@ -382,6 +387,7 @@ func handleCallbackQuery(CallbackQuery *tgbotapi.CallbackQuery) {
 			OW_Entity.Keyword,
 			OW_Entity.Content,
 			OW_Entity.Type,
+			nil,
 		)
 		if err != nil {
 			log.Println("[CallBQ]", err)

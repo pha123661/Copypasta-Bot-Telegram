@@ -7,6 +7,7 @@ import (
 	"sync"
 	"time"
 
+	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
 	c "github.com/ostafen/clover/v2"
 )
 
@@ -61,13 +62,15 @@ func InitDB() {
 
 	semaphore := make(chan struct{}, 5) // maximum limit of chan, blocks when full
 
-	docs, _ := DB.FindAll(c.NewQuery(CONFIG.DB.COLLECTION))
+	Criteria := c.Field("Type").Gt(1).And(c.Field("URL").Eq("").Or(c.Field("Summarization").Eq("")))
+	docs, _ := DB.FindAll(c.NewQuery(CONFIG.DB.COLLECTION).Where(Criteria))
 	for _, doc := range docs {
 		HTB := &HokTseBun{}
 		err := doc.Unmarshal(HTB)
 		if err != nil {
 			fmt.Println(err)
 		}
+		fmt.Println(HTB.Summarization, HTB.URL)
 		// Update media files' URLs
 		if HTB.IsMultiMedia() && HTB.URL == "" {
 			func() {
@@ -113,13 +116,13 @@ func InitDB() {
 				json.Unmarshal(tmp_bytes, tmp_map)
 				DB.UpdateById(CONFIG.DB.COLLECTION, HTB.UID, *tmp_map)
 			}()
-			time.Sleep(2 * time.Second)
+			time.Sleep(3 * time.Second)
 		}
 	}
 	wg.Wait() // wait for all updates to finish
 }
 
-func InsertCP(FromID int64, Keyword, Content string, Type int64) (string, error) {
+func InsertCP(FromID int64, Keyword, Content string, Type int64, Message *tgbotapi.Message) (string, error) {
 	var Summarization string
 	var URL string
 	switch Type {
@@ -137,13 +140,43 @@ func InsertCP(FromID int64, Keyword, Content string, Type int64) (string, error)
 			break // do not do summarization
 		}
 		Summarization = ImageCaptioning(Keyword, URL)
-	case 3, 4:
-		// 3: animation, 4:video
+	case 3:
+		// 3: animation
 		var err error
 		URL, err = bot.GetFileDirectURL(Content)
 		if err != nil {
 			log.Println("[InsertCP]", err)
 		}
+
+		if Message == nil || Message.Animation == nil {
+			break
+		}
+
+		// get caption by thumbnail
+		Thumb_URL, err := bot.GetFileDirectURL(Message.Animation.Thumbnail.FileID)
+		if err != nil {
+			log.Println("[InsertCP]", err)
+		}
+		Summarization = ImageCaptioning(Keyword, Thumb_URL)
+	case 4:
+		// 4: video
+		var err error
+		URL, err = bot.GetFileDirectURL(Content)
+		if err != nil {
+			log.Println("[InsertCP]", err)
+		}
+
+		if Message == nil || Message.Video == nil {
+			break
+		}
+
+		// get caption by thumbnail
+		Thumb_URL, err := bot.GetFileDirectURL(Message.Video.Thumbnail.FileID)
+		if err != nil {
+			log.Println("[InsertCP]", err)
+		}
+		Summarization = ImageCaptioning(Keyword, Thumb_URL)
+
 	default:
 		return "", fmt.Errorf(`"InsertCP" not implemented for type %d`, Type)
 	}
