@@ -134,7 +134,6 @@ func handleCommand(Message *tgbotapi.Message) {
 
 		// Create tmp message
 		to_be_delete_message := SendTextResult(Message.Chat.ID, "運算中，請稍後……", Message.MessageID)
-		to_be_delete_message_id := to_be_delete_message.MessageID
 		// Insert CP
 		Sum, err := InsertCP(Message.From.ID, Keyword, Content, 1)
 		if err != nil {
@@ -142,7 +141,7 @@ func handleCommand(Message *tgbotapi.Message) {
 			return
 		}
 		// Delete tmp message
-		bot.Request(tgbotapi.NewDeleteMessage(Message.Chat.ID, to_be_delete_message_id))
+		bot.Request(tgbotapi.NewDeleteMessage(Message.Chat.ID, to_be_delete_message.MessageID))
 		// send response to user
 		SendTextResult(Message.Chat.ID, fmt.Sprintf("新增複製文「%s」成功，\n自動生成的摘要如下：「%s」", Keyword, Sum), Message.MessageID)
 
@@ -318,8 +317,13 @@ func handleImageMessage(Message *tgbotapi.Message) {
 		SendTextResult(Message.Chat.ID, "傳過了啦 腦霧?", Message.MessageID)
 		return
 	}
+	// Send tmp message
+	to_be_delete_message := SendTextResult(Message.Chat.ID, "運算中，請稍後……", Message.MessageID)
 
 	Cap, _ := InsertCP(Message.From.ID, Keyword, Content, 2)
+
+	// Delete tmp message
+	bot.Request(tgbotapi.NewDeleteMessage(Message.Chat.ID, to_be_delete_message.MessageID))
 	SendTextResult(Message.Chat.ID, fmt.Sprintf("新增圖片「%s」成功，\n自動生成的描述如下：「%s」", Keyword, Cap), Message.MessageID)
 }
 
@@ -357,7 +361,6 @@ func handleCallbackQuery(CallbackQuery *tgbotapi.CallbackQuery) {
 		OW_Entity.Done = true
 
 		to_be_delete_message := SendTextResult(CallbackQuery.Message.Chat.ID, "運算中，請稍後……", CallbackQuery.Message.MessageID)
-		to_be_delete_message_id := to_be_delete_message.MessageID
 
 		Sum, err := InsertCP(
 			OW_Entity.From,
@@ -371,7 +374,7 @@ func handleCallbackQuery(CallbackQuery *tgbotapi.CallbackQuery) {
 		}
 
 		// delete tmp message
-		bot.Request(tgbotapi.NewDeleteMessage(CallbackQuery.Message.Chat.ID, to_be_delete_message_id))
+		bot.Request(tgbotapi.NewDeleteMessage(CallbackQuery.Message.Chat.ID, to_be_delete_message.MessageID))
 
 		// send response to user
 		SendTextResult(CallbackQuery.Message.Chat.ID, fmt.Sprintf("新增複製文「%s」成功，\n自動生成的摘要如下：「%s」", OW_Entity.Keyword, Sum), CallbackQuery.Message.MessageID)
