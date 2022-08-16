@@ -99,23 +99,40 @@ func SendText(ChatID int64, Content string, ReplyMsgID int) tgbotapi.Message {
 }
 
 func SendMultiMedia(ChatID int64, Caption string, FileID_Str string, Type int) *tgbotapi.APIResponse {
-	var Config tgbotapi.Chattable
+	var Msg *tgbotapi.APIResponse
+	var err error
 	FileID := tgbotapi.FileID(FileID_Str)
-
 	switch Type {
 	case 1:
 		log.Println("Sending text by SendMultiMedia")
 		return nil
 	case 2:
-		Config = tgbotapi.NewPhoto(ChatID, FileID)
+		Config := tgbotapi.NewPhoto(ChatID, FileID)
+		if Caption != "" {
+			Config.Caption = Caption
+		}
+		Msg, err = bot.Request(Config)
+		if err != nil {
+			log.Println("[SendIR]", err)
+		}
 	case 3:
-		Config = tgbotapi.NewAnimation(ChatID, FileID)
+		Config := tgbotapi.NewAnimation(ChatID, FileID)
+		if Caption != "" {
+			Config.Caption = Caption
+		}
+		Msg, err = bot.Request(Config)
+		if err != nil {
+			log.Println("[SendIR]", err)
+		}
 	case 4:
-		Config = tgbotapi.NewVideo(ChatID, FileID)
-	}
-	Msg, err := bot.Request(Config)
-	if err != nil {
-		log.Println("[SendIR]", err)
+		Config := tgbotapi.NewVideo(ChatID, FileID)
+		if Caption != "" {
+			Config.Caption = Caption
+		}
+		Msg, err = bot.Request(Config)
+		if err != nil {
+			log.Println("[SendIR]", err)
+		}
 	}
 	return Msg
 }

@@ -171,10 +171,8 @@ func handleCommand(Message *tgbotapi.Message) {
 				switch {
 				case HTB.IsText():
 					SendText(Message.From.ID, fmt.Sprintf("名稱：「%s」\n摘要：「%s」\n內容：「%s」", HTB.Keyword, HTB.Summarization, HTB.Content), 0)
-				case HTB.IsImage():
+				case HTB.IsMultiMedia():
 					SendMultiMedia(Message.From.ID, fmt.Sprintf("名稱：「%s」\n描述：「%s」", HTB.Keyword, HTB.Summarization), HTB.Content, HTB.Type)
-				case HTB.IsAnimation() || HTB.IsVideo():
-					SendMultiMedia(Message.From.ID, fmt.Sprintf("名稱：「%s」", HTB.Keyword), HTB.Content, HTB.Type)
 				}
 				ResultCount++
 			}
@@ -273,7 +271,7 @@ func handleTextMessage(Message *tgbotapi.Message) {
 					Limit -= utf8.RuneCountInString(HTB.Content)
 				case HTB.IsMultiMedia():
 					// image
-					go SendMultiMedia(Message.Chat.ID, HTB.Keyword, HTB.Content, HTB.Type)
+					go SendMultiMedia(Message.Chat.ID, "", HTB.Content, HTB.Type)
 					Limit -= RunesPerImage
 				}
 			}
