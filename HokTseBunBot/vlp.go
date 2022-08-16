@@ -78,7 +78,7 @@ func TextSummarization(Keyword, Content string) string {
 	} else {
 		Summarization = sresps[0].SummaryText
 	}
-	log.Println("[HuggingFace] Get request for", Keyword, "content:", Summarization)
+	log.Println("[HuggingFace] Get request for", Keyword, "summarzation:", Summarization)
 	return Summarization
 }
 
@@ -140,6 +140,7 @@ func ImageSummarization(Keyword, Image_URL string) string {
 		log.Println("[ImgSum]", err)
 		return ""
 	}
+	log.Println("[HuggingFace] Get request for", Keyword, "caption:", CaptionZHTW)
 	return CaptionZHTW
 }
 

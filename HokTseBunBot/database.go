@@ -63,11 +63,14 @@ func InsertCP(FromID int64, Keyword, Content string, Type int64) (string, error)
 	case 1:
 		// Text
 		Summarization = TextSummarization(Keyword, Content)
-		URL = ""
 	case 2:
 		// Image
-		Summarization = ""
-		URL, _ = bot.GetFileDirectURL(Content)
+		URL, err := bot.GetFileDirectURL(Content)
+		if err != nil {
+			log.Println("[InsertCP]", err)
+			break // do not do summarization
+		}
+		Summarization = ImageSummarization(Keyword, URL)
 	}
 	doc := c.NewDocument()
 	doc.SetAll(Dict{
@@ -84,5 +87,5 @@ func InsertCP(FromID int64, Keyword, Content string, Type int64) (string, error)
 	if err != nil {
 		log.Println("[InsertCP]", err)
 	}
-	return Summarization, err
+	return Summarization, nil
 }

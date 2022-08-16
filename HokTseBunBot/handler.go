@@ -319,8 +319,8 @@ func handleImageMessage(Message *tgbotapi.Message) {
 		return
 	}
 
-	InsertCP(Message.From.ID, Keyword, Content, 2)
-	SendTextResult(Message.Chat.ID, fmt.Sprintf("新增圖片「%s」成功", Keyword), Message.MessageID)
+	Cap, _ := InsertCP(Message.From.ID, Keyword, Content, 2)
+	SendTextResult(Message.Chat.ID, fmt.Sprintf("新增圖片「%s」成功，\n自動生成的描述如下：「%s」", Keyword, Cap), Message.MessageID)
 }
 
 func handleCallbackQuery(CallbackQuery *tgbotapi.CallbackQuery) {
