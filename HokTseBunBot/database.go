@@ -32,6 +32,18 @@ func (HTB *HokTseBun) IsImage() bool {
 	return (HTB.Type == 2)
 }
 
+func (HTB *HokTseBun) IsAnimation() bool {
+	return (HTB.Type == 3)
+}
+
+func (HTB *HokTseBun) IsVideo() bool {
+	return (HTB.Type == 4)
+}
+
+func (HTB *HokTseBun) IsMultiMedia() bool {
+	return HTB.IsImage() || HTB.IsAnimation() || HTB.IsVideo()
+}
+
 func InitDB() {
 	// Open DB and create documents
 	var err error
@@ -108,6 +120,10 @@ func InsertCP(FromID int64, Keyword, Content string, Type int64) (string, error)
 			break // do not do summarization
 		}
 		Summarization = ImageCaptioning(Keyword, URL)
+	case 3, 4:
+		// 3: animation, 4:video
+	default:
+		return "", fmt.Errorf(`"InsertCP" not implemented for type %d`, Type)
 	}
 	doc := c.NewDocument()
 	doc.SetAll(Dict{

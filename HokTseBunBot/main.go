@@ -59,17 +59,15 @@ func main() {
 	for update := range updates {
 		switch {
 		case update.Message != nil:
-			if update.Message.Photo != nil {
-				// handle image updates
+			switch {
+			case update.Message.Animation != nil || update.Message.Video != nil:
+				go handleAnimatedMessage(update.Message)
+			case update.Message.Photo != nil:
 				go handleImageMessage(update.Message)
-			} else {
-				if update.Message.IsCommand() {
-					// handle commands
-					go handleCommand(update.Message)
-				} else {
-					// handle text updates
-					go handleTextMessage(update.Message)
-				}
+			case update.Message.IsCommand():
+				go handleCommand(update.Message)
+			default:
+				go handleTextMessage(update.Message)
 			}
 		case update.CallbackQuery != nil:
 			// handle callback query

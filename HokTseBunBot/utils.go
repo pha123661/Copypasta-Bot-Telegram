@@ -86,7 +86,7 @@ func Min(a int, b int) int {
 }
 
 // helper functions
-func SendTextResult(ChatID int64, Content string, ReplyMsgID int) tgbotapi.Message {
+func SendText(ChatID int64, Content string, ReplyMsgID int) tgbotapi.Message {
 	replyMsg := tgbotapi.NewMessage(ChatID, Content)
 	if ReplyMsgID != 0 {
 		replyMsg.ReplyToMessageID = ReplyMsgID
@@ -98,11 +98,22 @@ func SendTextResult(ChatID int64, Content string, ReplyMsgID int) tgbotapi.Messa
 	return Msg
 }
 
-func SendImageResult(ChatID int64, Caption string, Content string) *tgbotapi.APIResponse {
-	FileID := tgbotapi.FileID(Content)
-	PhotoConfig := tgbotapi.NewPhoto(ChatID, FileID)
-	PhotoConfig.Caption = Caption
-	Msg, err := bot.Request(PhotoConfig)
+func SendMultiMedia(ChatID int64, Caption string, FileID_Str string, Type int) *tgbotapi.APIResponse {
+	var Config tgbotapi.Chattable
+	FileID := tgbotapi.FileID(FileID_Str)
+
+	switch Type {
+	case 1:
+		log.Println("Sending text by SendMultiMedia")
+		return nil
+	case 2:
+		Config = tgbotapi.NewPhoto(ChatID, FileID)
+	case 3:
+		Config = tgbotapi.NewAnimation(ChatID, FileID)
+	case 4:
+		Config = tgbotapi.NewVideo(ChatID, FileID)
+	}
+	Msg, err := bot.Request(Config)
 	if err != nil {
 		log.Println("[SendIR]", err)
 	}

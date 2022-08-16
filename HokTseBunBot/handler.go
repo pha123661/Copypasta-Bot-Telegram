@@ -34,10 +34,10 @@ func handleCommand(Message *tgbotapi.Message) {
 	switch Message.Command() {
 	case "start":
 		// Startup
-		SendTextResult(Message.Chat.ID, "歡迎使用，使用方式可以參考我的github: https://github.com/pha123661/Hok_tse_bun_tgbot", 0)
+		SendText(Message.Chat.ID, "歡迎使用，使用方式可以參考我的github: https://github.com/pha123661/Hok_tse_bun_tgbot", 0)
 	case "echo":
 		// Echo
-		SendTextResult(Message.Chat.ID, Message.CommandArguments(), Message.MessageID)
+		SendText(Message.Chat.ID, Message.CommandArguments(), Message.MessageID)
 	case "random", "randomImage", "randomText":
 		var Query *c.Query
 		switch Message.Command() {
@@ -58,7 +58,7 @@ func handleCommand(Message *tgbotapi.Message) {
 			return
 		}
 		if len(docs) <= 0 {
-			SendTextResult(Message.Chat.ID, "資料庫沒東西是在抽屁", 0)
+			SendText(Message.Chat.ID, "資料庫沒東西是在抽屁", 0)
 			return
 		}
 		RandomIndex := rand.Intn(len(docs))
@@ -72,23 +72,23 @@ func handleCommand(Message *tgbotapi.Message) {
 		}
 		switch {
 		case HTB.IsText():
-			SendTextResult(Message.Chat.ID, fmt.Sprintf("幫你從 %d 坨大便中精心選擇了「%s」：\n%s", len(docs), HTB.Keyword, HTB.Content), 0)
+			SendText(Message.Chat.ID, fmt.Sprintf("幫你從 %d 坨大便中精心選擇了「%s」：\n%s", len(docs), HTB.Keyword, HTB.Content), 0)
 		case HTB.IsImage():
-			SendImageResult(Message.Chat.ID, fmt.Sprintf("幫你從 %d 坨大便中精心選擇了「%s」", len(docs), HTB.Keyword), HTB.Content)
+			SendMultiMedia(Message.Chat.ID, fmt.Sprintf("幫你從 %d 坨大便中精心選擇了「%s」", len(docs), HTB.Keyword), HTB.Content, HTB.Type)
 		}
 
 	case "new", "add": // new hok tse bun
 		// Parse command
 		Command_Args := strings.Fields(Message.CommandArguments())
 		if len(Command_Args) <= 1 {
-			SendTextResult(Message.Chat.ID, fmt.Sprintf("錯誤：新增格式爲 “/%s {關鍵字} {內容}”", Message.Command()), Message.MessageID)
+			SendText(Message.Chat.ID, fmt.Sprintf("錯誤：新增格式爲 “/%s {關鍵字} {內容}”", Message.Command()), Message.MessageID)
 			return
 		}
 		var Keyword string = Command_Args[0]
 		var Content string = strings.TrimSpace(Message.Text[strings.Index(Message.Text, Command_Args[1]):])
 
 		if utf8.RuneCountInString(Keyword) >= 30 {
-			SendTextResult(Message.Chat.ID, fmt.Sprintf("關鍵字長度不可大於 30, 目前爲 %d 字”", utf8.RuneCountInString(Keyword)), Message.MessageID)
+			SendText(Message.Chat.ID, fmt.Sprintf("關鍵字長度不可大於 30, 目前爲 %d 字”", utf8.RuneCountInString(Keyword)), Message.MessageID)
 			return
 		}
 
@@ -112,7 +112,7 @@ func handleCommand(Message *tgbotapi.Message) {
 			for idx, doc := range docs {
 				// same keyword & content
 				if doc.Get("Content").(string) == Content {
-					SendTextResult(Message.Chat.ID, "傳過了啦 腦霧?", Message.MessageID)
+					SendText(Message.Chat.ID, "傳過了啦 腦霧?", Message.MessageID)
 					return
 				}
 				Reply_Content += fmt.Sprintf("\n%d.「%s」", idx+1, TruncateString(doc.Get("Content").(string), 30))
@@ -133,7 +133,7 @@ func handleCommand(Message *tgbotapi.Message) {
 		}
 
 		// Create tmp message
-		to_be_delete_message := SendTextResult(Message.Chat.ID, "運算中，請稍後……", Message.MessageID)
+		to_be_delete_message := SendText(Message.Chat.ID, "運算中，請稍後……", Message.MessageID)
 		// Insert CP
 		Sum, err := InsertCP(Message.From.ID, Keyword, Content, 1)
 		if err != nil {
@@ -143,7 +143,7 @@ func handleCommand(Message *tgbotapi.Message) {
 		// Delete tmp message
 		bot.Request(tgbotapi.NewDeleteMessage(Message.Chat.ID, to_be_delete_message.MessageID))
 		// send response to user
-		SendTextResult(Message.Chat.ID, fmt.Sprintf("新增複製文「%s」成功，\n自動生成的摘要如下：「%s」", Keyword, Sum), Message.MessageID)
+		SendText(Message.Chat.ID, fmt.Sprintf("新增複製文「%s」成功，\n自動生成的摘要如下：「%s」", Keyword, Sum), Message.MessageID)
 
 	case "search":
 		var (
@@ -152,10 +152,10 @@ func handleCommand(Message *tgbotapi.Message) {
 			MaxResults         = 25
 		)
 
-		SendTextResult(Message.From.ID, fmt.Sprintf("「%s」的搜尋結果如下：", Query), 0)
+		SendText(Message.From.ID, fmt.Sprintf("「%s」的搜尋結果如下：", Query), 0)
 
 		if Message.Chat.ID != Message.From.ID {
-			SendTextResult(Message.Chat.ID, "正在搜尋中…… 請稍後", 0)
+			SendText(Message.Chat.ID, "正在搜尋中…… 請稍後", 0)
 		}
 
 		// search
@@ -168,30 +168,33 @@ func handleCommand(Message *tgbotapi.Message) {
 			}
 			doc.Unmarshal(HTB)
 			if fuzzy.Match(Query, HTB.Keyword) || fuzzy.Match(HTB.Keyword, Query) || fuzzy.Match(Query, HTB.Summarization) || (fuzzy.Match(Query, HTB.Content) && HTB.IsText()) {
-				if HTB.IsText() {
-					SendTextResult(Message.From.ID, fmt.Sprintf("名稱：「%s」\n摘要：「%s」\n內容：「%s」", HTB.Keyword, HTB.Summarization, HTB.Content), 0)
-				} else if HTB.IsImage() {
-					SendImageResult(Message.From.ID, fmt.Sprintf("名稱：「%s」\n描述：「%s」", HTB.Keyword, HTB.Summarization), HTB.Content)
+				switch {
+				case HTB.IsText():
+					SendText(Message.From.ID, fmt.Sprintf("名稱：「%s」\n摘要：「%s」\n內容：「%s」", HTB.Keyword, HTB.Summarization, HTB.Content), 0)
+				case HTB.IsImage():
+					SendMultiMedia(Message.From.ID, fmt.Sprintf("名稱：「%s」\n描述：「%s」", HTB.Keyword, HTB.Summarization), HTB.Content, HTB.Type)
+				case HTB.IsAnimation() || HTB.IsVideo():
+					SendMultiMedia(Message.From.ID, fmt.Sprintf("名稱：「%s」", HTB.Keyword), HTB.Content, HTB.Type)
 				}
 				ResultCount++
 			}
 		}
 
 		if ResultCount <= MaxResults {
-			SendTextResult(Message.From.ID, fmt.Sprintf("搜尋完成，共 %d 筆吻合\n", ResultCount), 0)
+			SendText(Message.From.ID, fmt.Sprintf("搜尋完成，共 %d 筆吻合\n", ResultCount), 0)
 			if Message.Chat.ID != Message.From.ID {
-				SendTextResult(Message.Chat.ID, fmt.Sprintf("搜尋完成，共 %d 筆吻合\n(結果在與bot的私訊中)", ResultCount), 0)
+				SendText(Message.Chat.ID, fmt.Sprintf("搜尋完成，共 %d 筆吻合\n(結果在與bot的私訊中)", ResultCount), 0)
 			}
 		} else {
-			SendTextResult(Message.From.ID, fmt.Sprintf("搜尋完成，結果超過上限%d筆，請嘗試更換關鍵字", MaxResults), 0)
+			SendText(Message.From.ID, fmt.Sprintf("搜尋完成，結果超過上限%d筆，請嘗試更換關鍵字", MaxResults), 0)
 			if Message.Chat.ID != Message.From.ID {
-				SendTextResult(Message.Chat.ID, fmt.Sprintf("搜尋完成，結果超過上限%d筆，請嘗試更換關鍵字\n(結果在與bot的私訊中)", MaxResults), 0)
+				SendText(Message.Chat.ID, fmt.Sprintf("搜尋完成，結果超過上限%d筆，請嘗試更換關鍵字\n(結果在與bot的私訊中)", MaxResults), 0)
 			}
 		}
 	case "delete":
 		var BeDeletedKeyword = Message.CommandArguments()
 		if BeDeletedKeyword == "" {
-			SendTextResult(Message.Chat.ID, "請輸入關鍵字", Message.MessageID)
+			SendText(Message.Chat.ID, "請輸入關鍵字", Message.MessageID)
 			return
 		}
 		Criteria := c.Field("Keyword").Eq(BeDeletedKeyword)
@@ -200,7 +203,7 @@ func handleCommand(Message *tgbotapi.Message) {
 			log.Println("[delete]", err)
 		}
 		if len(docs) <= 0 {
-			SendTextResult(Message.Chat.ID, "沒有文章符合關鍵字", Message.MessageID)
+			SendText(Message.Chat.ID, "沒有文章符合關鍵字", Message.MessageID)
 			return
 		}
 
@@ -220,9 +223,10 @@ func handleCommand(Message *tgbotapi.Message) {
 		}
 
 	default:
-		SendTextResult(Message.Chat.ID, fmt.Sprintf("錯誤：我不會 “/%s” 啦", Message.Command()), Message.MessageID)
+		SendText(Message.Chat.ID, fmt.Sprintf("錯誤：我不會 “/%s” 啦", Message.Command()), Message.MessageID)
 	}
 }
+
 func handleTextMessage(Message *tgbotapi.Message) {
 	if Message.Text == "" || Message.Text == " " {
 		return
@@ -246,47 +250,34 @@ func handleTextMessage(Message *tgbotapi.Message) {
 			HTB := &HokTseBun{}
 			doc.Unmarshal(HTB)
 
+			HIT := false
 			switch {
 			case utf8.RuneCountInString(Query) >= 3:
 				if fuzzy.Match(HTB.Keyword, Query) || (fuzzy.Match(Query, HTB.Keyword) && Abs(len(Query)-len(HTB.Keyword)) <= 3) || fuzzy.Match(Query, HTB.Summarization) {
-					switch {
-					case HTB.IsText():
-						// text
-						go SendTextResult(Message.Chat.ID, HTB.Content, 0)
-						Limit -= utf8.RuneCountInString(HTB.Content)
-					case HTB.IsImage():
-						// image
-						go SendImageResult(Message.Chat.ID, HTB.Content, HTB.Keyword)
-						Limit -= RunesPerImage
-					}
+					HIT = true
 				}
 			case utf8.RuneCountInString(Query) >= 2:
 				if strings.Contains(Query, HTB.Keyword) || strings.Contains(HTB.Keyword, Query) {
-					switch {
-					case HTB.IsText():
-						// text
-						go SendTextResult(Message.Chat.ID, HTB.Content, 0)
-						Limit -= utf8.RuneCountInString(HTB.Content)
-					case HTB.IsImage():
-						// image
-						go SendImageResult(Message.Chat.ID, HTB.Content, HTB.Keyword)
-						Limit -= RunesPerImage
-					}
+					HIT = true
 				}
 			case utf8.RuneCountInString(Query) == 1:
 				if utf8.RuneCountInString(HTB.Keyword) == 1 && Query == HTB.Keyword {
-					switch {
-					case HTB.IsText():
-						// text
-						go SendTextResult(Message.Chat.ID, HTB.Content, 0)
-						Limit -= utf8.RuneCountInString(HTB.Content)
-					case HTB.IsImage():
-						// image
-						go SendImageResult(Message.Chat.ID, HTB.Content, HTB.Keyword)
-						Limit -= RunesPerImage
-					}
+					HIT = true
 				}
 			}
+			if HIT {
+				switch {
+				case HTB.IsText():
+					// text
+					go SendText(Message.Chat.ID, HTB.Content, 0)
+					Limit -= utf8.RuneCountInString(HTB.Content)
+				case HTB.IsMultiMedia():
+					// image
+					go SendMultiMedia(Message.Chat.ID, HTB.Keyword, HTB.Content, HTB.Type)
+					Limit -= RunesPerImage
+				}
+			}
+
 			if Limit <= 0 {
 				break
 			}
@@ -314,17 +305,41 @@ func handleImageMessage(Message *tgbotapi.Message) {
 	// find existing images
 	Criteria := c.Field("Keyword").Eq(Keyword).And(c.Field("Content").Eq(Content))
 	if doc, _ := DB.FindFirst(c.NewQuery(CONFIG.DB.COLLECTION).Where(Criteria)); doc != nil {
-		SendTextResult(Message.Chat.ID, "傳過了啦 腦霧?", Message.MessageID)
+		SendText(Message.Chat.ID, "傳過了啦 腦霧?", Message.MessageID)
 		return
 	}
 	// Send tmp message
-	to_be_delete_message := SendTextResult(Message.Chat.ID, "運算中，請稍後……", Message.MessageID)
+	to_be_delete_message := SendText(Message.Chat.ID, "運算中，請稍後……", Message.MessageID)
 
 	Cap, _ := InsertCP(Message.From.ID, Keyword, Content, 2)
 
 	// Delete tmp message
 	bot.Request(tgbotapi.NewDeleteMessage(Message.Chat.ID, to_be_delete_message.MessageID))
-	SendTextResult(Message.Chat.ID, fmt.Sprintf("新增圖片「%s」成功，\n自動生成的描述如下：「%s」", Keyword, Cap), Message.MessageID)
+	SendText(Message.Chat.ID, fmt.Sprintf("新增圖片「%s」成功，\n自動生成的描述如下：「%s」", Keyword, Cap), Message.MessageID)
+}
+
+func handleAnimatedMessage(Message *tgbotapi.Message) {
+	if Message.Caption == "" {
+		return
+	}
+
+	var (
+		Keyword string = strings.TrimSpace(Message.Caption)
+		Content string
+		Type    int64
+	)
+
+	switch {
+	case Message.Animation != nil:
+		Content = Message.Animation.FileID
+		Type = 3
+	case Message.Video != nil:
+		Content = Message.Video.FileID
+		Type = 4
+	}
+
+	InsertCP(Message.From.ID, Keyword, Content, Type)
+	SendText(Message.Chat.ID, fmt.Sprintf("新增動圖「%s」成功", Keyword), Message.MessageID)
 }
 
 func handleCallbackQuery(CallbackQuery *tgbotapi.CallbackQuery) {
@@ -346,7 +361,7 @@ func handleCallbackQuery(CallbackQuery *tgbotapi.CallbackQuery) {
 		if _, err := bot.Request(callback); err != nil {
 			log.Println("[CallBQ]", err)
 		}
-		SendTextResult(CallbackQuery.Message.Chat.ID, "其實不按也沒差啦 哈哈", 0)
+		SendText(CallbackQuery.Message.Chat.ID, "其實不按也沒差啦 哈哈", 0)
 	} else if OW_Entity, ok := Queued_Overwrites[CallbackQuery.Data]; ok {
 		// 是 & in overwrite
 		// show respond
@@ -360,7 +375,7 @@ func handleCallbackQuery(CallbackQuery *tgbotapi.CallbackQuery) {
 		}
 		OW_Entity.Done = true
 
-		to_be_delete_message := SendTextResult(CallbackQuery.Message.Chat.ID, "運算中，請稍後……", CallbackQuery.Message.MessageID)
+		to_be_delete_message := SendText(CallbackQuery.Message.Chat.ID, "運算中，請稍後……", CallbackQuery.Message.MessageID)
 
 		Sum, err := InsertCP(
 			OW_Entity.From,
@@ -377,7 +392,7 @@ func handleCallbackQuery(CallbackQuery *tgbotapi.CallbackQuery) {
 		bot.Request(tgbotapi.NewDeleteMessage(CallbackQuery.Message.Chat.ID, to_be_delete_message.MessageID))
 
 		// send response to user
-		SendTextResult(CallbackQuery.Message.Chat.ID, fmt.Sprintf("新增複製文「%s」成功，\n自動生成的摘要如下：「%s」", OW_Entity.Keyword, Sum), CallbackQuery.Message.MessageID)
+		SendText(CallbackQuery.Message.Chat.ID, fmt.Sprintf("新增複製文「%s」成功，\n自動生成的摘要如下：「%s」", OW_Entity.Keyword, Sum), CallbackQuery.Message.MessageID)
 	} else if DEntity, ok := Queued_Deletes[CallbackQuery.Data]; ok {
 		var UID = CallbackQuery.Data
 		if !DEntity.Confirmed {
@@ -413,7 +428,7 @@ func handleCallbackQuery(CallbackQuery *tgbotapi.CallbackQuery) {
 				return
 			}
 			log.Printf("[DELETE] \"%s\" has been deleted!\n", DEntity.Keyword)
-			SendTextResult(CallbackQuery.Message.Chat.ID, fmt.Sprintf("已成功刪除「%s」", DEntity.Keyword), CallbackQuery.Message.MessageID)
+			SendText(CallbackQuery.Message.Chat.ID, fmt.Sprintf("已成功刪除「%s」", DEntity.Keyword), CallbackQuery.Message.MessageID)
 		}
 	}
 }
