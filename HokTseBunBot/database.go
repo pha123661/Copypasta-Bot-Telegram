@@ -68,6 +68,23 @@ func InitDB() {
 		if err != nil {
 			fmt.Println(err)
 		}
+		// Update media files' URLs
+		if HTB.IsMultiMedia() && HTB.URL == "" {
+			func() {
+				defer func() { fmt.Printf("[Done] Update URL for %s, %s\n", HTB.Keyword, HTB.URL) }()
+
+				fmt.Printf("%+v\n", HTB)
+				URL, err := bot.GetFileDirectURL(HTB.Content)
+				if err != nil {
+					return // give up
+				}
+				HTB.URL = URL
+				tmp_map := &Dict{}
+				tmp_bytes, _ := json.Marshal(HTB)
+				json.Unmarshal(tmp_bytes, tmp_map)
+				DB.UpdateById(CONFIG.DB.COLLECTION, HTB.UID, *tmp_map)
+			}()
+		}
 		// Update image captions
 		if HTB.IsImage() && HTB.Summarization == "" {
 			wg.Add(1)
@@ -122,6 +139,11 @@ func InsertCP(FromID int64, Keyword, Content string, Type int64) (string, error)
 		Summarization = ImageCaptioning(Keyword, URL)
 	case 3, 4:
 		// 3: animation, 4:video
+		var err error
+		URL, err = bot.GetFileDirectURL(Content)
+		if err != nil {
+			log.Println("[InsertCP]", err)
+		}
 	default:
 		return "", fmt.Errorf(`"InsertCP" not implemented for type %d`, Type)
 	}

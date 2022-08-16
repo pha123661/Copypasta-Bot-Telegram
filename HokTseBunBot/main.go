@@ -30,8 +30,6 @@ func init() {
 	file, _ := os.OpenFile(CONFIG.SETTING.LOG_FILE, os.O_RDWR|os.O_CREATE|os.O_APPEND, 0666)
 	log.SetOutput(file)
 	log.Println("*** Starting Server ***")
-	InitDB()
-	InitNLP()
 }
 
 func main() {
@@ -49,6 +47,9 @@ func main() {
 	}
 	bot.Debug = true
 	fmt.Println("***", "Sucessful logged in as", bot.Self.UserName, "***")
+
+	InitDB()
+	InitNLP()
 
 	// update config
 	updateConfig := tgbotapi.NewUpdate(0)
