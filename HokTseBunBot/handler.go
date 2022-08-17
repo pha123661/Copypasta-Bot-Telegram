@@ -215,12 +215,7 @@ func handleCommand(Message *tgbotapi.Message) {
 		for _, DE := range tmp_modified_entries {
 			DE.ToBeDeleteMessageIDs = append(DE.ToBeDeleteMessageIDs, Msg.MessageID)
 		}
-		fmt.Printf("%+v\n", Deletes)
-		for _, v := range Deletes {
-			for _, vv := range v {
-				fmt.Printf("%+v\n", vv)
-			}
-		}
+
 	default:
 		SendText(Message.Chat.ID, fmt.Sprintf("錯誤：我不會 “/%s” 啦", Message.Command()), Message.MessageID)
 	}
@@ -448,9 +443,6 @@ func handleCallbackQuery(CallbackQuery *tgbotapi.CallbackQuery) {
 			InlineKeyboard: make([][]tgbotapi.InlineKeyboardButton, 0),
 		},
 	)
-	fmt.Println(CallbackQuery.Message.Chat.ID)
-	fmt.Println(CallbackQuery.Data)
-	fmt.Printf("%+v\n", Deletes[CallbackQuery.Message.Chat.ID][CallbackQuery.Data])
 	if _, err := bot.Send(editMsg); err != nil {
 		log.Println("[CallQ]", err)
 	}
