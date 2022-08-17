@@ -106,6 +106,7 @@ func SendMultiMedia(ChatID int64, Caption string, FileID_Str string, Type int) *
 	case 1:
 		log.Println("Sending text by SendMultiMedia")
 		return nil
+
 	case 2:
 		Config := tgbotapi.NewPhoto(ChatID, FileID)
 		if Caption != "" {
@@ -115,6 +116,7 @@ func SendMultiMedia(ChatID int64, Caption string, FileID_Str string, Type int) *
 		if err != nil {
 			log.Println("[SendIR]", err)
 		}
+
 	case 3:
 		Config := tgbotapi.NewAnimation(ChatID, FileID)
 		if Caption != "" {
@@ -124,6 +126,7 @@ func SendMultiMedia(ChatID int64, Caption string, FileID_Str string, Type int) *
 		if err != nil {
 			log.Println("[SendIR]", err)
 		}
+
 	case 4:
 		Config := tgbotapi.NewVideo(ChatID, FileID)
 		if Caption != "" {

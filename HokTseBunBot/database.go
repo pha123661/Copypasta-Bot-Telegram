@@ -1,7 +1,6 @@
 package main
 
 import (
-	"encoding/json"
 	"fmt"
 	"log"
 	"sync"
@@ -79,11 +78,7 @@ func InitDB() {
 				if err != nil {
 					return // give up
 				}
-				HTB.URL = URL
-				tmp_map := &Dict{}
-				tmp_bytes, _ := json.Marshal(HTB)
-				json.Unmarshal(tmp_bytes, tmp_map)
-				DB.UpdateById(CONFIG.DB.COLLECTION, HTB.UID, *tmp_map)
+				DB.UpdateById(CONFIG.DB.COLLECTION, HTB.UID, Dict{"URL": URL})
 			}()
 		}
 		// User re-upload
@@ -111,12 +106,7 @@ func InitDB() {
 					HTB.URL = URL
 				}
 				Cap := ImageCaptioning(HTB.Keyword, HTB.URL)
-
-				HTB.Summarization = Cap
-				tmp_map := &Dict{}
-				tmp_bytes, _ := json.Marshal(HTB)
-				json.Unmarshal(tmp_bytes, tmp_map)
-				DB.UpdateById(CONFIG.DB.COLLECTION, HTB.UID, *tmp_map)
+				DB.UpdateById(CONFIG.DB.COLLECTION, HTB.UID, Dict{"Summarization": Cap})
 			}()
 			time.Sleep(3 * time.Second)
 		}
