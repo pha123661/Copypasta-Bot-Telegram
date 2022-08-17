@@ -95,8 +95,8 @@ func main() {
 }
 
 func NewChat(ChatID int64) {
-	if err := DB.CreateCollection(CONFIG.GetNamebyChatID(ChatID)); err != nil {
+	if err := DB.CreateCollection(CONFIG.GetColbyChatID(ChatID)); err != nil {
 		log.Println("[NewChat]", err)
 	}
-	log.Printf("[NewChat], new db %s created!\n", CONFIG.GetNamebyChatID(ChatID))
+	log.Printf("[NewChat], new db %s created!\n", CONFIG.GetColbyChatID(ChatID))
 }

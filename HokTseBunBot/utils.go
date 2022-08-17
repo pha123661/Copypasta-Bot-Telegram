@@ -50,10 +50,12 @@ type Config_Type struct {
 	}
 }
 
-func (Config Config_Type) GetNamebyChatID(ChatID int64) string {
+// Gets collection name of given ChatID
+func (Config Config_Type) GetColbyChatID(ChatID int64) string {
 	return fmt.Sprintf(CONFIG.DB.CFormat, ChatID)
 }
 
+// Gets Chinese name of given Type
 func (Config Config_Type) GetNameByType(Type int) string {
 	switch Type {
 	case Config.SETTING.TYPE.TXT:

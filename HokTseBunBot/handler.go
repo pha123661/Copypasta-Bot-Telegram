@@ -30,12 +30,12 @@ func randomHandler(Message *tgbotapi.Message) {
 	switch Message.Command() {
 	case "randomImage":
 		Criteria := c.Field("Type").Eq(2)
-		Query = c.NewQuery(CONFIG.GetNamebyChatID(Message.Chat.ID)).Where(Criteria)
+		Query = c.NewQuery(CONFIG.GetColbyChatID(Message.Chat.ID)).Where(Criteria)
 	case "randomText":
 		Criteria := c.Field("Type").Eq(1)
-		Query = c.NewQuery(CONFIG.GetNamebyChatID(Message.Chat.ID)).Where(Criteria)
+		Query = c.NewQuery(CONFIG.GetColbyChatID(Message.Chat.ID)).Where(Criteria)
 	default:
-		Query = c.NewQuery(CONFIG.GetNamebyChatID(Message.Chat.ID))
+		Query = c.NewQuery(CONFIG.GetColbyChatID(Message.Chat.ID))
 	}
 	docs, err := DB.FindAll(Query)
 	if err != nil {
@@ -83,7 +83,7 @@ func addHandler(Message *tgbotapi.Message, Keyword, Content string, Type int) {
 	}
 	// find existing files
 	Criteria := c.Field("Type").Eq(Type).And(c.Field("Keyword").Eq(Keyword).And(c.Field("Content").Eq(Content)))
-	if doc, _ := DB.FindFirst(c.NewQuery(CONFIG.GetNamebyChatID(Message.Chat.ID)).Where(Criteria)); doc != nil {
+	if doc, _ := DB.FindFirst(c.NewQuery(CONFIG.GetColbyChatID(Message.Chat.ID)).Where(Criteria)); doc != nil {
 		SendText(Message.Chat.ID, "傳過了啦 腦霧?", Message.MessageID)
 		return
 	}
@@ -136,7 +136,7 @@ func addHandler(Message *tgbotapi.Message, Keyword, Content string, Type int) {
 	bot.Request(tgbotapi.NewDeleteMessage(Message.Chat.ID, to_be_delete_message.MessageID))
 
 	_, err = InsertHTB(
-		CONFIG.GetNamebyChatID(Message.Chat.ID),
+		CONFIG.GetColbyChatID(Message.Chat.ID),
 		&HokTseBun{
 			Type:          Type,
 			Keyword:       Keyword,
@@ -174,7 +174,7 @@ func searchHandler(Message *tgbotapi.Message) {
 	}
 
 	// search
-	docs, _ := DB.FindAll(c.NewQuery(CONFIG.GetNamebyChatID(Message.Chat.ID)).Sort(c.SortOption{Field: "Type", Direction: 1}))
+	docs, _ := DB.FindAll(c.NewQuery(CONFIG.GetColbyChatID(Message.Chat.ID)).Sort(c.SortOption{Field: "Type", Direction: 1}))
 	HTB := &HokTseBun{}
 	for _, doc := range docs {
 		if ResultCount >= MaxResults {
@@ -217,7 +217,7 @@ func deleteHandler(Message *tgbotapi.Message) {
 		return
 	}
 	Criteria := c.Field("Keyword").Eq(BeDeletedKeyword)
-	docs, err := DB.FindAll(c.NewQuery(CONFIG.GetNamebyChatID(Message.Chat.ID)).Where(Criteria))
+	docs, err := DB.FindAll(c.NewQuery(CONFIG.GetColbyChatID(Message.Chat.ID)).Where(Criteria))
 	if err != nil {
 		log.Println("[delete]", err)
 		SendText(Message.Chat.ID, fmt.Sprintf("刪除「%s」失敗：%s", BeDeletedKeyword, err), Message.MessageID)
@@ -306,7 +306,7 @@ func handleTextMessage(Message *tgbotapi.Message) {
 			RunesPerImage = 200
 		)
 
-		docs, err := DB.FindAll(c.NewQuery(CONFIG.GetNamebyChatID(Message.Chat.ID)))
+		docs, err := DB.FindAll(c.NewQuery(CONFIG.GetColbyChatID(Message.Chat.ID)))
 		if err != nil {
 			log.Println("[Normal]", err)
 			return
@@ -468,7 +468,7 @@ func handleCallbackQuery(CallbackQuery *tgbotapi.CallbackQuery) {
 		case !DEntity.Confirmed:
 			DEntity.Confirmed = true
 			// find HTB
-			doc, err := DB.FindById(CONFIG.GetNamebyChatID(CallbackQuery.Message.Chat.ID), UID)
+			doc, err := DB.FindById(CONFIG.GetColbyChatID(CallbackQuery.Message.Chat.ID), UID)
 			if err != nil {
 				log.Println("[CallBQ]", err)
 				return
@@ -542,7 +542,7 @@ func handleCallbackQuery(CallbackQuery *tgbotapi.CallbackQuery) {
 			}
 		case !DEntity.Done:
 			DEntity.Done = true
-			if err := DB.DeleteById(CONFIG.GetNamebyChatID(CallbackQuery.Message.Chat.ID), UID); err != nil {
+			if err := DB.DeleteById(CONFIG.GetColbyChatID(CallbackQuery.Message.Chat.ID), UID); err != nil {
 				log.Println("[CallBQ]", err)
 				return
 			}
