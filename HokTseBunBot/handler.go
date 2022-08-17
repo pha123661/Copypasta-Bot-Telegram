@@ -207,7 +207,7 @@ func handleCommand(Message *tgbotapi.Message) {
 			ReplyMarkup = append(ReplyMarkup, tgbotapi.NewInlineKeyboardRow(tgbotapi.NewInlineKeyboardButtonData(ShowEntry, HTB.UID)))
 			TB_HTB[HTB.UID] = &DeleteEntity{HTB: *HTB}
 		}
-		ReplyMarkup = append(ReplyMarkup, tgbotapi.NewInlineKeyboardRow(tgbotapi.NewInlineKeyboardButtonData("取消", "NIL")))
+		ReplyMarkup = append(ReplyMarkup, tgbotapi.NewInlineKeyboardRow(tgbotapi.NewInlineKeyboardButtonData("❌", "NIL")))
 
 		replyMsg := tgbotapi.NewMessage(Message.Chat.ID, "請選擇要刪除以下哪一篇文章？")
 		replyMsg.ReplyMarkup = tgbotapi.NewInlineKeyboardMarkup(ReplyMarkup...)
@@ -451,9 +451,8 @@ func handleCallbackQuery(CallbackQuery *tgbotapi.CallbackQuery) {
 	if _, err := bot.Send(editMsg); err != nil {
 		log.Println("[CallQ]", err)
 	}
-	var (
-		ChatID = CallbackQuery.Message.Chat.ID
-	)
+
+	var ChatID = CallbackQuery.Message.Chat.ID
 	if CallbackQuery.Data == "NIL" {
 		// 否
 		// show respond
@@ -461,7 +460,7 @@ func handleCallbackQuery(CallbackQuery *tgbotapi.CallbackQuery) {
 		if _, err := bot.Request(callback); err != nil {
 			log.Println("[CallBQ]", err)
 		}
-		SendText(ChatID, "其實不按也沒差啦 哈哈", 0)
+		SendText(ChatID, "其實不按也沒差啦🈹", 0)
 		if CallbackQuery.Message.ReplyToMessage != nil {
 			bot.Request(tgbotapi.NewDeleteMessage(ChatID, CallbackQuery.Message.ReplyToMessage.MessageID))
 		}
@@ -477,7 +476,6 @@ func handleCallbackQuery(CallbackQuery *tgbotapi.CallbackQuery) {
 			DEntity, ok = QueuedDeletes[ChatID][CallbackQuery.Message.ReplyToMessage.MessageID][CallbackQuery.Data]
 		} else {
 			DEntity, ok = QueuedDeletes[ChatID][CallbackQuery.Message.MessageID][CallbackQuery.Data]
-			delete(QueuedDeletes[ChatID][CallbackQuery.Message.MessageID], CallbackQuery.Data)
 		}
 
 		if !ok {
@@ -486,7 +484,8 @@ func handleCallbackQuery(CallbackQuery *tgbotapi.CallbackQuery) {
 		}
 
 		UID = DEntity.HTB.UID
-		if !DEntity.Confirmed {
+		switch {
+		case !DEntity.Confirmed:
 			DEntity.Confirmed = true
 			// find HTB
 			doc, err := DB.FindById(CONFIG.DB.COLLECTION, UID)
@@ -507,8 +506,8 @@ func handleCallbackQuery(CallbackQuery *tgbotapi.CallbackQuery) {
 				replyMsg.ReplyToMessageID = CallbackQuery.Message.MessageID
 				replyMsg.ReplyMarkup = tgbotapi.NewInlineKeyboardMarkup(
 					tgbotapi.NewInlineKeyboardRow(
-						tgbotapi.NewInlineKeyboardButtonData("是", UID),
-						tgbotapi.NewInlineKeyboardButtonData("否", "NIL"),
+						tgbotapi.NewInlineKeyboardButtonData("⭕", UID),
+						tgbotapi.NewInlineKeyboardButtonData("❌", "NIL"),
 					),
 				)
 				_, err := bot.Send(replyMsg)
@@ -522,8 +521,8 @@ func handleCallbackQuery(CallbackQuery *tgbotapi.CallbackQuery) {
 				Config.ReplyToMessageID = CallbackQuery.Message.MessageID
 				Config.ReplyMarkup = tgbotapi.NewInlineKeyboardMarkup(
 					tgbotapi.NewInlineKeyboardRow(
-						tgbotapi.NewInlineKeyboardButtonData("是", UID),
-						tgbotapi.NewInlineKeyboardButtonData("否", "NIL"),
+						tgbotapi.NewInlineKeyboardButtonData("⭕", UID),
+						tgbotapi.NewInlineKeyboardButtonData("❌", "NIL"),
 					),
 				)
 				_, err := bot.Request(Config)
@@ -537,8 +536,8 @@ func handleCallbackQuery(CallbackQuery *tgbotapi.CallbackQuery) {
 				Config.ReplyToMessageID = CallbackQuery.Message.MessageID
 				Config.ReplyMarkup = tgbotapi.NewInlineKeyboardMarkup(
 					tgbotapi.NewInlineKeyboardRow(
-						tgbotapi.NewInlineKeyboardButtonData("是", UID),
-						tgbotapi.NewInlineKeyboardButtonData("否", "NIL"),
+						tgbotapi.NewInlineKeyboardButtonData("⭕", UID),
+						tgbotapi.NewInlineKeyboardButtonData("❌", "NIL"),
 					),
 				)
 				_, err := bot.Request(Config)
@@ -552,8 +551,8 @@ func handleCallbackQuery(CallbackQuery *tgbotapi.CallbackQuery) {
 				Config.ReplyToMessageID = CallbackQuery.Message.MessageID
 				Config.ReplyMarkup = tgbotapi.NewInlineKeyboardMarkup(
 					tgbotapi.NewInlineKeyboardRow(
-						tgbotapi.NewInlineKeyboardButtonData("是", UID),
-						tgbotapi.NewInlineKeyboardButtonData("否", "NIL"),
+						tgbotapi.NewInlineKeyboardButtonData("⭕", UID),
+						tgbotapi.NewInlineKeyboardButtonData("❌", "NIL"),
 					),
 				)
 				_, err := bot.Request(Config)
@@ -561,7 +560,7 @@ func handleCallbackQuery(CallbackQuery *tgbotapi.CallbackQuery) {
 					log.Println("[CallBQ]", err)
 				}
 			}
-		} else if !DEntity.Done {
+		case !DEntity.Done:
 			DEntity.Done = true
 			if err := DB.DeleteById(CONFIG.DB.COLLECTION, UID); err != nil {
 				log.Println("[CallBQ]", err)
@@ -574,8 +573,8 @@ func handleCallbackQuery(CallbackQuery *tgbotapi.CallbackQuery) {
 				bot.Request(tgbotapi.NewDeleteMessage(ChatID, CallbackQuery.Message.ReplyToMessage.MessageID))
 			}
 			bot.Request(tgbotapi.NewDeleteMessage(ChatID, CallbackQuery.Message.MessageID))
+			delete(QueuedDeletes[ChatID], CallbackQuery.Message.ReplyToMessage.MessageID)
 		}
-
 	}
 
 	// legacy code to deal with overwriting keyword:
@@ -619,8 +618,8 @@ func handleCallbackQuery(CallbackQuery *tgbotapi.CallbackQuery) {
 	// 	replyMsg.ReplyToMessageID = Message.MessageID
 	// 	replyMsg.ReplyMarkup = tgbotapi.NewInlineKeyboardMarkup(
 	// 		tgbotapi.NewInlineKeyboardRow(
-	// 			tgbotapi.NewInlineKeyboardButtonData("是", Keyword),
-	// 			tgbotapi.NewInlineKeyboardButtonData("否", "NIL"),
+	// 			tgbotapi.NewInlineKeyboardButtonData("⭕", Keyword),
+	// 			tgbotapi.NewInlineKeyboardButtonData("❌", "NIL"),
 	// 		),
 	// 	)
 	// 	if _, err := bot.Send(replyMsg); err != nil {
