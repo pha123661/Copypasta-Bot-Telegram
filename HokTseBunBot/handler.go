@@ -1,7 +1,6 @@
 package main
 
 import (
-	"encoding/json"
 	"fmt"
 	"log"
 	"math/rand"
@@ -13,14 +12,17 @@ import (
 	c "github.com/ostafen/clover/v2"
 )
 
-// Deletes[ChatID]["UID"] = smth
-var Deletes = make(map[int64]map[string]*DeleteEntity)
+// // Deletes[ChatID]["UID"] = smth
+// var Deletes = make(map[int64]map[string]*DeleteEntity)
+// QueuedDeletes[ChatID][MessageID][doc_id] = doc
+var QueuedDeletes = make(map[int64]map[int]map[string]*DeleteEntity)
 
 type DeleteEntity struct {
-	ToBeDeleteMessageIDs []int // pointer is used to modify it afterwards
-	Keyword              string
-	Confirmed            bool
-	Done                 bool
+	// info
+	HTB HokTseBun
+	// status
+	Confirmed bool
+	Done      bool
 }
 
 func handleCommand(Message *tgbotapi.Message) {
@@ -187,11 +189,9 @@ func handleCommand(Message *tgbotapi.Message) {
 		}
 
 		ReplyMarkup := make([][]tgbotapi.InlineKeyboardButton, 0, len(docs))
-		HTB := &HokTseBun{}
-
-		tmp_modified_entries := make([]*DeleteEntity, 0, len(docs))
-
+		TB_HTB := make(map[string]*DeleteEntity)
 		for idx, doc := range docs {
+			HTB := &HokTseBun{}
 			doc.Unmarshal(HTB)
 			var ShowEntry string
 			switch {
@@ -205,14 +205,10 @@ func handleCommand(Message *tgbotapi.Message) {
 				ShowEntry = fmt.Sprintf("%d. %s%s", idx+1, type_prompt, TruncateString(HTB.Summarization, 15-utf8.RuneCountInString(type_prompt)))
 			}
 			ReplyMarkup = append(ReplyMarkup, tgbotapi.NewInlineKeyboardRow(tgbotapi.NewInlineKeyboardButtonData(ShowEntry, HTB.UID)))
-
-			if _, ok := Deletes[Message.Chat.ID]; !ok {
-				Deletes[Message.Chat.ID] = make(map[string]*DeleteEntity)
-			}
-			Deletes[Message.Chat.ID][HTB.UID] = &DeleteEntity{Keyword: HTB.Keyword, ToBeDeleteMessageIDs: make([]int, 0, 5)}
-			tmp_modified_entries = append(tmp_modified_entries, Deletes[Message.Chat.ID][HTB.UID])
+			TB_HTB[HTB.UID] = &DeleteEntity{HTB: *HTB}
 		}
 		ReplyMarkup = append(ReplyMarkup, tgbotapi.NewInlineKeyboardRow(tgbotapi.NewInlineKeyboardButtonData("取消", "NIL")))
+
 		replyMsg := tgbotapi.NewMessage(Message.Chat.ID, "請選擇要刪除以下哪一篇文章？")
 		replyMsg.ReplyMarkup = tgbotapi.NewInlineKeyboardMarkup(ReplyMarkup...)
 
@@ -220,9 +216,10 @@ func handleCommand(Message *tgbotapi.Message) {
 		if err != nil {
 			log.Println("[delete]", err)
 		}
-		for _, DE := range tmp_modified_entries {
-			DE.ToBeDeleteMessageIDs = append(DE.ToBeDeleteMessageIDs, Msg.MessageID)
+		if _, ok := QueuedDeletes[Message.Chat.ID]; !ok {
+			QueuedDeletes[Message.Chat.ID] = make(map[int]map[string]*DeleteEntity)
 		}
+		QueuedDeletes[Message.Chat.ID][Msg.MessageID] = TB_HTB
 
 	default:
 		SendText(Message.Chat.ID, fmt.Sprintf("錯誤：我不會 “/%s” 啦QQ", Message.Command()), Message.MessageID)
@@ -454,6 +451,9 @@ func handleCallbackQuery(CallbackQuery *tgbotapi.CallbackQuery) {
 	if _, err := bot.Send(editMsg); err != nil {
 		log.Println("[CallQ]", err)
 	}
+	var (
+		ChatID = CallbackQuery.Message.Chat.ID
+	)
 	if CallbackQuery.Data == "NIL" {
 		// 否
 		// show respond
@@ -461,9 +461,31 @@ func handleCallbackQuery(CallbackQuery *tgbotapi.CallbackQuery) {
 		if _, err := bot.Request(callback); err != nil {
 			log.Println("[CallBQ]", err)
 		}
-		SendText(CallbackQuery.Message.Chat.ID, "其實不按也沒差啦 哈哈", 0)
-	} else if DEntity, ok := Deletes[CallbackQuery.Message.Chat.ID][CallbackQuery.Data]; ok {
-		var UID = CallbackQuery.Data
+		SendText(ChatID, "其實不按也沒差啦 哈哈", 0)
+		if CallbackQuery.Message.ReplyToMessage != nil {
+			bot.Request(tgbotapi.NewDeleteMessage(ChatID, CallbackQuery.Message.ReplyToMessage.MessageID))
+		}
+		bot.Request(tgbotapi.NewDeleteMessage(ChatID, CallbackQuery.Message.MessageID))
+	} else {
+		var (
+			ok      bool
+			DEntity *DeleteEntity
+			UID     string
+		)
+
+		if CallbackQuery.Message.ReplyToMessage != nil {
+			DEntity, ok = QueuedDeletes[ChatID][CallbackQuery.Message.ReplyToMessage.MessageID][CallbackQuery.Data]
+		} else {
+			DEntity, ok = QueuedDeletes[ChatID][CallbackQuery.Message.MessageID][CallbackQuery.Data]
+			delete(QueuedDeletes[ChatID][CallbackQuery.Message.MessageID], CallbackQuery.Data)
+		}
+
+		if !ok {
+			fmt.Printf("%+v\n%+v", QueuedDeletes, CallbackQuery.Message)
+			panic("HERE")
+		}
+
+		UID = DEntity.HTB.UID
 		if !DEntity.Confirmed {
 			DEntity.Confirmed = true
 			// find HTB
@@ -478,13 +500,10 @@ func handleCallbackQuery(CallbackQuery *tgbotapi.CallbackQuery) {
 			HTB := &HokTseBun{}
 			doc.Unmarshal(HTB)
 
-			raw_json := struct {
-				MID int `json:"message_id"`
-			}{}
 			// send confirmation
 			switch HTB.Type {
 			case 1:
-				replyMsg := tgbotapi.NewMessage(CallbackQuery.Message.Chat.ID, fmt.Sprintf("請再次確認是否要刪除「%s」：\n「%s」？", HTB.Keyword, HTB.Content))
+				replyMsg := tgbotapi.NewMessage(ChatID, fmt.Sprintf("請再次確認是否要刪除「%s」：\n「%s」？", HTB.Keyword, HTB.Content))
 				replyMsg.ReplyToMessageID = CallbackQuery.Message.MessageID
 				replyMsg.ReplyMarkup = tgbotapi.NewInlineKeyboardMarkup(
 					tgbotapi.NewInlineKeyboardRow(
@@ -492,14 +511,13 @@ func handleCallbackQuery(CallbackQuery *tgbotapi.CallbackQuery) {
 						tgbotapi.NewInlineKeyboardButtonData("否", "NIL"),
 					),
 				)
-				Msg, err := bot.Send(replyMsg)
+				_, err := bot.Send(replyMsg)
 				if err != nil {
 					log.Println("[CallBQ]", err)
 				}
-				DEntity.ToBeDeleteMessageIDs = append(DEntity.ToBeDeleteMessageIDs, Msg.MessageID)
 
 			case 2:
-				Config := tgbotapi.NewPhoto(CallbackQuery.Message.Chat.ID, tgbotapi.FileID(HTB.Content))
+				Config := tgbotapi.NewPhoto(ChatID, tgbotapi.FileID(HTB.Content))
 				Config.Caption = fmt.Sprintf("請再次確認是否要刪除「%s」？", HTB.Keyword)
 				Config.ReplyToMessageID = CallbackQuery.Message.MessageID
 				Config.ReplyMarkup = tgbotapi.NewInlineKeyboardMarkup(
@@ -508,15 +526,13 @@ func handleCallbackQuery(CallbackQuery *tgbotapi.CallbackQuery) {
 						tgbotapi.NewInlineKeyboardButtonData("否", "NIL"),
 					),
 				)
-				resp, err := bot.Request(Config)
+				_, err := bot.Request(Config)
 				if err != nil {
 					log.Println("[CallBQ]", err)
 				}
-				json.Unmarshal(resp.Result, &raw_json)
-				DEntity.ToBeDeleteMessageIDs = append(DEntity.ToBeDeleteMessageIDs, raw_json.MID)
 
 			case 3:
-				Config := tgbotapi.NewAnimation(CallbackQuery.Message.Chat.ID, tgbotapi.FileID(HTB.Content))
+				Config := tgbotapi.NewAnimation(ChatID, tgbotapi.FileID(HTB.Content))
 				Config.Caption = fmt.Sprintf("請再次確認是否要刪除「%s」？", HTB.Keyword)
 				Config.ReplyToMessageID = CallbackQuery.Message.MessageID
 				Config.ReplyMarkup = tgbotapi.NewInlineKeyboardMarkup(
@@ -525,15 +541,13 @@ func handleCallbackQuery(CallbackQuery *tgbotapi.CallbackQuery) {
 						tgbotapi.NewInlineKeyboardButtonData("否", "NIL"),
 					),
 				)
-				resp, err := bot.Request(Config)
+				_, err := bot.Request(Config)
 				if err != nil {
 					log.Println("[CallBQ]", err)
 				}
-				json.Unmarshal(resp.Result, &raw_json)
-				DEntity.ToBeDeleteMessageIDs = append(DEntity.ToBeDeleteMessageIDs, raw_json.MID)
 
 			case 4:
-				Config := tgbotapi.NewVideo(CallbackQuery.Message.Chat.ID, tgbotapi.FileID(HTB.Content))
+				Config := tgbotapi.NewVideo(ChatID, tgbotapi.FileID(HTB.Content))
 				Config.Caption = fmt.Sprintf("請再次確認是否要刪除「%s」？", HTB.Keyword)
 				Config.ReplyToMessageID = CallbackQuery.Message.MessageID
 				Config.ReplyMarkup = tgbotapi.NewInlineKeyboardMarkup(
@@ -542,12 +556,10 @@ func handleCallbackQuery(CallbackQuery *tgbotapi.CallbackQuery) {
 						tgbotapi.NewInlineKeyboardButtonData("否", "NIL"),
 					),
 				)
-				resp, err := bot.Request(Config)
+				_, err := bot.Request(Config)
 				if err != nil {
 					log.Println("[CallBQ]", err)
 				}
-				json.Unmarshal(resp.Result, &raw_json)
-				DEntity.ToBeDeleteMessageIDs = append(DEntity.ToBeDeleteMessageIDs, raw_json.MID)
 			}
 		} else if !DEntity.Done {
 			DEntity.Done = true
@@ -555,12 +567,15 @@ func handleCallbackQuery(CallbackQuery *tgbotapi.CallbackQuery) {
 				log.Println("[CallBQ]", err)
 				return
 			}
-			log.Printf("[DELETE] \"%s\" has been deleted!\n", DEntity.Keyword)
-			SendText(CallbackQuery.Message.Chat.ID, fmt.Sprintf("已成功刪除「%s」", DEntity.Keyword), 0)
-			for _, to_be_delete_message_id := range DEntity.ToBeDeleteMessageIDs {
-				bot.Request(tgbotapi.NewDeleteMessage(CallbackQuery.Message.Chat.ID, to_be_delete_message_id))
+			log.Printf("[DELETE] \"%s\" has been deleted!\n", DEntity.HTB.Keyword)
+			SendText(CallbackQuery.Message.Chat.ID, fmt.Sprintf("已成功刪除「%s」", DEntity.HTB.Keyword), 0)
+
+			if CallbackQuery.Message.ReplyToMessage != nil {
+				bot.Request(tgbotapi.NewDeleteMessage(ChatID, CallbackQuery.Message.ReplyToMessage.MessageID))
 			}
+			bot.Request(tgbotapi.NewDeleteMessage(ChatID, CallbackQuery.Message.MessageID))
 		}
+
 	}
 
 	// legacy code to deal with overwriting keyword:

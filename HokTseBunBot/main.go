@@ -33,6 +33,7 @@ func init() {
 	// setup log file
 	file, _ := os.OpenFile(CONFIG.SETTING.LOG_FILE, os.O_RDWR|os.O_CREATE|os.O_APPEND, 0666)
 	log.SetOutput(file)
+	log.SetFlags(log.Ldate | log.Ltime | log.Lshortfile)
 	log.Println("*** Starting Server ***")
 }
 
