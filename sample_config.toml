@@ -1,5 +1,15 @@
 [SETTING]
   LOG_FILE = "../log.log"
+  [SETTING.TYPE]
+    TXT=1
+    IMG=2
+    ANI=3
+    VID=4
+  [SETTING.NAME]
+    TXT="複製文"
+    IMG="圖片"
+    ANI="動圖"
+    VID="影片"
 
 [API]
   [API.TG]
