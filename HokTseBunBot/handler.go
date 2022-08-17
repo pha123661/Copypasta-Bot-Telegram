@@ -178,8 +178,18 @@ func handleCommand(Message *tgbotapi.Message) {
 		HTB := &HokTseBun{}
 		for idx, doc := range docs {
 			doc.Unmarshal(HTB)
-			fmt.Printf("%d. %s", idx+1, TruncateString(HTB.Content, 15))
-			ReplyMarkup = append(ReplyMarkup, tgbotapi.NewInlineKeyboardRow(tgbotapi.NewInlineKeyboardButtonData(fmt.Sprintf("%d. %s", idx+1, TruncateString(HTB.Content, 15)), HTB.UID)))
+			var ShowEntry string
+			switch {
+			case HTB.IsText():
+				ShowEntry = fmt.Sprintf("%d. %s", idx+1, TruncateString(HTB.Content, 20))
+			case HTB.IsImage():
+				type_prompt := "圖片："
+				ShowEntry = fmt.Sprintf("%d. %s%s", idx+1, type_prompt, TruncateString(HTB.Summarization, 15-utf8.RuneCountInString(type_prompt)))
+			case !HTB.IsImage() && HTB.IsMultiMedia():
+				type_prompt := "動圖："
+				ShowEntry = fmt.Sprintf("%d. %s%s", idx+1, type_prompt, TruncateString(HTB.Summarization, 15-utf8.RuneCountInString(type_prompt)))
+			}
+			ReplyMarkup = append(ReplyMarkup, tgbotapi.NewInlineKeyboardRow(tgbotapi.NewInlineKeyboardButtonData(ShowEntry, HTB.UID)))
 			Queued_Deletes[HTB.UID] = &DeleteEntity{Keyword: HTB.Keyword}
 		}
 		ReplyMarkup = append(ReplyMarkup, tgbotapi.NewInlineKeyboardRow(tgbotapi.NewInlineKeyboardButtonData("取消", "NIL")))
@@ -440,20 +450,67 @@ func handleCallbackQuery(CallbackQuery *tgbotapi.CallbackQuery) {
 			if doc == nil {
 				return
 			}
-
 			HTB := &HokTseBun{}
 			doc.Unmarshal(HTB)
+
 			// send confirmation
-			replyMsg := tgbotapi.NewMessage(CallbackQuery.Message.Chat.ID, fmt.Sprintf("請再次確認是否要刪除「%s」：\n「%s」？", HTB.Keyword, HTB.Content))
-			replyMsg.ReplyToMessageID = CallbackQuery.Message.MessageID
-			replyMsg.ReplyMarkup = tgbotapi.NewInlineKeyboardMarkup(
-				tgbotapi.NewInlineKeyboardRow(
-					tgbotapi.NewInlineKeyboardButtonData("是", UID),
-					tgbotapi.NewInlineKeyboardButtonData("否", "NIL"),
-				),
-			)
-			if _, err := bot.Send(replyMsg); err != nil {
-				log.Println("[CallBQ]", err)
+			switch HTB.Type {
+			case 1:
+				replyMsg := tgbotapi.NewMessage(CallbackQuery.Message.Chat.ID, fmt.Sprintf("請再次確認是否要刪除「%s」：\n「%s」？", HTB.Keyword, HTB.Content))
+				replyMsg.ReplyToMessageID = CallbackQuery.Message.MessageID
+				replyMsg.ReplyMarkup = tgbotapi.NewInlineKeyboardMarkup(
+					tgbotapi.NewInlineKeyboardRow(
+						tgbotapi.NewInlineKeyboardButtonData("是", UID),
+						tgbotapi.NewInlineKeyboardButtonData("否", "NIL"),
+					),
+				)
+				if _, err := bot.Send(replyMsg); err != nil {
+					log.Println("[CallBQ]", err)
+				}
+			case 2:
+				Config := tgbotapi.NewPhoto(CallbackQuery.Message.Chat.ID, tgbotapi.FileID(HTB.Content))
+				Config.Caption = fmt.Sprintf("請再次確認是否要刪除「%s」？", HTB.Keyword)
+				Config.ReplyToMessageID = CallbackQuery.Message.MessageID
+				Config.ReplyMarkup = tgbotapi.NewInlineKeyboardMarkup(
+					tgbotapi.NewInlineKeyboardRow(
+						tgbotapi.NewInlineKeyboardButtonData("是", UID),
+						tgbotapi.NewInlineKeyboardButtonData("否", "NIL"),
+					),
+				)
+				_, err = bot.Request(Config)
+				if err != nil {
+					log.Println("[CallBQ]", err)
+				}
+
+			case 3:
+				Config := tgbotapi.NewAnimation(CallbackQuery.Message.Chat.ID, tgbotapi.FileID(HTB.Content))
+				Config.Caption = fmt.Sprintf("請再次確認是否要刪除「%s」？", HTB.Keyword)
+				Config.ReplyToMessageID = CallbackQuery.Message.MessageID
+				Config.ReplyMarkup = tgbotapi.NewInlineKeyboardMarkup(
+					tgbotapi.NewInlineKeyboardRow(
+						tgbotapi.NewInlineKeyboardButtonData("是", UID),
+						tgbotapi.NewInlineKeyboardButtonData("否", "NIL"),
+					),
+				)
+				_, err = bot.Request(Config)
+				if err != nil {
+					log.Println("[CallBQ]", err)
+				}
+
+			case 4:
+				Config := tgbotapi.NewVideo(CallbackQuery.Message.Chat.ID, tgbotapi.FileID(HTB.Content))
+				Config.Caption = fmt.Sprintf("請再次確認是否要刪除「%s」？", HTB.Keyword)
+				Config.ReplyToMessageID = CallbackQuery.Message.MessageID
+				Config.ReplyMarkup = tgbotapi.NewInlineKeyboardMarkup(
+					tgbotapi.NewInlineKeyboardRow(
+						tgbotapi.NewInlineKeyboardButtonData("是", UID),
+						tgbotapi.NewInlineKeyboardButtonData("否", "NIL"),
+					),
+				)
+				_, err = bot.Request(Config)
+				if err != nil {
+					log.Println("[CallBQ]", err)
+				}
 			}
 		} else if !DEntity.Done {
 			DEntity.Done = true
