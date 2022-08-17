@@ -34,6 +34,7 @@ type Config_Type struct {
 	DB struct {
 		DIR        string
 		COLLECTION string
+		EXPORT_DIR string
 	}
 }
 
@@ -51,14 +52,16 @@ func InitConfig(CONFIG_PATH string) {
 	toml.NewEncoder(buf).Encode(CONFIG)
 	fmt.Printf("********************\nConfig Loaded:\n%s\n********************\n", buf.String())
 
-	// var CreateDirIfNotExist = func(path string) {
-	// 	if _, err := os.Stat(path); os.IsNotExist(err) {
-	// 		errr := os.Mkdir(path, 0755)
-	// 		if errr != nil {
-	// 			log.Panicln("[InitConfig]", errr)
-	// 		}
-	// 	}
-	// }
+	var CreateDirIfNotExist = func(path string) {
+		if _, err := os.Stat(path); os.IsNotExist(err) {
+			errr := os.Mkdir(path, 0755)
+			if errr != nil {
+				log.Panicln("[InitConfig]", errr)
+			}
+		}
+	}
+
+	CreateDirIfNotExist(CONFIG.DB.EXPORT_DIR)
 }
 
 func TruncateString(text string, width int) string {

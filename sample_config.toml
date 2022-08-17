@@ -14,3 +14,4 @@
 [DB]
   DIR = "../HokTseBun_db"
   COLLECTION = "Copypasta"
+  EXPORT_DIR = "../HokTseBunArchive"

@@ -80,6 +80,8 @@ func main() {
 		case update.CallbackQuery != nil:
 			// handle callback query
 			go handleCallbackQuery(update.CallbackQuery)
+			// case update.MyChatMember != nil:
+			// 	// get invited in a group
 		}
 	}
 }

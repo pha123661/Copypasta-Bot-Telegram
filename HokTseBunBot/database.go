@@ -3,7 +3,6 @@ package main
 import (
 	"fmt"
 	"log"
-	"sync"
 	"time"
 
 	c "github.com/ostafen/clover/v2"
@@ -50,67 +49,72 @@ func InitDB() {
 	if err != nil {
 		log.Panicln("[InitDB]", err)
 	}
-	DB.CreateCollection(CONFIG.DB.COLLECTION)
-	DB.ExportCollection(CONFIG.DB.COLLECTION, fmt.Sprintf("../BACKUP_%s.json", CONFIG.DB.COLLECTION))
+
+	Collections, _ := DB.ListCollections()
+	for idx, Collection := range Collections {
+		DB.ExportCollection(Collection, fmt.Sprintf("%s/%d-BACKUP_%s.json", CONFIG.DB.EXPORT_DIR, idx, Collection))
+	}
+	// DB.CreateCollection(CONFIG.DB.COLLECTION)
+	// DB.ExportCollection(CONFIG.DB.COLLECTION, fmt.Sprintf("../BACKUP_%s.json", CONFIG.DB.COLLECTION))
 	// DB.DropCollection(CONFIG.DB.COLLECTION)
 	// DB.ImportCollection(CONFIG.DB.COLLECTION, "../BACKUP_Copypasta.json")
 
 	// update out-dated documents
-	var wg = &sync.WaitGroup{}
+	// var wg = &sync.WaitGroup{}
 
-	semaphore := make(chan struct{}, 5) // maximum limit of chan, blocks when full
+	// semaphore := make(chan struct{}, 5) // maximum limit of chan, blocks when full
 
-	Criteria := c.Field("Type").Gt(1).And(c.Field("URL").Eq("").Or(c.Field("Summarization").Eq("")))
-	docs, _ := DB.FindAll(c.NewQuery(CONFIG.DB.COLLECTION).Where(Criteria))
-	for _, doc := range docs {
-		HTB := &HokTseBun{}
-		err := doc.Unmarshal(HTB)
-		if err != nil {
-			fmt.Println(err)
-		}
-		// Update media files' URLs
-		if HTB.IsMultiMedia() && HTB.URL == "" {
-			func() {
-				defer func() { fmt.Printf("[Done] Update URL for %s, %s\n", HTB.Keyword, HTB.URL) }()
+	// Criteria := c.Field("Type").Gt(1).And(c.Field("URL").Eq("").Or(c.Field("Summarization").Eq("")))
+	// docs, _ := DB.FindAll(c.NewQuery(CONFIG.DB.COLLECTION).Where(Criteria))
+	// for _, doc := range docs {
+	// 	HTB := &HokTseBun{}
+	// 	err := doc.Unmarshal(HTB)
+	// 	if err != nil {
+	// 		fmt.Println(err)
+	// 	}
+	// 	// Update media files' URLs
+	// 	if HTB.IsMultiMedia() && HTB.URL == "" {
+	// 		func() {
+	// 			defer func() { fmt.Printf("[Done] Update URL for %s, %s\n", HTB.Keyword, HTB.URL) }()
 
-				URL, err := bot.GetFileDirectURL(HTB.Content)
-				if err != nil {
-					return // give up
-				}
-				DB.UpdateById(CONFIG.DB.COLLECTION, HTB.UID, Dict{"URL": URL})
-			}()
-		}
-		// User re-upload
-		if (HTB.IsAnimation() || HTB.IsVideo()) && HTB.Summarization == "" {
-			fmt.Println(HTB.Keyword, "has no summarization")
-		}
-		// Update image captions
-		if HTB.IsImage() && HTB.Summarization == "" {
-			wg.Add(1)
-			// add caption
-			go func() {
-				semaphore <- struct{}{} // acquire to work (channel), blocks when the channel is full
-				defer func() {
-					wg.Done()
-					<-semaphore // release
-					fmt.Printf("[Done] Image %s: %s\n", HTB.Keyword, HTB.Summarization)
-				}()
+	// 			URL, err := bot.GetFileDirectURL(HTB.Content)
+	// 			if err != nil {
+	// 				return // give up
+	// 			}
+	// 			DB.UpdateById(CONFIG.DB.COLLECTION, HTB.UID, Dict{"URL": URL})
+	// 		}()
+	// 	}
+	// 	// User re-upload
+	// 	if (HTB.IsAnimation() || HTB.IsVideo()) && HTB.Summarization == "" {
+	// 		fmt.Println(HTB.Keyword, "has no summarization")
+	// 	}
+	// 	// Update image captions
+	// 	if HTB.IsImage() && HTB.Summarization == "" {
+	// 		wg.Add(1)
+	// 		// add caption
+	// 		go func() {
+	// 			semaphore <- struct{}{} // acquire to work (channel), blocks when the channel is full
+	// 			defer func() {
+	// 				wg.Done()
+	// 				<-semaphore // release
+	// 				fmt.Printf("[Done] Image %s: %s\n", HTB.Keyword, HTB.Summarization)
+	// 			}()
 
-				fmt.Printf("[Updating] Image %s\n", HTB.Keyword)
-				if HTB.URL == "" {
-					URL, err := bot.GetFileDirectURL(HTB.Content)
-					if err != nil {
-						return // give up
-					}
-					HTB.URL = URL
-				}
-				Cap := ImageCaptioning(HTB.Keyword, HTB.URL)
-				DB.UpdateById(CONFIG.DB.COLLECTION, HTB.UID, Dict{"Summarization": Cap})
-			}()
-			time.Sleep(3 * time.Second)
-		}
-	}
-	wg.Wait() // wait for all updates to finish
+	// 			fmt.Printf("[Updating] Image %s\n", HTB.Keyword)
+	// 			if HTB.URL == "" {
+	// 				URL, err := bot.GetFileDirectURL(HTB.Content)
+	// 				if err != nil {
+	// 					return // give up
+	// 				}
+	// 				HTB.URL = URL
+	// 			}
+	// 			Cap := ImageCaptioning(HTB.Keyword, HTB.URL)
+	// 			DB.UpdateById(CONFIG.DB.COLLECTION, HTB.UID, Dict{"Summarization": Cap})
+	// 		}()
+	// 		time.Sleep(3 * time.Second)
+	// 	}
+	// }
+	// wg.Wait() // wait for all updates to finish
 }
 
 func InsertHTB(Collection string, HTB *HokTseBun) (string, error) {
