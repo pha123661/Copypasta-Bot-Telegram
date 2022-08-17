@@ -33,9 +33,13 @@ type Config_Type struct {
 
 	DB struct {
 		DIR        string
-		COLLECTION string
+		CFormat    string
 		EXPORT_DIR string
 	}
+}
+
+func (Config Config_Type) GetNamebyChatID(ChatID int64) string {
+	return fmt.Sprintf(CONFIG.DB.CFormat, ChatID)
 }
 
 func InitConfig(CONFIG_PATH string) {

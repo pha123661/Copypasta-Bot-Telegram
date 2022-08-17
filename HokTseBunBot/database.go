@@ -129,7 +129,7 @@ func InsertHTB(Collection string, HTB *HokTseBun) (string, error) {
 		"CreateTime":    time.Now(),
 	})
 
-	_id, err := DB.InsertOne(CONFIG.DB.COLLECTION, doc)
+	_id, err := DB.InsertOne(Collection, doc)
 	if err != nil {
 		log.Println("[InsertHTB]", err)
 		return "", err
