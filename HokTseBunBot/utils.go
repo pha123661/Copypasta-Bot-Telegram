@@ -17,6 +17,18 @@ var CONFIG Config_Type
 type Config_Type struct {
 	SETTING struct {
 		LOG_FILE string
+		TYPE     struct {
+			TXT int
+			IMG int
+			ANI int
+			VID int
+		}
+		NAME struct {
+			TXT string
+			IMG string
+			ANI string
+			VID string
+		}
 	}
 
 	API struct {
@@ -40,6 +52,21 @@ type Config_Type struct {
 
 func (Config Config_Type) GetNamebyChatID(ChatID int64) string {
 	return fmt.Sprintf(CONFIG.DB.CFormat, ChatID)
+}
+
+func (Config Config_Type) GetNameByType(Type int) string {
+	switch Type {
+	case Config.SETTING.TYPE.TXT:
+		return Config.SETTING.NAME.TXT
+	case Config.SETTING.TYPE.IMG:
+		return Config.SETTING.NAME.IMG
+	case Config.SETTING.TYPE.ANI:
+		return Config.SETTING.NAME.ANI
+	case Config.SETTING.TYPE.VID:
+		return Config.SETTING.NAME.VID
+	default:
+		return "大便"
+	}
 }
 
 func InitConfig(CONFIG_PATH string) {

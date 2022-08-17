@@ -25,55 +25,255 @@ type DeleteEntity struct {
 	Done      bool
 }
 
+func randomHandler(Message *tgbotapi.Message) {
+	var Query *c.Query
+	switch Message.Command() {
+	case "randomImage":
+		Criteria := c.Field("Type").Eq(2)
+		Query = c.NewQuery(CONFIG.GetNamebyChatID(Message.Chat.ID)).Where(Criteria)
+	case "randomText":
+		Criteria := c.Field("Type").Eq(1)
+		Query = c.NewQuery(CONFIG.GetNamebyChatID(Message.Chat.ID)).Where(Criteria)
+	default:
+		Query = c.NewQuery(CONFIG.GetNamebyChatID(Message.Chat.ID))
+	}
+	docs, err := DB.FindAll(Query)
+	if err != nil {
+		log.Println("[random]", err)
+		SendText(Message.Chat.ID, fmt.Sprintf("錯誤：%s", err), 0)
+		return
+	}
+	if len(docs) <= 0 {
+		SendText(Message.Chat.ID, "資料庫沒東西是在抽屁", 0)
+		return
+	}
+	RandomIndex := rand.Intn(len(docs))
+	fmt.Println(len(docs), RandomIndex)
+
+	var HTB *HokTseBun = &HokTseBun{}
+	for idx, doc := range docs {
+		fmt.Println(idx, RandomIndex)
+		if idx == RandomIndex {
+			doc.Unmarshal(HTB)
+			fmt.Printf("%+v\n%+v\n", doc, HTB)
+			break
+		}
+	}
+
+	switch {
+	case HTB.IsText():
+		SendText(Message.Chat.ID, fmt.Sprintf("幫你從 %d 坨大便中精心選擇了「%s」：\n%s", len(docs), HTB.Keyword, HTB.Content), 0)
+	case HTB.IsMultiMedia():
+		SendMultiMedia(Message.Chat.ID, fmt.Sprintf("幫你從 %d 坨大便中精心選擇了「%s」", len(docs), HTB.Keyword), HTB.Content, HTB.Type)
+	default:
+		SendText(Message.Chat.ID, fmt.Sprintf("發生了奇怪的錯誤，送不出去這個東西：%+v", HTB), 0)
+	}
+}
+
+func addHandler(Message *tgbotapi.Message, Keyword, Content string, Type int) {
+	// check Keyword length
+	if utf8.RuneCountInString(Keyword) >= 30 {
+		SendText(Message.Chat.ID, fmt.Sprintf("關鍵字長度不可大於 30, 目前爲 %d 字”", utf8.RuneCountInString(Keyword)), Message.MessageID)
+		return
+	}
+	// check content length
+	if utf8.RuneCountInString(Content) >= 4000 {
+		SendText(Message.Chat.ID, fmt.Sprintf("內容長度不可大於 4000, 目前爲 %d 字”", utf8.RuneCountInString(Content)), Message.MessageID)
+		return
+	}
+	// find existing files
+	Criteria := c.Field("Type").Eq(Type).And(c.Field("Keyword").Eq(Keyword).And(c.Field("Content").Eq(Content)))
+	if doc, _ := DB.FindFirst(c.NewQuery(CONFIG.GetNamebyChatID(Message.Chat.ID)).Where(Criteria)); doc != nil {
+		SendText(Message.Chat.ID, "傳過了啦 腦霧?", Message.MessageID)
+		return
+	}
+
+	// Create tmp message
+	to_be_delete_message := SendText(Message.Chat.ID, "運算中，請稍後……", Message.MessageID)
+	// Insert HTB
+	var Sum string
+	var URL string
+	var err error
+	switch Type {
+	case CONFIG.SETTING.TYPE.TXT:
+		Sum = TextSummarization(Keyword, Content)
+		URL = ""
+	case CONFIG.SETTING.TYPE.IMG:
+		URL, err := bot.GetFileDirectURL(Content)
+		if err != nil {
+			log.Println("[HandleImg]", err)
+			SendText(Message.Chat.ID, fmt.Sprintf("新增%s「%s」失敗：%s", CONFIG.GetNameByType(CONFIG.SETTING.TYPE.IMG), Keyword, err), Message.MessageID)
+			Sum = ""
+		} else {
+			Sum = ImageCaptioning(Keyword, URL)
+		}
+	case CONFIG.SETTING.TYPE.ANI:
+		// get url
+		URL, err = bot.GetFileDirectURL(Content)
+		if err != nil {
+			log.Println("[handleAni]", err)
+		}
+		// get caption by thumbnail
+		Thumb_URL, err := bot.GetFileDirectURL(Message.Animation.Thumbnail.FileID)
+		if err != nil {
+			log.Println("[handleAni]", err)
+		}
+		Sum = ImageCaptioning(Keyword, Thumb_URL)
+	case CONFIG.SETTING.TYPE.VID:
+		// get url
+		URL, err = bot.GetFileDirectURL(Content)
+		if err != nil {
+			log.Println("[handleVid]", err)
+		}
+		// get caption by thumbnail
+		Thumb_URL, err := bot.GetFileDirectURL(Message.Video.Thumbnail.FileID)
+		if err != nil {
+			log.Println("[handleVid]", err)
+		}
+		Sum = ImageCaptioning(Keyword, Thumb_URL)
+	}
+	// Delete tmp message
+	bot.Request(tgbotapi.NewDeleteMessage(Message.Chat.ID, to_be_delete_message.MessageID))
+
+	_, err = InsertHTB(
+		CONFIG.GetNamebyChatID(Message.Chat.ID),
+		&HokTseBun{
+			Type:          Type,
+			Keyword:       Keyword,
+			Summarization: Sum,
+			Content:       Content,
+			URL:           URL,
+			From:          Message.From.ID,
+		},
+	)
+	// send response to user
+	if err != nil {
+		log.Println("[new]", err)
+		SendText(Message.Chat.ID, fmt.Sprintf("新增%s「%s」失敗：%s", CONFIG.GetNameByType(Type), Keyword, err), Message.MessageID)
+	} else {
+		SendText(Message.Chat.ID, fmt.Sprintf("新增%s「%s」成功，\n自動生成的摘要如下：「%s」", CONFIG.GetNameByType(Type), Keyword, Sum), Message.MessageID)
+	}
+}
+
+func searchHandler(Message *tgbotapi.Message) {
+	var (
+		Query       string = Message.CommandArguments()
+		ResultCount int    = 0
+		MaxResults  int    = 25
+	)
+
+	if utf8.RuneCountInString(Query) >= 200 || utf8.RuneCountInString(Query) == 0 {
+		SendText(Message.Chat.ID, fmt.Sprintf("關鍵字要介於1 ~ 200字，不然我的CPU要燒了，目前爲%d字", utf8.RuneCountInString(Query)), 0)
+		return
+	}
+
+	SendText(Message.From.ID, fmt.Sprintf("「%s」的搜尋結果如下：", Query), 0)
+
+	if Message.Chat.ID != Message.From.ID {
+		SendText(Message.Chat.ID, "正在搜尋中…… 請稍後", 0)
+	}
+
+	// search
+	docs, _ := DB.FindAll(c.NewQuery(CONFIG.GetNamebyChatID(Message.Chat.ID)).Sort(c.SortOption{Field: "Type", Direction: 1}))
+	HTB := &HokTseBun{}
+	for _, doc := range docs {
+		if ResultCount >= MaxResults {
+			ResultCount++
+			break
+		}
+		doc.Unmarshal(HTB)
+		if fuzzy.Match(Query, HTB.Keyword) || fuzzy.Match(HTB.Keyword, Query) || fuzzy.Match(Query, HTB.Summarization) || (fuzzy.Match(Query, HTB.Content) && HTB.IsText()) {
+			switch {
+			case HTB.IsText():
+				SendText(Message.From.ID, fmt.Sprintf("名稱：「%s」\n摘要：「%s」\n內容：「%s」", HTB.Keyword, HTB.Summarization, HTB.Content), 0)
+			case HTB.IsMultiMedia():
+				SendMultiMedia(Message.From.ID, fmt.Sprintf("名稱：「%s」\n描述：「%s」", HTB.Keyword, HTB.Summarization), HTB.Content, HTB.Type)
+			}
+			ResultCount++
+		}
+	}
+
+	if ResultCount <= MaxResults {
+		SendText(Message.From.ID, fmt.Sprintf("搜尋完成，共 %d 筆吻合\n", ResultCount), 0)
+		if Message.Chat.ID != Message.From.ID {
+			SendText(Message.Chat.ID, fmt.Sprintf("搜尋完成，共 %d 筆吻合\n(結果在與bot的私訊中)", ResultCount), 0)
+		}
+	} else {
+		SendText(Message.From.ID, fmt.Sprintf("搜尋完成，結果超過%d筆上限，請嘗試更換關鍵字", MaxResults), 0)
+		if Message.Chat.ID != Message.From.ID {
+			SendText(Message.Chat.ID, fmt.Sprintf("搜尋完成，結果超過%d筆上限，請嘗試更換關鍵字\n(結果在與bot的私訊中)", MaxResults), 0)
+		}
+	}
+}
+
+func deleteHandler(Message *tgbotapi.Message) {
+	var BeDeletedKeyword = Message.CommandArguments()
+	if BeDeletedKeyword == "" {
+		SendText(Message.Chat.ID, "請輸入關鍵字", Message.MessageID)
+		return
+	}
+	if utf8.RuneCountInString(BeDeletedKeyword) >= 30 {
+		SendText(Message.Chat.ID, fmt.Sprintf("關鍵字長度不可大於 30, 目前爲 %d 字”", utf8.RuneCountInString(BeDeletedKeyword)), Message.MessageID)
+		return
+	}
+	Criteria := c.Field("Keyword").Eq(BeDeletedKeyword)
+	docs, err := DB.FindAll(c.NewQuery(CONFIG.GetNamebyChatID(Message.Chat.ID)).Where(Criteria))
+	if err != nil {
+		log.Println("[delete]", err)
+		SendText(Message.Chat.ID, fmt.Sprintf("刪除「%s」失敗：%s", BeDeletedKeyword, err), Message.MessageID)
+		return
+	}
+	if len(docs) <= 0 {
+		SendText(Message.Chat.ID, "沒有大便符合關鍵字", Message.MessageID)
+		return
+	}
+
+	ReplyMarkup := make([][]tgbotapi.InlineKeyboardButton, 0, len(docs))
+	TB_HTB := make(map[string]*DeleteEntity)
+	for idx, doc := range docs {
+		HTB := &HokTseBun{}
+		doc.Unmarshal(HTB)
+		var ShowEntry string
+		switch {
+		case HTB.IsText():
+			ShowEntry = fmt.Sprintf("%d. %s", idx+1, TruncateString(HTB.Content, 20))
+		case HTB.IsImage():
+			type_prompt := "圖片："
+			ShowEntry = fmt.Sprintf("%d. %s%s", idx+1, type_prompt, TruncateString(HTB.Summarization, 15-utf8.RuneCountInString(type_prompt)))
+		case !HTB.IsImage() && HTB.IsMultiMedia():
+			type_prompt := "動圖："
+			ShowEntry = fmt.Sprintf("%d. %s%s", idx+1, type_prompt, TruncateString(HTB.Summarization, 15-utf8.RuneCountInString(type_prompt)))
+		}
+		ReplyMarkup = append(ReplyMarkup, tgbotapi.NewInlineKeyboardRow(tgbotapi.NewInlineKeyboardButtonData(ShowEntry, HTB.UID)))
+		TB_HTB[HTB.UID] = &DeleteEntity{HTB: *HTB}
+	}
+	ReplyMarkup = append(ReplyMarkup, tgbotapi.NewInlineKeyboardRow(tgbotapi.NewInlineKeyboardButtonData("❌", "NIL")))
+
+	replyMsg := tgbotapi.NewMessage(Message.Chat.ID, "請選擇要刪除以下哪個？")
+	replyMsg.ReplyMarkup = tgbotapi.NewInlineKeyboardMarkup(ReplyMarkup...)
+
+	Msg, err := bot.Send(replyMsg)
+	if err != nil {
+		log.Println("[delete]", err)
+	}
+	if _, ok := QueuedDeletes[Message.Chat.ID]; !ok {
+		QueuedDeletes[Message.Chat.ID] = make(map[int]map[string]*DeleteEntity)
+	}
+	QueuedDeletes[Message.Chat.ID][Msg.MessageID] = TB_HTB
+}
+
 func handleCommand(Message *tgbotapi.Message) {
 	// handle commands
 	switch Message.Command() {
 	case "start":
-	// 	// Startup
-	// 	SendText(Message.Chat.ID, "歡迎使用，使用方式可以參考我的github: https://github.com/pha123661/Hok_tse_bun_tgbot", 0)
-	case "manual_init_chat":
+		// 	// Startup
+		// 	SendText(Message.Chat.ID, "歡迎使用，使用方式可以參考我的github: https://github.com/pha123661/Hok_tse_bun_tgbot", 0)
 		NewChat(Message.Chat.ID)
 	case "echo":
 		// Echo
 		SendText(Message.Chat.ID, Message.CommandArguments(), Message.MessageID)
 	case "random", "randomImage", "randomText":
-		var Query *c.Query
-		switch Message.Command() {
-		case "randomImage":
-			Criteria := c.Field("Type").Eq(2)
-			Query = c.NewQuery(CONFIG.GetNamebyChatID(Message.Chat.ID)).Where(Criteria)
-		case "randomText":
-			Criteria := c.Field("Type").Eq(1)
-			Query = c.NewQuery(CONFIG.GetNamebyChatID(Message.Chat.ID)).Where(Criteria)
-		default:
-			Query = c.NewQuery(CONFIG.GetNamebyChatID(Message.Chat.ID))
-		}
-		docs, err := DB.FindAll(Query)
-		if err != nil {
-			log.Println("[random]", err)
-			SendText(Message.Chat.ID, fmt.Sprintf("錯誤：%s", err), 0)
-			return
-		}
-		if len(docs) <= 0 {
-			SendText(Message.Chat.ID, "資料庫沒東西是在抽屁", 0)
-			return
-		}
-		RandomIndex := rand.Intn(len(docs))
-
-		var HTB *HokTseBun = &HokTseBun{}
-		for idx, doc := range docs {
-			if idx == RandomIndex {
-				doc.Unmarshal(HTB)
-				break
-			}
-		}
-		switch {
-		case HTB.IsText():
-			SendText(Message.Chat.ID, fmt.Sprintf("幫你從 %d 坨大便中精心選擇了「%s」：\n%s", len(docs), HTB.Keyword, HTB.Content), 0)
-		case HTB.IsImage():
-			SendMultiMedia(Message.Chat.ID, fmt.Sprintf("幫你從 %d 坨大便中精心選擇了「%s」", len(docs), HTB.Keyword), HTB.Content, HTB.Type)
-		}
-
+		randomHandler(Message)
 	case "new", "add": // new hok tse bun
 		// Parse command
 		Command_Args := strings.Fields(Message.CommandArguments())
@@ -83,148 +283,11 @@ func handleCommand(Message *tgbotapi.Message) {
 		}
 		var Keyword string = Command_Args[0]
 		var Content string = strings.TrimSpace(Message.Text[strings.Index(Message.Text, Command_Args[1]):])
-
-		if utf8.RuneCountInString(Keyword) >= 30 {
-			SendText(Message.Chat.ID, fmt.Sprintf("關鍵字長度不可大於 30, 目前爲 %d 字”", utf8.RuneCountInString(Keyword)), Message.MessageID)
-			return
-		}
-
-		// find existing images
-		Criteria := c.Field("Keyword").Eq(Keyword).And(c.Field("Content").Eq(Content))
-		if doc, _ := DB.FindFirst(c.NewQuery(CONFIG.GetNamebyChatID(Message.Chat.ID)).Where(Criteria)); doc != nil {
-			SendText(Message.Chat.ID, "傳過了啦 腦霧?", Message.MessageID)
-			return
-		}
-
-		// Create tmp message
-		to_be_delete_message := SendText(Message.Chat.ID, "運算中，請稍後……", Message.MessageID)
-		// Insert HTB
-		var Sum = TextSummarization(Keyword, Content)
-		var err error
-		// Delete tmp message
-		bot.Request(tgbotapi.NewDeleteMessage(Message.Chat.ID, to_be_delete_message.MessageID))
-		_, err = InsertHTB(
-			CONFIG.GetNamebyChatID(Message.Chat.ID),
-			&HokTseBun{
-				Type:          1,
-				Keyword:       Keyword,
-				Summarization: Sum,
-				Content:       Content,
-				URL:           "", // text has no url
-				From:          Message.From.ID,
-			},
-		)
-		// send response to user
-		if err != nil {
-			log.Println("[new]", err)
-			SendText(Message.Chat.ID, fmt.Sprintf("新增複製文「%s」失敗：%s", Keyword, err), Message.MessageID)
-		} else {
-			SendText(Message.Chat.ID, fmt.Sprintf("新增複製文「%s」成功，\n自動生成的摘要如下：「%s」", Keyword, Sum), Message.MessageID)
-		}
+		addHandler(Message, Keyword, Content, CONFIG.SETTING.TYPE.TXT)
 	case "search":
-		var (
-			Query       string = Message.CommandArguments()
-			ResultCount int    = 0
-			MaxResults  int    = 25
-		)
-
-		if utf8.RuneCountInString(Query) >= 200 || utf8.RuneCountInString(Query) == 0 {
-			SendText(Message.Chat.ID, fmt.Sprintf("關鍵字要介於1 ~ 200字，不然我的CPU要燒了，目前爲%d字", utf8.RuneCountInString(Query)), 0)
-			return
-		}
-
-		SendText(Message.From.ID, fmt.Sprintf("「%s」的搜尋結果如下：", Query), 0)
-
-		if Message.Chat.ID != Message.From.ID {
-			SendText(Message.Chat.ID, "正在搜尋中…… 請稍後", 0)
-		}
-
-		// search
-		docs, _ := DB.FindAll(c.NewQuery(CONFIG.GetNamebyChatID(Message.Chat.ID)))
-		HTB := &HokTseBun{}
-		for _, doc := range docs {
-			if ResultCount >= MaxResults {
-				ResultCount++
-				break
-			}
-			doc.Unmarshal(HTB)
-			if fuzzy.Match(Query, HTB.Keyword) || fuzzy.Match(HTB.Keyword, Query) || fuzzy.Match(Query, HTB.Summarization) || (fuzzy.Match(Query, HTB.Content) && HTB.IsText()) {
-				switch {
-				case HTB.IsText():
-					SendText(Message.From.ID, fmt.Sprintf("名稱：「%s」\n摘要：「%s」\n內容：「%s」", HTB.Keyword, HTB.Summarization, HTB.Content), 0)
-				case HTB.IsMultiMedia():
-					SendMultiMedia(Message.From.ID, fmt.Sprintf("名稱：「%s」\n描述：「%s」", HTB.Keyword, HTB.Summarization), HTB.Content, HTB.Type)
-				}
-				ResultCount++
-			}
-		}
-
-		if ResultCount <= MaxResults {
-			SendText(Message.From.ID, fmt.Sprintf("搜尋完成，共 %d 筆吻合\n", ResultCount), 0)
-			if Message.Chat.ID != Message.From.ID {
-				SendText(Message.Chat.ID, fmt.Sprintf("搜尋完成，共 %d 筆吻合\n(結果在與bot的私訊中)", ResultCount), 0)
-			}
-		} else {
-			SendText(Message.From.ID, fmt.Sprintf("搜尋完成，結果超過%d筆上限，請嘗試更換關鍵字", MaxResults), 0)
-			if Message.Chat.ID != Message.From.ID {
-				SendText(Message.Chat.ID, fmt.Sprintf("搜尋完成，結果超過%d筆上限，請嘗試更換關鍵字\n(結果在與bot的私訊中)", MaxResults), 0)
-			}
-		}
+		searchHandler(Message)
 	case "delete":
-		var BeDeletedKeyword = Message.CommandArguments()
-		if BeDeletedKeyword == "" {
-			SendText(Message.Chat.ID, "請輸入關鍵字", Message.MessageID)
-			return
-		}
-		if utf8.RuneCountInString(BeDeletedKeyword) >= 30 {
-			SendText(Message.Chat.ID, fmt.Sprintf("關鍵字長度不可大於 30, 目前爲 %d 字”", utf8.RuneCountInString(BeDeletedKeyword)), Message.MessageID)
-			return
-		}
-		Criteria := c.Field("Keyword").Eq(BeDeletedKeyword)
-		docs, err := DB.FindAll(c.NewQuery(CONFIG.GetNamebyChatID(Message.Chat.ID)).Where(Criteria))
-		if err != nil {
-			log.Println("[delete]", err)
-			SendText(Message.Chat.ID, fmt.Sprintf("刪除複製文「%s」失敗：%s", BeDeletedKeyword, err), Message.MessageID)
-			return
-		}
-		if len(docs) <= 0 {
-			SendText(Message.Chat.ID, "沒有文章符合關鍵字", Message.MessageID)
-			return
-		}
-
-		ReplyMarkup := make([][]tgbotapi.InlineKeyboardButton, 0, len(docs))
-		TB_HTB := make(map[string]*DeleteEntity)
-		for idx, doc := range docs {
-			HTB := &HokTseBun{}
-			doc.Unmarshal(HTB)
-			var ShowEntry string
-			switch {
-			case HTB.IsText():
-				ShowEntry = fmt.Sprintf("%d. %s", idx+1, TruncateString(HTB.Content, 20))
-			case HTB.IsImage():
-				type_prompt := "圖片："
-				ShowEntry = fmt.Sprintf("%d. %s%s", idx+1, type_prompt, TruncateString(HTB.Summarization, 15-utf8.RuneCountInString(type_prompt)))
-			case !HTB.IsImage() && HTB.IsMultiMedia():
-				type_prompt := "動圖："
-				ShowEntry = fmt.Sprintf("%d. %s%s", idx+1, type_prompt, TruncateString(HTB.Summarization, 15-utf8.RuneCountInString(type_prompt)))
-			}
-			ReplyMarkup = append(ReplyMarkup, tgbotapi.NewInlineKeyboardRow(tgbotapi.NewInlineKeyboardButtonData(ShowEntry, HTB.UID)))
-			TB_HTB[HTB.UID] = &DeleteEntity{HTB: *HTB}
-		}
-		ReplyMarkup = append(ReplyMarkup, tgbotapi.NewInlineKeyboardRow(tgbotapi.NewInlineKeyboardButtonData("❌", "NIL")))
-
-		replyMsg := tgbotapi.NewMessage(Message.Chat.ID, "請選擇要刪除以下哪一篇文章？")
-		replyMsg.ReplyMarkup = tgbotapi.NewInlineKeyboardMarkup(ReplyMarkup...)
-
-		Msg, err := bot.Send(replyMsg)
-		if err != nil {
-			log.Println("[delete]", err)
-		}
-		if _, ok := QueuedDeletes[Message.Chat.ID]; !ok {
-			QueuedDeletes[Message.Chat.ID] = make(map[int]map[string]*DeleteEntity)
-		}
-		QueuedDeletes[Message.Chat.ID][Msg.MessageID] = TB_HTB
-
+		deleteHandler(Message)
 	default:
 		SendText(Message.Chat.ID, fmt.Sprintf("錯誤：我不會 “/%s” 啦QQ", Message.Command()), Message.MessageID)
 	}
@@ -317,60 +380,34 @@ func handleImageMessage(Message *tgbotapi.Message) {
 		return
 	}
 
-	// find existing images
-	Criteria := c.Field("Keyword").Eq(Keyword).And(c.Field("Content").Eq(Content))
-	if doc, _ := DB.FindFirst(c.NewQuery(CONFIG.GetNamebyChatID(Message.Chat.ID)).Where(Criteria)); doc != nil {
-		SendText(Message.Chat.ID, "傳過了啦 腦霧?", Message.MessageID)
-		return
-	}
-
-	var Cap string
-	// Send tmp message
-	to_be_delete_message := SendText(Message.Chat.ID, "運算中，請稍後……", Message.MessageID)
-	URL, err := bot.GetFileDirectURL(Content)
-	if err != nil {
-		log.Println("[HandleImg]", err)
-		SendText(Message.Chat.ID, fmt.Sprintf("新增圖片「%s」失敗：%s", Keyword, err), Message.MessageID)
-		Cap = ""
-	} else {
-		Cap = ImageCaptioning(Keyword, URL)
-	}
-	// Delete tmp message
-	bot.Request(tgbotapi.NewDeleteMessage(Message.Chat.ID, to_be_delete_message.MessageID))
-
-	_, err = InsertHTB(
-		CONFIG.GetNamebyChatID(Message.Chat.ID),
-		&HokTseBun{
-			Type:          2,
-			Keyword:       Keyword,
-			Summarization: Cap,
-			Content:       Content,
-			URL:           URL,
-			From:          Message.From.ID,
-		},
-	)
-	// send response to user
-	if err != nil {
-		log.Println("[HandleImg]", err)
-		SendText(Message.Chat.ID, fmt.Sprintf("新增圖片「%s」失敗：%s", Keyword, err), Message.MessageID)
-	} else {
-		SendText(Message.Chat.ID, fmt.Sprintf("新增圖片「%s」成功，\n自動生成的描述如下：「%s」", Keyword, Cap), Message.MessageID)
-	}
-
+	addHandler(Message, Keyword, Content, CONFIG.SETTING.TYPE.IMG)
 }
 
 func handleAnimatedMessage(Message *tgbotapi.Message) {
 	if Message.Caption == "" {
 		return
 	}
-	// check file size
-	var MaxFileSize int = 20 * 1000 * 1000
-	var FileSize int
-	if Message.Animation != nil {
+	var (
+		Keyword     string = strings.TrimSpace(Message.Caption)
+		Content     string
+		Type        int
+		MaxFileSize int = 20 * 1000 * 1000
+		FileSize    int
+	)
+
+	switch {
+	case Message.Animation != nil:
 		FileSize = Message.Animation.FileSize
-	} else if Message.Video != nil {
+		Content = Message.Animation.FileID
+		Type = 3
+
+	case Message.Video != nil:
 		FileSize = Message.Video.FileSize
+		Content = Message.Video.FileID
+		Type = 4
 	}
+
+	// check file size
 	if FileSize >= MaxFileSize {
 		SendText(
 			Message.Chat.ID,
@@ -379,69 +416,7 @@ func handleAnimatedMessage(Message *tgbotapi.Message) {
 		)
 		return
 	}
-
-	var (
-		Keyword string = strings.TrimSpace(Message.Caption)
-		Content string
-		Type    int
-		URL     string
-		Cap     string
-		err     error
-	)
-	// Send tmp message
-	to_be_delete_message := SendText(Message.Chat.ID, "運算中，請稍後……", Message.MessageID)
-
-	switch {
-	case Message.Animation != nil:
-		Content = Message.Animation.FileID
-		Type = 3
-		// get url
-		URL, err = bot.GetFileDirectURL(Content)
-		if err != nil {
-			log.Println("[handleAnima]", err)
-		}
-		// get caption by thumbnail
-		Thumb_URL, err := bot.GetFileDirectURL(Message.Animation.Thumbnail.FileID)
-		if err != nil {
-			log.Println("[handleAnima]", err)
-		}
-		Cap = ImageCaptioning(Keyword, Thumb_URL)
-
-	case Message.Video != nil:
-		Content = Message.Video.FileID
-		Type = 4
-		// get url
-		URL, err = bot.GetFileDirectURL(Content)
-		if err != nil {
-			log.Println("[handleAnima]", err)
-		}
-		// get caption by thumbnail
-		Thumb_URL, err := bot.GetFileDirectURL(Message.Video.Thumbnail.FileID)
-		if err != nil {
-			log.Println("[handleAnima]", err)
-		}
-		Cap = ImageCaptioning(Keyword, Thumb_URL)
-	}
-	// Delete tmp message
-	bot.Request(tgbotapi.NewDeleteMessage(Message.Chat.ID, to_be_delete_message.MessageID))
-
-	_, err = InsertHTB(
-		CONFIG.GetNamebyChatID(Message.Chat.ID),
-		&HokTseBun{
-			Type:          Type,
-			Keyword:       Keyword,
-			Summarization: Cap,
-			Content:       Content,
-			URL:           URL,
-			From:          Message.From.ID,
-		},
-	)
-
-	if err != nil {
-		SendText(Message.Chat.ID, fmt.Sprintf("新增動圖「%s」失敗：%s", Keyword, err), Message.MessageID)
-	} else {
-		SendText(Message.Chat.ID, fmt.Sprintf("新增動圖「%s」成功，\n自動生成的描述如下：「%s」", Keyword, Cap), Message.MessageID)
-	}
+	addHandler(Message, Keyword, Content, Type)
 }
 
 func handleCallbackQuery(CallbackQuery *tgbotapi.CallbackQuery) {
