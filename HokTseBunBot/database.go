@@ -52,7 +52,7 @@ func InitDB() {
 
 	Collections, _ := DB.ListCollections()
 	for idx, Collection := range Collections {
-		DB.ExportCollection(Collection, fmt.Sprintf("%s/%d-BACKUP_%s.json", CONFIG.DB.EXPORT_DIR, idx, Collection))
+		DB.ExportCollection(Collection, fmt.Sprintf("%s/%d-BACKUP_%s.json", CONFIG.DB.EXPORT_DIR, idx+1, Collection))
 	}
 	// DB.CreateCollection(CONFIG.DB.COLLECTION)
 	// DB.ExportCollection(CONFIG.DB.COLLECTION, fmt.Sprintf("../BACKUP_%s.json", CONFIG.DB.COLLECTION))

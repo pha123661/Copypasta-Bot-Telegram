@@ -27,8 +27,8 @@ func handleCommand(Message *tgbotapi.Message) {
 	// handle commands
 	switch Message.Command() {
 	case "start":
-		// Startup
-		SendText(Message.Chat.ID, "歡迎使用，使用方式可以參考我的github: https://github.com/pha123661/Hok_tse_bun_tgbot", 0)
+	// 	// Startup
+	// 	SendText(Message.Chat.ID, "歡迎使用，使用方式可以參考我的github: https://github.com/pha123661/Hok_tse_bun_tgbot", 0)
 	case "echo":
 		// Echo
 		SendText(Message.Chat.ID, Message.CommandArguments(), Message.MessageID)

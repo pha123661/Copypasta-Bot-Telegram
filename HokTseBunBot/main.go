@@ -86,8 +86,9 @@ func main() {
 		case update.CallbackQuery != nil:
 			// handle callback query
 			go handleCallbackQuery(update.CallbackQuery)
-			// case update.MyChatMember != nil:
-			// 	// get invited in a group
+		case update.MyChatMember != nil:
+			// get invited in a group
+			SendText(update.MyChatMember.Chat.ID, "歡迎使用，使用方式可以參考我的github: https://github.com/pha123661/Hok_tse_bun_tgbot", 0)
 		}
 	}
 }
