@@ -6,7 +6,6 @@ import (
 	"sync"
 	"time"
 
-	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
 	c "github.com/ostafen/clover/v2"
 )
 
@@ -114,88 +113,108 @@ func InitDB() {
 	wg.Wait() // wait for all updates to finish
 }
 
-func InsertCP(FromID int64, Keyword, Content string, Type int64, Message *tgbotapi.Message) (string, error) {
-	var Summarization string
-	var URL string
-	switch Type {
-	case 0:
-		// Reserved
-		return "", fmt.Errorf(`"InsertCP" not implemented for type 0`)
-	case 1:
-		// Text
-		Summarization = TextSummarization(Keyword, Content)
-	case 2:
-		// Image
-		URL, err := bot.GetFileDirectURL(Content)
-		if err != nil {
-			log.Println("[InsertCP]", err)
-			break // do not do summarization
-		}
-		Summarization = ImageCaptioning(Keyword, URL)
-	case 3:
-		// 3: animation
-		if Message.Animation.FileSize >= 20000 {
-			// too large
-			return "", fmt.Errorf("file size %d is too large", Message.Animation.FileSize)
-		}
-
-		var err error
-		URL, err = bot.GetFileDirectURL(Content)
-		if err != nil {
-			log.Println("[InsertCP]", err)
-		}
-
-		if Message == nil || Message.Animation == nil {
-			break
-		}
-
-		// get caption by thumbnail
-		Thumb_URL, err := bot.GetFileDirectURL(Message.Animation.Thumbnail.FileID)
-		if err != nil {
-			log.Println("[InsertCP]", err)
-		}
-		Summarization = ImageCaptioning(Keyword, Thumb_URL)
-	case 4:
-		// 4: video
-		if Message.Video.FileSize >= 20000 {
-			// too large
-			return "", fmt.Errorf("file size %d is too large", Message.Video.FileSize)
-		}
-
-		var err error
-		URL, err = bot.GetFileDirectURL(Content)
-		if err != nil {
-			log.Println("[InsertCP]", err)
-		}
-
-		if Message == nil || Message.Video == nil {
-			break
-		}
-
-		// get caption by thumbnail
-		Thumb_URL, err := bot.GetFileDirectURL(Message.Video.Thumbnail.FileID)
-		if err != nil {
-			log.Println("[InsertCP]", err)
-		}
-		Summarization = ImageCaptioning(Keyword, Thumb_URL)
-
-	default:
-		return "", fmt.Errorf(`"InsertCP" not implemented for type %d`, Type)
-	}
+func InsertHTB(Collection string, HTB *HokTseBun) (string, error) {
 	doc := c.NewDocument()
 	doc.SetAll(Dict{
-		"Type":          Type, // clover only supports int64
-		"Keyword":       Keyword,
-		"Summarization": Summarization,
-		"Content":       Content,
-		"URL":           URL,
-		"From":          FromID,
+		"Type":          HTB.Type, // clover only supports int64
+		"Keyword":       HTB.Keyword,
+		"Summarization": HTB.Summarization,
+		"Content":       HTB.Content,
+		"URL":           HTB.URL,
+		"From":          HTB.From,
 		"CreateTime":    time.Now(),
 	})
 
-	_, err := DB.InsertOne(CONFIG.DB.COLLECTION, doc)
+	_id, err := DB.InsertOne(CONFIG.DB.COLLECTION, doc)
 	if err != nil {
-		log.Println("[InsertCP]", err)
+		log.Println("[InsertHTB]", err)
+		return "", err
 	}
-	return Summarization, nil
+	return _id, nil
 }
+
+// func InsertCP(FromID int64, Keyword, Content string, Type int64, Message *tgbotapi.Message) (string, error) {
+// 	var Summarization string
+// 	var URL string
+// 	switch Type {
+// 	case 0:
+// 		// Reserved
+// 		return "", fmt.Errorf(`"InsertCP" not implemented for type 0`)
+// 	case 1:
+// 		// Text
+// 		Summarization = TextSummarization(Keyword, Content)
+// 	case 2:
+// 		// Image
+// 		URL, err := bot.GetFileDirectURL(Content)
+// 		if err != nil {
+// 			log.Println("[InsertCP]", err)
+// 			break // do not do summarization
+// 		}
+// 		Summarization = ImageCaptioning(Keyword, URL)
+// 	case 3:
+// 		// 3: animation
+// 		if Message.Animation.FileSize >= 20000 {
+// 			// too large
+// 			return "", fmt.Errorf("file size %d is too large", Message.Animation.FileSize)
+// 		}
+
+// 		var err error
+// 		URL, err = bot.GetFileDirectURL(Content)
+// 		if err != nil {
+// 			log.Println("[InsertCP]", err)
+// 		}
+
+// 		if Message == nil || Message.Animation == nil {
+// 			break
+// 		}
+
+// 		// get caption by thumbnail
+// 		Thumb_URL, err := bot.GetFileDirectURL(Message.Animation.Thumbnail.FileID)
+// 		if err != nil {
+// 			log.Println("[InsertCP]", err)
+// 		}
+// 		Summarization = ImageCaptioning(Keyword, Thumb_URL)
+// 	case 4:
+// 		// 4: video
+// 		if Message.Video.FileSize >= 20000 {
+// 			// too large
+// 			return "", fmt.Errorf("file size %d is too large", Message.Video.FileSize)
+// 		}
+
+// 		var err error
+// 		URL, err = bot.GetFileDirectURL(Content)
+// 		if err != nil {
+// 			log.Println("[InsertCP]", err)
+// 		}
+
+// 		if Message == nil || Message.Video == nil {
+// 			break
+// 		}
+
+// 		// get caption by thumbnail
+// 		Thumb_URL, err := bot.GetFileDirectURL(Message.Video.Thumbnail.FileID)
+// 		if err != nil {
+// 			log.Println("[InsertCP]", err)
+// 		}
+// 		Summarization = ImageCaptioning(Keyword, Thumb_URL)
+
+// 	default:
+// 		return "", fmt.Errorf(`"InsertCP" not implemented for type %d`, Type)
+// 	}
+// 	doc := c.NewDocument()
+// 	doc.SetAll(Dict{
+// 		"Type":          Type, // clover only supports int64
+// 		"Keyword":       Keyword,
+// 		"Summarization": Summarization,
+// 		"Content":       Content,
+// 		"URL":           URL,
+// 		"From":          FromID,
+// 		"CreateTime":    time.Now(),
+// 	})
+
+// 	_, err := DB.InsertOne(CONFIG.DB.COLLECTION, doc)
+// 	if err != nil {
+// 		log.Println("[InsertCP]", err)
+// 	}
+// 	return Summarization, nil
+// }

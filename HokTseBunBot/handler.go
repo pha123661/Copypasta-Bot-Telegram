@@ -12,17 +12,7 @@ import (
 	c "github.com/ostafen/clover/v2"
 )
 
-var Queued_Overwrites = make(map[string]*OverwriteEntity) // Keyword: OverwriteEntity
-var Queued_Deletes = make(map[string]*DeleteEntity)       // UID: DeleteEntity
-
-type OverwriteEntity struct {
-	Type    int64
-	Keyword string
-	Content string
-	From    int64
-	Done    bool // prevent multiple clicks
-}
-
+var Queued_Deletes = make(map[string]*DeleteEntity) // UID: DeleteEntity
 type DeleteEntity struct {
 	Keyword   string
 	Confirmed bool
@@ -92,59 +82,38 @@ func handleCommand(Message *tgbotapi.Message) {
 			return
 		}
 
-		docs, err := DB.FindAll(c.NewQuery(CONFIG.DB.COLLECTION).Where(
-			c.Field("Keyword").Eq(Keyword)))
-		if err != nil {
-			log.Println("[new]", err)
-			return
-		}
-		if len(docs) > 0 {
-			// Queue changes
-			Queued_Overwrites[Keyword] = &OverwriteEntity{
-				Type:    1,
-				Keyword: Keyword,
-				Content: Content,
-				From:    Message.From.ID,
-				Done:    false,
-			}
-
-			Reply_Content := fmt.Sprintf("相同關鍵字的複製文已有 %d 篇（內容如下），是否繼續添加？", len(docs))
-			for idx, doc := range docs {
-				// same keyword & content
-				if doc.Get("Content").(string) == Content {
-					SendText(Message.Chat.ID, "傳過了啦 腦霧?", Message.MessageID)
-					return
-				}
-				Reply_Content += fmt.Sprintf("\n%d.「%s」", idx+1, TruncateString(doc.Get("Content").(string), 30))
-			}
-
-			replyMsg := tgbotapi.NewMessage(Message.Chat.ID, Reply_Content)
-			replyMsg.ReplyToMessageID = Message.MessageID
-			replyMsg.ReplyMarkup = tgbotapi.NewInlineKeyboardMarkup(
-				tgbotapi.NewInlineKeyboardRow(
-					tgbotapi.NewInlineKeyboardButtonData("是", Keyword),
-					tgbotapi.NewInlineKeyboardButtonData("否", "NIL"),
-				),
-			)
-			if _, err := bot.Send(replyMsg); err != nil {
-				log.Println("[new]", err)
-			}
+		// find existing images
+		Criteria := c.Field("Keyword").Eq(Keyword).And(c.Field("Content").Eq(Content))
+		if doc, _ := DB.FindFirst(c.NewQuery(CONFIG.DB.COLLECTION).Where(Criteria)); doc != nil {
+			SendText(Message.Chat.ID, "傳過了啦 腦霧?", Message.MessageID)
 			return
 		}
 
 		// Create tmp message
 		to_be_delete_message := SendText(Message.Chat.ID, "運算中，請稍後……", Message.MessageID)
-		// Insert CP
-		Sum, err := InsertCP(Message.From.ID, Keyword, Content, 1, nil)
-		if err != nil {
-			log.Println("[new]", err)
-			return
-		}
+		// Insert HTB
+		var Sum = TextSummarization(Keyword, Content)
+		var err error
 		// Delete tmp message
 		bot.Request(tgbotapi.NewDeleteMessage(Message.Chat.ID, to_be_delete_message.MessageID))
+		_, err = InsertHTB(
+			CONFIG.DB.COLLECTION,
+			&HokTseBun{
+				Type:          1,
+				Keyword:       Keyword,
+				Summarization: Sum,
+				Content:       Content,
+				URL:           "", // text
+				From:          Message.From.ID,
+			},
+		)
 		// send response to user
-		SendText(Message.Chat.ID, fmt.Sprintf("新增複製文「%s」成功，\n自動生成的摘要如下：「%s」", Keyword, Sum), Message.MessageID)
-
+		if err != nil {
+			log.Println("[new]", err)
+			SendText(Message.Chat.ID, fmt.Sprintf("新增複製文「%s」失敗：%s", Keyword, err), Message.MessageID)
+		} else {
+			SendText(Message.Chat.ID, fmt.Sprintf("新增複製文「%s」成功，\n自動生成的摘要如下：「%s」", Keyword, Sum), Message.MessageID)
+		}
 	case "search":
 		var (
 			Query       string = Message.CommandArguments()
@@ -287,17 +256,29 @@ func handleImageMessage(Message *tgbotapi.Message) {
 	if Message.Caption == "" {
 		return
 	}
+
 	var (
-		Keyword  string = strings.TrimSpace(Message.Caption)
-		Content  string
-		max_area int = 0
+		Keyword     string = strings.TrimSpace(Message.Caption)
+		Content     string
+		max_area    int = 0
+		MaxFileSize int = 20 * 1000 * 1000
+		FileSize    int
 	)
 
 	for _, image := range Message.Photo {
 		if image.Width*image.Height >= max_area {
 			max_area = image.Width * image.Height
 			Content = image.FileID
+			FileSize = image.FileSize
 		}
+	}
+	if FileSize >= MaxFileSize {
+		SendText(
+			Message.Chat.ID,
+			fmt.Sprintf("新增失敗，目前檔案大小爲 %.2f MB，檔案大小上限爲 %.2f MB", float32(FileSize)/1000.0/1000.0, float32(MaxFileSize)/1000.0/1000.0),
+			Message.MessageID,
+		)
+		return
 	}
 
 	// find existing images
@@ -306,46 +287,124 @@ func handleImageMessage(Message *tgbotapi.Message) {
 		SendText(Message.Chat.ID, "傳過了啦 腦霧?", Message.MessageID)
 		return
 	}
+
+	var Cap string
 	// Send tmp message
 	to_be_delete_message := SendText(Message.Chat.ID, "運算中，請稍後……", Message.MessageID)
-
-	Cap, _ := InsertCP(Message.From.ID, Keyword, Content, 2, nil)
-
+	URL, err := bot.GetFileDirectURL(Content)
+	if err != nil {
+		log.Println("[HandleImg]", err)
+		Cap = ""
+	} else {
+		Cap = ImageCaptioning(Keyword, URL)
+	}
 	// Delete tmp message
 	bot.Request(tgbotapi.NewDeleteMessage(Message.Chat.ID, to_be_delete_message.MessageID))
-	SendText(Message.Chat.ID, fmt.Sprintf("新增圖片「%s」成功，\n自動生成的描述如下：「%s」", Keyword, Cap), Message.MessageID)
+
+	_, err = InsertHTB(
+		CONFIG.DB.COLLECTION,
+		&HokTseBun{
+			Type:          2,
+			Keyword:       Keyword,
+			Summarization: Cap,
+			Content:       Content,
+			URL:           URL,
+			From:          Message.From.ID,
+		},
+	)
+	// send response to user
+	if err != nil {
+		log.Println("[HandleImg]", err)
+		SendText(Message.Chat.ID, fmt.Sprintf("新增圖片「%s」失敗：%s", Keyword, err), Message.MessageID)
+	} else {
+		SendText(Message.Chat.ID, fmt.Sprintf("新增圖片「%s」成功，\n自動生成的描述如下：「%s」", Keyword, Cap), Message.MessageID)
+	}
+
 }
 
 func handleAnimatedMessage(Message *tgbotapi.Message) {
 	if Message.Caption == "" {
 		return
 	}
+	// check file size
+	var MaxFileSize int = 20 * 1000 * 1000
+	var FileSize int
+	if Message.Animation != nil {
+		FileSize = Message.Animation.FileSize
+	} else if Message.Video != nil {
+		FileSize = Message.Video.FileSize
+	}
+	if FileSize >= MaxFileSize {
+		SendText(
+			Message.Chat.ID,
+			fmt.Sprintf("新增失敗，目前檔案大小爲 %.2f MB，檔案大小上限爲 %.2f MB", float32(FileSize)/1000.0/1000.0, float32(MaxFileSize)/1000.0/1000.0),
+			Message.MessageID,
+		)
+		return
+	}
 
 	var (
 		Keyword string = strings.TrimSpace(Message.Caption)
 		Content string
-		Type    int64
+		Type    int
+		URL     string
+		Cap     string
+		err     error
 	)
+	// Send tmp message
+	to_be_delete_message := SendText(Message.Chat.ID, "運算中，請稍後……", Message.MessageID)
 
 	switch {
 	case Message.Animation != nil:
 		Content = Message.Animation.FileID
 		Type = 3
+		// get url
+		URL, err = bot.GetFileDirectURL(Content)
+		if err != nil {
+			log.Println("[handleAnima]", err)
+		}
+		// get caption by thumbnail
+		Thumb_URL, err := bot.GetFileDirectURL(Message.Animation.Thumbnail.FileID)
+		if err != nil {
+			log.Println("[handleAnima]", err)
+		}
+		Cap = ImageCaptioning(Keyword, Thumb_URL)
+
 	case Message.Video != nil:
 		Content = Message.Video.FileID
 		Type = 4
+		// get url
+		URL, err = bot.GetFileDirectURL(Content)
+		if err != nil {
+			log.Println("[handleAnima]", err)
+		}
+		// get caption by thumbnail
+		Thumb_URL, err := bot.GetFileDirectURL(Message.Video.Thumbnail.FileID)
+		if err != nil {
+			log.Println("[handleAnima]", err)
+		}
+		Cap = ImageCaptioning(Keyword, Thumb_URL)
 	}
-	// Send tmp message
-	to_be_delete_message := SendText(Message.Chat.ID, "運算中，請稍後……", Message.MessageID)
-
-	Cap, err := InsertCP(Message.From.ID, Keyword, Content, Type, Message)
 	// Delete tmp message
 	bot.Request(tgbotapi.NewDeleteMessage(Message.Chat.ID, to_be_delete_message.MessageID))
+
+	_, err = InsertHTB(
+		CONFIG.DB.COLLECTION,
+		&HokTseBun{
+			Type:          Type,
+			Keyword:       Keyword,
+			Summarization: Cap,
+			Content:       Content,
+			URL:           URL,
+			From:          Message.From.ID,
+		},
+	)
+
 	if err != nil {
 		SendText(Message.Chat.ID, fmt.Sprintf("新增動圖「%s」失敗：%s", Keyword, err), Message.MessageID)
-		return
+	} else {
+		SendText(Message.Chat.ID, fmt.Sprintf("新增動圖「%s」成功，\n自動生成的描述如下：「%s」", Keyword, Cap), Message.MessageID)
 	}
-	SendText(Message.Chat.ID, fmt.Sprintf("新增動圖「%s」成功，\n自動生成的描述如下：「%s」", Keyword, Cap), Message.MessageID)
 }
 
 func handleCallbackQuery(CallbackQuery *tgbotapi.CallbackQuery) {
@@ -368,38 +427,6 @@ func handleCallbackQuery(CallbackQuery *tgbotapi.CallbackQuery) {
 			log.Println("[CallBQ]", err)
 		}
 		SendText(CallbackQuery.Message.Chat.ID, "其實不按也沒差啦 哈哈", 0)
-	} else if OW_Entity, ok := Queued_Overwrites[CallbackQuery.Data]; ok {
-		// 是 & in overwrite
-		// show respond
-		if OW_Entity.Done {
-			return
-		}
-
-		callback := tgbotapi.NewCallback(CallbackQuery.ID, "正在新增中……")
-		if _, err := bot.Request(callback); err != nil {
-			log.Println("[CallBQ]", err)
-		}
-		OW_Entity.Done = true
-
-		to_be_delete_message := SendText(CallbackQuery.Message.Chat.ID, "運算中，請稍後……", CallbackQuery.Message.MessageID)
-
-		Sum, err := InsertCP(
-			OW_Entity.From,
-			OW_Entity.Keyword,
-			OW_Entity.Content,
-			OW_Entity.Type,
-			nil,
-		)
-		if err != nil {
-			log.Println("[CallBQ]", err)
-			return
-		}
-
-		// delete tmp message
-		bot.Request(tgbotapi.NewDeleteMessage(CallbackQuery.Message.Chat.ID, to_be_delete_message.MessageID))
-
-		// send response to user
-		SendText(CallbackQuery.Message.Chat.ID, fmt.Sprintf("新增複製文「%s」成功，\n自動生成的摘要如下：「%s」", OW_Entity.Keyword, Sum), CallbackQuery.Message.MessageID)
 	} else if DEntity, ok := Queued_Deletes[CallbackQuery.Data]; ok {
 		var UID = CallbackQuery.Data
 		if !DEntity.Confirmed {
@@ -438,4 +465,83 @@ func handleCallbackQuery(CallbackQuery *tgbotapi.CallbackQuery) {
 			SendText(CallbackQuery.Message.Chat.ID, fmt.Sprintf("已成功刪除「%s」", DEntity.Keyword), CallbackQuery.Message.MessageID)
 		}
 	}
+
+	// legacy code to deal with overwriting keyword:
+	// type OverwriteEntity struct {
+	// 	Type    int64
+	// 	Keyword string
+	// 	Content string
+	// 	From    int64
+	// 	Done    bool // prevent multiple clicks
+	// }
+	// var Queued_Overwrites = make(map[string]*OverwriteEntity) // Keyword: OverwriteEntity
+
+	// in "new"/"add":
+	// docs, err := DB.FindAll(c.NewQuery(CONFIG.DB.COLLECTION).Where(
+	// 	c.Field("Keyword").Eq(Keyword)))
+	// if err != nil {
+	// 	log.Println("[new]", err)
+	// 	return
+	// }
+	// if len(docs) > 0 {
+	// 	// Queue changes
+	// 	Queued_Overwrites[Keyword] = &OverwriteEntity{
+	// 		Type:    1,
+	// 		Keyword: Keyword,
+	// 		Content: Content,
+	// 		From:    Message.From.ID,
+	// 		Done:    false,
+	// 	}
+
+	// 	Reply_Content := fmt.Sprintf("相同關鍵字的複製文已有 %d 篇（內容如下），是否繼續添加？", len(docs))
+	// 	for idx, doc := range docs {
+	// 		// same keyword & content
+	// 		if doc.Get("Content").(string) == Content {
+	// 			SendText(Message.Chat.ID, "傳過了啦 腦霧?", Message.MessageID)
+	// 			return
+	// 		}
+	// 		Reply_Content += fmt.Sprintf("\n%d.「%s」", idx+1, TruncateString(doc.Get("Content").(string), 30))
+	// 	}
+
+	// 	replyMsg := tgbotapi.NewMessage(Message.Chat.ID, Reply_Content)
+	// 	replyMsg.ReplyToMessageID = Message.MessageID
+	// 	replyMsg.ReplyMarkup = tgbotapi.NewInlineKeyboardMarkup(
+	// 		tgbotapi.NewInlineKeyboardRow(
+	// 			tgbotapi.NewInlineKeyboardButtonData("是", Keyword),
+	// 			tgbotapi.NewInlineKeyboardButtonData("否", "NIL"),
+	// 		),
+	// 	)
+	// 	if _, err := bot.Send(replyMsg); err != nil {
+	// 		log.Println("[new]", err)
+	// 	}
+	// 	return
+	// }
+
+	// in handle CallBQ
+	// else if OW_Entity, ok := Queued_Overwrites[CallbackQuery.Data]; ok {
+	// 	// 是 & in overwrite
+	// 	// show respond
+	// 	if OW_Entity.Done {
+	// 		return
+	// 	}
+
+	// 	callback := tgbotapi.NewCallback(CallbackQuery.ID, "正在新增中……")
+	// 	if _, err := bot.Request(callback); err != nil {
+	// 		log.Println("[CallBQ]", err)
+	// 	}
+	// 	OW_Entity.Done = true
+
+	// 	to_be_delete_message := SendText(CallbackQuery.Message.Chat.ID, "運算中，請稍後……", CallbackQuery.Message.MessageID)
+
+	// 	if err != nil {
+	// 		log.Println("[CallBQ]", err)
+	// 		return
+	// 	}
+
+	// 	// delete tmp message
+	// 	bot.Request(tgbotapi.NewDeleteMessage(CallbackQuery.Message.Chat.ID, to_be_delete_message.MessageID))
+
+	// 	// send response to user
+	// 	SendText(CallbackQuery.Message.Chat.ID, fmt.Sprintf("新增複製文「%s」成功，\n自動生成的摘要如下：「%s」", OW_Entity.Keyword, Sum), CallbackQuery.Message.MessageID)
+	// }
 }
