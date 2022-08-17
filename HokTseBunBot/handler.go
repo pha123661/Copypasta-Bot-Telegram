@@ -107,7 +107,7 @@ func handleCommand(Message *tgbotapi.Message) {
 				Keyword:       Keyword,
 				Summarization: Sum,
 				Content:       Content,
-				URL:           "", // text
+				URL:           "", // text has no url
 				From:          Message.From.ID,
 			},
 		)
@@ -122,8 +122,12 @@ func handleCommand(Message *tgbotapi.Message) {
 		var (
 			Query       string = Message.CommandArguments()
 			ResultCount int    = 0
-			MaxResults         = 25
+			MaxResults  int    = 25
 		)
+
+		if utf8.RuneCountInString(Query) >= 200 {
+			SendText(Message.Chat.ID, fmt.Sprintf("關鍵字不能超過200字，不然我的CPU要燒了，目前爲%d字", utf8.RuneCountInString(Query)), 0)
+		}
 
 		SendText(Message.From.ID, fmt.Sprintf("「%s」的搜尋結果如下：", Query), 0)
 
@@ -166,6 +170,10 @@ func handleCommand(Message *tgbotapi.Message) {
 		var BeDeletedKeyword = Message.CommandArguments()
 		if BeDeletedKeyword == "" {
 			SendText(Message.Chat.ID, "請輸入關鍵字", Message.MessageID)
+			return
+		}
+		if utf8.RuneCountInString(BeDeletedKeyword) >= 30 {
+			SendText(Message.Chat.ID, fmt.Sprintf("關鍵字長度不可大於 30, 目前爲 %d 字”", utf8.RuneCountInString(BeDeletedKeyword)), Message.MessageID)
 			return
 		}
 		Criteria := c.Field("Keyword").Eq(BeDeletedKeyword)
@@ -217,7 +225,7 @@ func handleCommand(Message *tgbotapi.Message) {
 		}
 
 	default:
-		SendText(Message.Chat.ID, fmt.Sprintf("錯誤：我不會 “/%s” 啦", Message.Command()), Message.MessageID)
+		SendText(Message.Chat.ID, fmt.Sprintf("錯誤：我不會 “/%s” 啦QQ", Message.Command()), Message.MessageID)
 	}
 }
 

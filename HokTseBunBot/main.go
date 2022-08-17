@@ -5,6 +5,7 @@ import (
 	"log"
 	"net/http"
 	"os"
+	"unicode/utf8"
 
 	_ "net/http/pprof"
 
@@ -70,12 +71,17 @@ func main() {
 				go handleImageMessage(update.Message)
 			case update.Message.IsCommand():
 				go handleCommand(update.Message)
-			default:
+			case update.Message.Text != "":
 				if xurls.Relaxed().FindString(update.Message.Text) != "" {
 					// messages contain url are ignored
 					break
 				}
+				if utf8.RuneCountInString(update.Message.Text) >= 200 {
+					break
+				}
 				go handleTextMessage(update.Message)
+			default:
+				fmt.Println(update)
 			}
 		case update.CallbackQuery != nil:
 			// handle callback query
