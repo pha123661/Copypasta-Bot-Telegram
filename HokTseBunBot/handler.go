@@ -269,6 +269,8 @@ func handleCommand(Message *tgbotapi.Message) {
 		// 	// Startup
 		// 	SendText(Message.Chat.ID, "歡迎使用，使用方式可以參考我的github: https://github.com/pha123661/Hok_tse_bun_tgbot", 0)
 		NewChat(Message.Chat.ID)
+		// DB.DropCollection(CONFIG.GetColbyChatID(Message.Chat.ID))
+		// DB.ImportCollection(CONFIG.GetColbyChatID(Message.Chat.ID), "./BACKUP_Copypasta.json")
 	case "echo":
 		// Echo
 		SendText(Message.Chat.ID, Message.CommandArguments(), Message.MessageID)
