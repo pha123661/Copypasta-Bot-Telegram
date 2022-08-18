@@ -25,6 +25,41 @@ type DeleteEntity struct {
 	Done      bool
 }
 
+func handleCommand(Message *tgbotapi.Message) {
+	// handle commands
+	switch Message.Command() {
+	case "start":
+		// 	// Startup
+		// 	SendText(Message.Chat.ID, "歡迎使用，使用方式可以參考我的github: https://github.com/pha123661/Hok_tse_bun_tgbot", 0)
+		NewChat(Message.Chat.ID)
+	// case "import":
+	// 	DB.DropCollection(CONFIG.GetColbyChatID(Message.Chat.ID))
+	// 	DB.ImportCollection(CONFIG.GetColbyChatID(Message.Chat.ID), Message.CommandArguments())
+	// 	SendText(Message.Chat.ID, Message.CommandArguments(), Message.MessageID)
+	case "echo":
+		// Echo
+		SendText(Message.Chat.ID, Message.CommandArguments(), Message.MessageID)
+	case "random", "randomImage", "randomText":
+		randomHandler(Message)
+	case "new", "add": // new hok tse bun
+		// Parse command
+		Command_Args := strings.Fields(Message.CommandArguments())
+		if len(Command_Args) <= 1 {
+			SendText(Message.Chat.ID, fmt.Sprintf("錯誤：新增格式爲 “/%s {關鍵字} {內容}”", Message.Command()), Message.MessageID)
+			return
+		}
+		var Keyword string = Command_Args[0]
+		var Content string = strings.TrimSpace(Message.Text[strings.Index(Message.Text, Command_Args[1]):])
+		addHandler(Message, Keyword, Content, CONFIG.SETTING.TYPE.TXT)
+	case "search":
+		searchHandler(Message)
+	case "delete":
+		deleteHandler(Message)
+	default:
+		SendText(Message.Chat.ID, fmt.Sprintf("錯誤：我不會 “/%s” 啦QQ", Message.Command()), Message.MessageID)
+	}
+}
+
 func randomHandler(Message *tgbotapi.Message) {
 	var Query *c.Query
 	switch Message.Command() {
@@ -260,39 +295,6 @@ func deleteHandler(Message *tgbotapi.Message) {
 		QueuedDeletes[Message.Chat.ID] = make(map[int]map[string]*DeleteEntity)
 	}
 	QueuedDeletes[Message.Chat.ID][Msg.MessageID] = TB_HTB
-}
-
-func handleCommand(Message *tgbotapi.Message) {
-	// handle commands
-	switch Message.Command() {
-	case "start":
-		// 	// Startup
-		// 	SendText(Message.Chat.ID, "歡迎使用，使用方式可以參考我的github: https://github.com/pha123661/Hok_tse_bun_tgbot", 0)
-		NewChat(Message.Chat.ID)
-		// DB.DropCollection(CONFIG.GetColbyChatID(Message.Chat.ID))
-		// DB.ImportCollection(CONFIG.GetColbyChatID(Message.Chat.ID), "./BACKUP_Copypasta.json")
-	case "echo":
-		// Echo
-		SendText(Message.Chat.ID, Message.CommandArguments(), Message.MessageID)
-	case "random", "randomImage", "randomText":
-		randomHandler(Message)
-	case "new", "add": // new hok tse bun
-		// Parse command
-		Command_Args := strings.Fields(Message.CommandArguments())
-		if len(Command_Args) <= 1 {
-			SendText(Message.Chat.ID, fmt.Sprintf("錯誤：新增格式爲 “/%s {關鍵字} {內容}”", Message.Command()), Message.MessageID)
-			return
-		}
-		var Keyword string = Command_Args[0]
-		var Content string = strings.TrimSpace(Message.Text[strings.Index(Message.Text, Command_Args[1]):])
-		addHandler(Message, Keyword, Content, CONFIG.SETTING.TYPE.TXT)
-	case "search":
-		searchHandler(Message)
-	case "delete":
-		deleteHandler(Message)
-	default:
-		SendText(Message.Chat.ID, fmt.Sprintf("錯誤：我不會 “/%s” 啦QQ", Message.Command()), Message.MessageID)
-	}
 }
 
 func handleTextMessage(Message *tgbotapi.Message) {
