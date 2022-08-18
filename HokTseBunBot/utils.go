@@ -6,28 +6,32 @@ import (
 	"log"
 	"os"
 	"strings"
+	"time"
 	"unicode/utf8"
 
-	toml "github.com/BurntSushi/toml"
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
+	toml "github.com/pelletier/go-toml/v2"
 )
 
-var CONFIG Config_Type
+var CONFIG cfg
 
-type Config_Type struct {
+type Dict map[string]interface{}
+type Empty struct{}
+
+type cfg struct {
 	SETTING struct {
 		LOG_FILE string
 		TYPE     struct {
-			TXT int
-			IMG int
-			ANI int
-			VID int
+			TXT, IMG, ANI, VID int
 		}
 		NAME struct {
-			TXT string
-			IMG string
-			ANI string
-			VID string
+			TXT, IMG, ANI, VID string
+		}
+		CONCURRENT struct {
+			SUM, CAP struct {
+				COOLDOWN time.Duration
+				LIMIT    int
+			}
 		}
 	}
 
@@ -36,27 +40,24 @@ type Config_Type struct {
 			TOKEN string
 		}
 		HF struct {
-			TOKENs        []string
-			CURRENT_TOKEN string
-			SUM_MODEL     string
-			MT_MODEL      string
+			TOKENs              []string
+			CURRENT_TOKEN       string
+			SUM_MODEL, MT_MODEL string
 		}
 	}
 
 	DB struct {
-		DIR        string
-		CFormat    string
-		EXPORT_DIR string
+		DIR, EXPORT_DIR, CFormat string
 	}
 }
 
 // Gets collection name of given ChatID
-func (Config Config_Type) GetColbyChatID(ChatID int64) string {
+func (Config cfg) GetColbyChatID(ChatID int64) string {
 	return fmt.Sprintf(CONFIG.DB.CFormat, ChatID)
 }
 
 // Gets Chinese name of given Type
-func (Config Config_Type) GetNameByType(Type int) string {
+func (Config cfg) GetNameByType(Type int) string {
 	switch Type {
 	case Config.SETTING.TYPE.TXT:
 		return Config.SETTING.NAME.TXT
@@ -77,13 +78,16 @@ func InitConfig(CONFIG_PATH string) {
 	if err != nil {
 		log.Panicln("[InitConfig]", err)
 	}
-	if _, err := toml.Decode(string(tomldata), &CONFIG); err != nil {
+
+	if err := toml.Unmarshal(tomldata, &CONFIG); err != nil {
 		log.Panicln("[InitConfig]", err)
 	}
 
-	buf := new(bytes.Buffer)
-	toml.NewEncoder(buf).Encode(CONFIG)
-	fmt.Printf("********************\nConfig Loaded:\n%s\n********************\n", buf.String())
+	SetHFAPI()
+
+	fmt.Println("********************\nConfig Loaded:")
+	PrintStructAsTOML(CONFIG)
+	fmt.Println("********************")
 
 	var CreateDirIfNotExist = func(path string) {
 		if _, err := os.Stat(path); os.IsNotExist(err) {
@@ -121,7 +125,18 @@ func Min(a int, b int) int {
 	return b
 }
 
-// helper functions
+func PrintStructAsTOML(v interface{}) error {
+	buf := bytes.Buffer{}
+	enc := toml.NewEncoder(&buf)
+	enc.SetIndentTables(true)
+	if err := enc.Encode(v); err != nil {
+		return err
+	}
+	fmt.Println(buf.String())
+	return nil
+}
+
+// Sends text message, set ReplyMsgID=0 to disable reply
 func SendText(ChatID int64, Content string, ReplyMsgID int) tgbotapi.Message {
 	replyMsg := tgbotapi.NewMessage(ChatID, Content)
 	if ReplyMsgID != 0 {
@@ -134,6 +149,7 @@ func SendText(ChatID int64, Content string, ReplyMsgID int) tgbotapi.Message {
 	return Msg
 }
 
+// Sends media message
 func SendMultiMedia(ChatID int64, Caption string, FileID_Str string, Type int) *tgbotapi.APIResponse {
 	var Msg *tgbotapi.APIResponse
 	var err error

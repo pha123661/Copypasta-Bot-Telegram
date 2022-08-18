@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"log"
 	"math/rand"
+	"strconv"
 	"strings"
 	"unicode/utf8"
 
@@ -35,6 +36,20 @@ func handleCommand(Message *tgbotapi.Message) {
 	// 	DB.DropCollection(CONFIG.GetColbyChatID(Message.Chat.ID))
 	// 	DB.ImportCollection(CONFIG.GetColbyChatID(Message.Chat.ID), Message.CommandArguments())
 	// 	SendText(Message.Chat.ID, Message.CommandArguments(), Message.MessageID)
+	case "chatid":
+		SendText(Message.Chat.ID, fmt.Sprintf("此聊天室的 ChatID: %d", Message.Chat.ID), 0)
+	case "drop":
+		if Message.CommandArguments() != fmt.Sprint(Message.Chat.ID) {
+			SendText(Message.Chat.ID, "防呆: 請和指令一起送出 ChatID, 格式爲\"/drop {ChatID}\"", 0)
+			return
+		}
+		ChatID, err := strconv.ParseInt(Message.CommandArguments(), 10, 64)
+		if err != nil {
+			SendText(Message.Chat.ID, fmt.Sprint(ChatID, err), 0)
+			return
+		}
+		DB.DropCollection(CONFIG.GetColbyChatID(ChatID))
+		SendText(Message.Chat.ID, fmt.Sprintf("成功刪除 %d", ChatID), 0)
 	case "echo":
 		// Echo
 		SendText(Message.Chat.ID, Message.CommandArguments(), Message.MessageID)

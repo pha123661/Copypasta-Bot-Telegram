@@ -15,8 +15,17 @@ import (
 	gt "github.com/bas24/googletranslatefree"
 )
 
-func InitNLP() {
-	SetHFAPI()
+var (
+	SumSemaphore, CapSemaphore chan Empty
+	SumCool, CapCool           time.Duration
+)
+
+func InitVLP() {
+	SumSemaphore = make(chan Empty, CONFIG.SETTING.CONCURRENT.SUM.LIMIT)
+	CapSemaphore = make(chan Empty, CONFIG.SETTING.CONCURRENT.CAP.LIMIT)
+
+	SumCool = CONFIG.SETTING.CONCURRENT.SUM.COOLDOWN
+	CapCool = CONFIG.SETTING.CONCURRENT.CAP.COOLDOWN
 }
 
 func SetHFAPI() {
@@ -56,6 +65,18 @@ func SetHFAPI() {
 }
 
 func TextSummarization(Keyword, Content string) string {
+	fmt.Println(len(SumSemaphore))
+	fmt.Println("WAITING")
+	SumSemaphore <- Empty{} // acquire
+	fmt.Println("Acquired!")
+	defer func() {
+		go func() {
+			fmt.Println("SLEEPING")
+			time.Sleep(SumCool)
+			<-SumSemaphore // release
+			fmt.Println("RELEASED")
+		}()
+	}()
 	var Summarization string
 	sresps, err := hfapigo.SendSummarizationRequest(
 		CONFIG.API.HF.SUM_MODEL,
@@ -94,6 +115,14 @@ func ImageCaptioning(Keyword, Image_URL string) string {
 		// 2. "Machine translation" (image -> simplified chinese)
 		// 3. "OpenCC" (simplified chinese -> traditional chinese)
 	*/
+
+	CapSemaphore <- Empty{} // acquire
+	defer func() {
+		go func() {
+			time.Sleep(CapCool)
+			<-CapSemaphore // release
+		}()
+	}()
 
 	// Encode image
 	ImgEnc, err := DownloadImageToBase64(Image_URL)

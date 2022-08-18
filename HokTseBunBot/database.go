@@ -10,7 +10,6 @@ import (
 
 var DB *c.DB
 
-type Dict map[string]interface{}
 type HokTseBun struct {
 	Type          int       `json:"Type"`
 	Keyword       string    `json:"Keyword"`

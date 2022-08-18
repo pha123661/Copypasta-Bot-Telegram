@@ -53,8 +53,8 @@ func main() {
 	bot.Debug = true
 	fmt.Println("***", "Sucessful logged in as", bot.Self.UserName, "***")
 
+	InitVLP()
 	InitDB()
-	InitNLP()
 
 	// update config
 	updateConfig := tgbotapi.NewUpdate(0)
@@ -82,14 +82,23 @@ func main() {
 				}
 				go handleTextMessage(update.Message)
 			default:
-				fmt.Println(update)
+				// PrintStructAsTOML(update)
 			}
 		case update.CallbackQuery != nil:
 			// handle callback query
 			go handleCallbackQuery(update.CallbackQuery)
 		case update.MyChatMember != nil:
-			// get invited in a group
-			SendText(update.MyChatMember.Chat.ID, "歡迎使用，使用方式可以參考我的github: https://github.com/pha123661/Hok_tse_bun_tgbot", 0)
+			if update.MyChatMember.NewChatMember.Status == "restricted" || update.MyChatMember.NewChatMember.Status == "kicked" || update.MyChatMember.NewChatMember.Status == "left" {
+				fmt.Println("[Kicked] Get Kicked by", update.MyChatMember.Chat.ID, update.MyChatMember.Chat.UserName, update.MyChatMember.Chat.Title)
+				log.Println("[Kicked] Get Kicked by", update.MyChatMember.Chat.ID, update.MyChatMember.Chat.UserName, update.MyChatMember.Chat.Title)
+			} else {
+				fmt.Println("[Joining] Joining", update.MyChatMember.Chat.ID, update.MyChatMember.Chat.UserName, update.MyChatMember.Chat.Title)
+				log.Println("[Joining] Joining", update.MyChatMember.Chat.ID, update.MyChatMember.Chat.UserName, update.MyChatMember.Chat.Title)
+			}
+			if update.MyChatMember.Chat.Type == "group" || update.MyChatMember.Chat.Type == "supergroup" {
+				// get invited in a group
+				SendText(update.MyChatMember.Chat.ID, "歡迎使用，使用方式可以參考我的github: https://github.com/pha123661/Hok_tse_bun_tgbot", 0)
+			}
 		}
 	}
 }
@@ -97,7 +106,8 @@ func main() {
 func NewChat(ChatID int64) {
 	if err := DB.CreateCollection(CONFIG.GetColbyChatID(ChatID)); err != nil {
 		log.Println("[NewChat]", err)
+	} else {
+		log.Printf("[NewChat], new db %s created!\n", CONFIG.GetColbyChatID(ChatID))
 	}
-	log.Printf("[NewChat], new db %s created!\n", CONFIG.GetColbyChatID(ChatID))
 	SendText(ChatID, "歡迎使用，使用方式可以參考我的github: https://github.com/pha123661/Hok_tse_bun_tgbot", 0)
 }
