@@ -99,4 +99,5 @@ func NewChat(ChatID int64) {
 		log.Println("[NewChat]", err)
 	}
 	log.Printf("[NewChat], new db %s created!\n", CONFIG.GetColbyChatID(ChatID))
+	SendText(ChatID, "歡迎使用，使用方式可以參考我的github: https://github.com/pha123661/Hok_tse_bun_tgbot", 0)
 }
