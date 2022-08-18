@@ -134,7 +134,7 @@ func InsertHTB(Collection string, HTB *HokTseBun) (string, error) {
 	_id, err = DB.InsertOne(Collection, doc)
 	if err != nil {
 		wait_ms := rand.NormFloat64()*70 + 100
-		fmt.Println("Sleeping for", time.Duration(wait_ms*float64(time.Nanosecond)))
+		log.Println("[InsertHTB] Sleeping for", time.Duration(wait_ms*float64(time.Nanosecond)))
 		time.Sleep(time.Duration(wait_ms * float64(time.Nanosecond))) // wait 0.1s and try again
 		_id, err = DB.InsertOne(Collection, doc)
 		if err != nil {
