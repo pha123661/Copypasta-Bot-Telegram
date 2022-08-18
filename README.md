@@ -2,8 +2,10 @@
 A "Ho̍k tsè bûn" / "copypasta" / "複製文" bot for telegram  
 
 # Features
-The bot posts related copypasta for you whenever the bot detects matching keyword  
-The bot also utlizes top-of-the-line DL models to generate summarization (or caption, for media) automaticly whenever you insert new copypasta  
+* Post related copypasta for you whenever the bot detects matching keyword  
+* Generate summarization (or caption, for media) automaticly by utlizing top-of-the-line DL models  
+  * Model used for text summarization: [csebuetnlp/mT5_multilingual_XLSum](https://huggingface.co/csebuetnlp/mT5_multilingual_XLSum)  
+  * Model used for image captioning: [OFA-Sys/OFA-base](https://huggingface.co/OFA-Sys/OFA-base)
 
 [`#ImageCaptioning`](https://paperswithcode.com/task/image-captioning)  
 [`#TextGeneration`](https://paperswithcode.com/task/text-generation)  
@@ -23,13 +25,13 @@ Supported commands atm:
 1. new/add: insert new Ho̍k tsè bûn into the database  
 1. random: select a Ho̍k tsè bûn randomly and post it  
 1. search: fuzzy search every file in database  
-1. "addImage": insert new media into the database whenever an media with caption is sent  
+1. Automatically insert new media into the database whenever an media with caption is sent  
 
 # Deploy on [Replit.com](http://replit.com/)
 1. Import the repo into replit
 2. Setup your config file following section "Config Setup" and move it to ``/HokSeBunBot``
 3. Run (first time only)
-```
+```go
 go mod init HokSeBunBot  
 go mod tidy
 ```
