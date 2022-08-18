@@ -6,7 +6,6 @@ import (
 	"log"
 	"os"
 	"strings"
-	"time"
 	"unicode/utf8"
 
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
@@ -29,7 +28,7 @@ type cfg struct {
 		}
 		CONCURRENT struct {
 			SUM, CAP struct {
-				COOLDOWN time.Duration
+				COOLDOWN int // ms
 				LIMIT    int
 			}
 		}

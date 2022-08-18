@@ -3,6 +3,7 @@ package main
 import (
 	"fmt"
 	"log"
+	"math/rand"
 	"time"
 
 	c "github.com/ostafen/clover/v2"
@@ -128,10 +129,17 @@ func InsertHTB(Collection string, HTB *HokTseBun) (string, error) {
 		"CreateTime":    time.Now(),
 	})
 
-	_id, err := DB.InsertOne(Collection, doc)
+	var _id string
+	var err error
+	_id, err = DB.InsertOne(Collection, doc)
 	if err != nil {
-		log.Println("[InsertHTB]", err)
-		return "", err
+		wait_ms := rand.NormFloat64()*70 + 100
+		fmt.Println("Sleeping for", time.Duration(wait_ms*float64(time.Nanosecond)))
+		time.Sleep(time.Duration(wait_ms * float64(time.Nanosecond))) // wait 0.1s and try again
+		_id, err = DB.InsertOne(Collection, doc)
+		if err != nil {
+			return "", err
+		}
 	}
 	return _id, nil
 }

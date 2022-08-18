@@ -9,6 +9,7 @@ import (
 	"log"
 	"math/rand"
 	"net/http"
+	"sync"
 	"time"
 
 	hfapigo "github.com/TannerKvarfordt/hfapigo"
@@ -17,6 +18,7 @@ import (
 
 var (
 	SumSemaphore, CapSemaphore chan Empty
+	SumCoolSema, CapCoolSema   sync.Mutex
 	SumCool, CapCool           time.Duration
 )
 
@@ -24,8 +26,8 @@ func InitVLP() {
 	SumSemaphore = make(chan Empty, CONFIG.SETTING.CONCURRENT.SUM.LIMIT)
 	CapSemaphore = make(chan Empty, CONFIG.SETTING.CONCURRENT.CAP.LIMIT)
 
-	SumCool = CONFIG.SETTING.CONCURRENT.SUM.COOLDOWN
-	CapCool = CONFIG.SETTING.CONCURRENT.CAP.COOLDOWN
+	SumCool = time.Duration(CONFIG.SETTING.CONCURRENT.SUM.COOLDOWN) * time.Millisecond
+	CapCool = time.Duration(CONFIG.SETTING.CONCURRENT.CAP.COOLDOWN) * time.Millisecond
 }
 
 func SetHFAPI() {
@@ -65,17 +67,14 @@ func SetHFAPI() {
 }
 
 func TextSummarization(Keyword, Content string) string {
-	fmt.Println(len(SumSemaphore))
-	fmt.Println("WAITING")
+	// cooldown
+	SumCoolSema.Lock()
+	time.Sleep(SumCool)
+	SumCoolSema.Unlock()
+
 	SumSemaphore <- Empty{} // acquire
-	fmt.Println("Acquired!")
 	defer func() {
-		go func() {
-			fmt.Println("SLEEPING")
-			time.Sleep(SumCool)
-			<-SumSemaphore // release
-			fmt.Println("RELEASED")
-		}()
+		<-SumSemaphore // release
 	}()
 	var Summarization string
 	sresps, err := hfapigo.SendSummarizationRequest(
@@ -116,12 +115,14 @@ func ImageCaptioning(Keyword, Image_URL string) string {
 		// 3. "OpenCC" (simplified chinese -> traditional chinese)
 	*/
 
+	// cooldown
+	CapCoolSema.Lock()
+	time.Sleep(CapCool)
+	CapCoolSema.Unlock()
+
 	CapSemaphore <- Empty{} // acquire
 	defer func() {
-		go func() {
-			time.Sleep(CapCool)
-			<-CapSemaphore // release
-		}()
+		<-CapSemaphore // release
 	}()
 
 	// Encode image
