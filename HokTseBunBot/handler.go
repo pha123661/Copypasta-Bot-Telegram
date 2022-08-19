@@ -535,7 +535,7 @@ func handleCallbackQuery(CallbackQuery *tgbotapi.CallbackQuery) {
 		case "WHATISTHIS":
 			Text = "我是複製文bot, 你可以:\n1. 新增複製文或圖片給我, 我會自動新增摘要/說明\n2. 提到關鍵字的時候, 我會把複製文抓出來鞭\n3. 我有搜尋功能, 也可以當作資料庫用"
 		case "HOWMEDIA":
-			Text = "請直接傳圖片/GIF/影片, 並附上註解(傳的時候下方可以輸入註解), bot 會自動新增"
+			Text = "請直接傳圖片/GIF/影片, 並附上註解(傳的時候下方可以輸入註解), bot 會自動新增\n實際使用範例如下圖:"
 		case "HOWTXT":
 			Text = "可以使用 /add 指令, 使用方法如下:\n" + Text
 			Command = "ADD"
