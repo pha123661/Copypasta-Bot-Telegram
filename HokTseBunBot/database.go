@@ -12,10 +12,10 @@ import (
 	"go.mongodb.org/mongo-driver/mongo/options"
 )
 
-var DB2 *mongo.Database
+var DB *mongo.Database
 
 type HokTseBun struct {
-	UID           primitive.ObjectID `bson:"_id"`
+	UID           primitive.ObjectID `bson:"_id" json:"_id"`
 	Type          int                `bson:"Type"`
 	Keyword       string             `bson:"Keyword"`
 	Summarization string             `bson:"Summarization"`
@@ -51,7 +51,30 @@ func InitDB() {
 	if err != nil {
 		log.Panicln(err)
 	}
-	DB2 = DBClient.Database(CONFIG.DB.DB_NAME)
+	DB = DBClient.Database(CONFIG.DB.DB_NAME)
+
+	Collections, err := DB.ListCollectionNames(context.TODO(), bson.D{})
+	if err != nil {
+		log.Panicln(err)
+	}
+
+	var BeginnerExists bool
+	for _, Col := range Collections {
+		if Col == "Beginner" {
+			BeginnerExists = true
+			break
+		}
+	}
+
+	if !BeginnerExists {
+		if err := ImportCollection(DB, "Beginner", "./Beginner.json"); err != nil {
+			log.Println("Begginer initialization failed!")
+			log.Panicln(err)
+			return
+		} else {
+			log.Println("Begginer initialized")
+		}
+	}
 }
 
 func InsertHTB(Collection string, HTB *HokTseBun) (primitive.ObjectID, error) {
@@ -71,7 +94,7 @@ func InsertHTB(Collection string, HTB *HokTseBun) (primitive.ObjectID, error) {
 	}
 
 	// Insert doc
-	Col := DB2.Collection(Collection)
+	Col := DB.Collection(Collection)
 	InRst, err := Col.InsertOne(context.TODO(), doc)
 	if err != nil {
 		return primitive.ObjectID{}, err
@@ -86,7 +109,12 @@ func ImportCollection(DB *mongo.Database, Collection, path string) error {
 		log.Println(err)
 		return err
 	}
-	bson.UnmarshalExtJSON(jsonbytes, true, docs)
-	DB.Collection(Collection).InsertMany(context.TODO(), docs)
-	return nil
+	jsonbytes, err = DeleteFieldFromJson("_id", jsonbytes)
+	if err != nil {
+		log.Println(err)
+		return err
+	}
+	bson.UnmarshalExtJSON(jsonbytes, true, &docs)
+	_, err = DB.Collection(Collection).InsertMany(context.TODO(), docs)
+	return err
 }

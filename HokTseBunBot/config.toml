@@ -33,5 +33,5 @@
     USER = "" # should be stored as environment variable
     PASS = "" # should be stored as environment variable
 [DB]
-  DB_NAME = "HokTseBunBot-TG"
-  CFormat = "%d-Copypasta-Testing" # args = ChatID int64
+  DB_NAME = "Testing_HokTseBunBot-TG"
+  CFormat = "%d-Copypasta" # args = ChatID int64

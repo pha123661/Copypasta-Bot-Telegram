@@ -2,6 +2,7 @@ package main
 
 import (
 	"bytes"
+	"encoding/json"
 	"fmt"
 	"log"
 	"os"
@@ -198,4 +199,17 @@ func SendMultiMedia(ChatID int64, Caption string, FileID_Str string, Type int) *
 
 	}
 	return Msg
+}
+
+func DeleteFieldFromJson(field string, jsonbytes []byte) ([]byte, error) {
+	var docs_interface interface{}
+	json.Unmarshal(jsonbytes, &docs_interface)
+	fmt.Println(jsonbytes)
+	fmt.Println(docs_interface)
+
+	for i := 0; i < len(docs_interface.([]interface{})); i++ {
+		delete(docs_interface.([]interface{})[i].(map[string]interface{}), "_id")
+	}
+
+	return json.Marshal(docs_interface)
 }

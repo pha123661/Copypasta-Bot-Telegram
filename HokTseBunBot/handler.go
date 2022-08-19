@@ -60,6 +60,7 @@ func handleCommand(Message *tgbotapi.Message) {
 		)
 		if _, err := bot.Send(replyMsg); err != nil {
 			log.Println("[new]", err)
+			return
 		}
 	case "random", "randImage", "randText": // short: RAND
 		randomHandler(Message)
@@ -107,23 +108,7 @@ func handleCommand(Message *tgbotapi.Message) {
 		}
 		deleteHandler(Message)
 
-	// internal usage
-	// case "import":
-	// 	DB.DropCollection(CONFIG.GetColbyChatID(Message.Chat.ID))
-	// 	DB.ImportCollection(CONFIG.GetColbyChatID(Message.Chat.ID), Message.CommandArguments())
-	// 	SendText(Message.Chat.ID, Message.CommandArguments(), Message.MessageID)
-	case "refresh_beginner":
-		if Message.CommandArguments() != CONFIG.API.TG.TOKEN {
-			SendText(Message.Chat.ID, "亂什麼洨 幹你娘", Message.MessageID)
-			return
-		}
-		DB2.Collection("Beginner").Drop(context.TODO())
-		if err := ImportCollection(DB2, "Beginner", "./Beginner pack.json"); err != nil {
-			SendText(Message.Chat.ID, "刷新失敗: "+err.Error(), Message.MessageID)
-			log.Println(err)
-			return
-		}
-		SendText(Message.Chat.ID, "成功刷新 Beginner DB", Message.MessageID)
+	// internal usag
 	case "chatid":
 		SendText(Message.Chat.ID, fmt.Sprintf("此聊天室的 ChatID: %d", Message.Chat.ID), 0)
 	case "drop":
@@ -134,9 +119,10 @@ func handleCommand(Message *tgbotapi.Message) {
 		ChatID, err := strconv.ParseInt(Message.CommandArguments(), 10, 64)
 		if err != nil {
 			SendText(Message.Chat.ID, fmt.Sprint(ChatID, err), 0)
+			log.Println(err)
 			return
 		}
-		DB2.Collection(CONFIG.GetColbyChatID(ChatID)).Drop(context.TODO())
+		DB.Collection(CONFIG.GetColbyChatID(ChatID)).Drop(context.TODO())
 		SendText(Message.Chat.ID, fmt.Sprintf("成功刪除 %d", ChatID), 0)
 	case "import":
 		var SourceCol string
@@ -148,9 +134,27 @@ func handleCommand(Message *tgbotapi.Message) {
 			SourceChatID, err := strconv.ParseInt(Message.CommandArguments(), 10, 64)
 			if err != nil {
 				SendText(Message.Chat.ID, fmt.Sprintf("匯入失敗: %s", err.Error()), Message.MessageID)
+				log.Println(err)
 				return
 			}
+
 			SourceCol = CONFIG.GetColbyChatID(SourceChatID)
+			// check if sourcecol exist
+			Collections, err := DB.ListCollectionNames(context.TODO(), bson.D{})
+			if err != nil {
+				log.Panicln(err)
+			}
+			var i int
+			for i = 0; i < len(Collections); i++ {
+				if Collections[i] == SourceCol {
+					break
+				}
+			}
+			if i == len(Collections) {
+				SendText(Message.Chat.ID, fmt.Sprintf("匯入失敗: %d 不存在資料庫", SourceChatID), Message.MessageID)
+				log.Printf("匯入失敗: %d 不存在資料庫", SourceChatID)
+				return
+			}
 		}
 
 		// type 0: system attribute
@@ -162,27 +166,30 @@ func handleCommand(Message *tgbotapi.Message) {
 					bson.D{{Key: "Content", Value: SourceCol}},
 				}},
 		}
-		SingleRst := DB2.Collection(TargetCol).FindOne(context.TODO(), Filter)
+		SingleRst := DB.Collection(TargetCol).FindOne(context.TODO(), Filter)
 		if SingleRst.Err() != mongo.ErrNoDocuments {
 			SendText(Message.Chat.ID, "你之前匯入過了~", Message.MessageID)
 			return
 		}
-		Curser, err := DB2.Collection(SourceCol).Find(context.TODO(), bson.D{})
+
+		var docs []interface{}
+		Curser, err := DB.Collection(SourceCol).Find(context.TODO(), bson.D{})
 		defer Curser.Close(context.TODO())
 		if err != nil {
 			SendText(Message.Chat.ID, fmt.Sprintf("匯入失敗: %s", err.Error()), Message.MessageID)
+			log.Println(err)
 			return
 		}
-
-		var docs []interface{}
 		if err := Curser.All(context.TODO(), &docs); err != nil {
 			SendText(Message.Chat.ID, fmt.Sprintf("匯入失敗: %s", err.Error()), Message.MessageID)
+			log.Println(err)
 			return
 		}
 
-		_, err = DB2.Collection(TargetCol).InsertMany(context.TODO(), docs)
+		_, err = DB.Collection(TargetCol).InsertMany(context.TODO(), docs)
 		if err != nil {
 			SendText(Message.Chat.ID, fmt.Sprintf("匯入失敗: %s", err.Error()), Message.MessageID)
+			log.Println(err)
 			return
 		}
 
@@ -190,10 +197,23 @@ func handleCommand(Message *tgbotapi.Message) {
 
 		// update system attribute
 		InsertHTB(TargetCol, &HokTseBun{Type: 0, Keyword: "Import", Content: SourceCol})
-
 	case "echo":
 		// Echo
 		SendText(Message.Chat.ID, Message.CommandArguments(), Message.MessageID)
+
+	// authorized use
+	case "refresh_beginner":
+		if Message.CommandArguments() != CONFIG.API.TG.TOKEN {
+			SendText(Message.Chat.ID, "亂什麼洨 幹你娘", Message.MessageID)
+			return
+		}
+		DB.Collection("Beginner").Drop(context.TODO())
+		if err := ImportCollection(DB, "Beginner", "./Beginner.json"); err != nil {
+			SendText(Message.Chat.ID, "刷新失敗: "+err.Error(), Message.MessageID)
+			log.Println(err)
+			return
+		}
+		SendText(Message.Chat.ID, "成功刷新 Beginner DB", Message.MessageID)
 
 	default:
 		SendText(Message.Chat.ID, fmt.Sprintf("錯誤：我不會 “/%s” 啦QQ", Message.Command()), Message.MessageID)
@@ -211,7 +231,7 @@ func randomHandler(Message *tgbotapi.Message) {
 		Filter = bson.D{{Key: "Type", Value: bson.D{{Key: "$ne", Value: 0}}}}
 	}
 
-	Curser, err := DB2.Collection(CONFIG.GetColbyChatID(Message.Chat.ID)).Find(context.TODO(), Filter)
+	Curser, err := DB.Collection(CONFIG.GetColbyChatID(Message.Chat.ID)).Find(context.TODO(), Filter)
 	defer func() { Curser.Close(context.TODO()) }()
 	if err != nil {
 		log.Println("[random]", err)
@@ -219,7 +239,7 @@ func randomHandler(Message *tgbotapi.Message) {
 		return
 	}
 
-	num, err := DB2.Collection(CONFIG.GetColbyChatID(Message.Chat.ID)).CountDocuments(context.TODO(), Filter)
+	num, err := DB.Collection(CONFIG.GetColbyChatID(Message.Chat.ID)).CountDocuments(context.TODO(), Filter)
 	if err != nil {
 		log.Println("[random]", err)
 		SendText(Message.Chat.ID, fmt.Sprintf("錯誤：%s", err), 0)
@@ -234,7 +254,6 @@ func randomHandler(Message *tgbotapi.Message) {
 	RandomIndex := rand.Int63n(num)
 
 	for Curser.Next(context.TODO()) {
-		fmt.Println(num, RandomIndex)
 		if RandomIndex <= 0 {
 			Curser.Decode(HTB)
 			PrintStructAsTOML(HTB)
@@ -268,7 +287,7 @@ func addHandler(Message *tgbotapi.Message, Keyword, Content string, Type int) {
 	Filter := bson.D{{
 		Key: "$and", Value: bson.A{bson.D{{Key: "Type", Value: Type}}, bson.D{{Key: "Keyword", Value: Keyword}}, bson.D{{Key: "Content", Value: Content}}},
 	}}
-	if Rst := DB2.Collection(CONFIG.GetColbyChatID(Message.Chat.ID)).FindOne(context.TODO(), Filter); Rst.Err() != mongo.ErrNoDocuments {
+	if Rst := DB.Collection(CONFIG.GetColbyChatID(Message.Chat.ID)).FindOne(context.TODO(), Filter); Rst.Err() != mongo.ErrNoDocuments {
 		SendText(Message.Chat.ID, "傳過了啦 腦霧?", Message.MessageID)
 		return
 	}
@@ -361,10 +380,11 @@ func searchHandler(Message *tgbotapi.Message) {
 	// search
 	Filter := bson.D{{Key: "Type", Value: bson.D{{Key: "$ne", Value: 0}}}}
 	opts := options.Find().SetSort(bson.D{{Key: "Type", Value: 1}})
-	Curser, err := DB2.Collection(CONFIG.GetColbyChatID(Message.Chat.ID)).Find(context.TODO(), Filter, opts)
+	Curser, err := DB.Collection(CONFIG.GetColbyChatID(Message.Chat.ID)).Find(context.TODO(), Filter, opts)
 	defer func() { Curser.Close(context.TODO()) }()
 	if err != nil {
 		SendText(Message.Chat.ID, "搜尋失敗:"+err.Error(), Message.MessageID)
+		log.Println(err)
 	}
 
 	HTB := &HokTseBun{}
@@ -407,7 +427,7 @@ func deleteHandler(Message *tgbotapi.Message) {
 
 	Filter := bson.D{{Key: "Keyword", Value: BeDeletedKeyword}}
 	opts := options.Find().SetSort(bson.D{{Key: "Type", Value: 1}})
-	Curser, err := DB2.Collection(CONFIG.GetColbyChatID(Message.Chat.ID)).Find(context.TODO(), Filter, opts)
+	Curser, err := DB.Collection(CONFIG.GetColbyChatID(Message.Chat.ID)).Find(context.TODO(), Filter, opts)
 	defer func() { Curser.Close(context.TODO()) }()
 	if err != nil {
 		log.Println("[delete]", err)
@@ -468,7 +488,7 @@ func handleTextMessage(Message *tgbotapi.Message) {
 		)
 		Filter := bson.D{{Key: "Keyword", Value: bson.D{{Key: "$ne", Value: 0}}}}
 		opts := options.Find().SetSort(bson.D{{Key: "Type", Value: 1}})
-		Curser, err := DB2.Collection(CONFIG.GetColbyChatID(Message.Chat.ID)).Find(context.TODO(), Filter, opts)
+		Curser, err := DB.Collection(CONFIG.GetColbyChatID(Message.Chat.ID)).Find(context.TODO(), Filter, opts)
 		defer func() { Curser.Close(context.TODO()) }()
 
 		if err != nil {
@@ -610,6 +630,9 @@ func handleCallbackQuery(CallbackQuery *tgbotapi.CallbackQuery) {
 			bot.Request(tgbotapi.NewDeleteMessage(ChatID, CallbackQuery.Message.ReplyToMessage.MessageID))
 		}
 		bot.Request(tgbotapi.NewDeleteMessage(ChatID, CallbackQuery.Message.MessageID))
+		delete(QueuedDeletes[ChatID], CallbackQuery.Message.MessageID)
+		delete(QueuedDeletes[ChatID], CallbackQuery.Message.ReplyToMessage.MessageID)
+
 	case CallbackQuery.Data[:3] == "EXP":
 		Command := strings.Fields(CallbackQuery.Data)[1]
 		// send text tutorial
@@ -665,7 +688,7 @@ func handleCallbackQuery(CallbackQuery *tgbotapi.CallbackQuery) {
 			DEntity.Confirmed = true
 
 			// Find by id
-			result := DB2.Collection(CONFIG.GetColbyChatID(CallbackQuery.Message.Chat.ID)).FindOne(context.Background(), bson.M{"_id": DEntity.HTB.UID})
+			result := DB.Collection(CONFIG.GetColbyChatID(CallbackQuery.Message.Chat.ID)).FindOne(context.Background(), bson.M{"_id": DEntity.HTB.UID})
 			if result.Err() != nil {
 				log.Println("[CallBQ]", result.Err())
 				return
@@ -723,7 +746,7 @@ func handleCallbackQuery(CallbackQuery *tgbotapi.CallbackQuery) {
 			}
 		case !DEntity.Done:
 			DEntity.Done = true
-			result := DB2.Collection(CONFIG.GetColbyChatID(CallbackQuery.Message.Chat.ID)).FindOneAndDelete(context.Background(), bson.M{"_id": DEntity.HTB.UID})
+			result := DB.Collection(CONFIG.GetColbyChatID(CallbackQuery.Message.Chat.ID)).FindOneAndDelete(context.Background(), bson.M{"_id": DEntity.HTB.UID})
 			if result.Err() != nil {
 				log.Println("[CallBQ]", result.Err())
 				return
