@@ -38,15 +38,9 @@ func handleCommand(Message *tgbotapi.Message) {
 		replyMsg := tgbotapi.NewMessage(Message.Chat.ID, "請按按鈕選擇要觀看的教學範例:")
 		replyMsg.ReplyToMessageID = Message.MessageID
 		replyMsg.ReplyMarkup = tgbotapi.NewInlineKeyboardMarkup(
-			tgbotapi.NewInlineKeyboardRow(
-				tgbotapi.NewInlineKeyboardButtonData("這個 bot 是幹嘛用的", "EXP WHATISTHIS"),
-			),
-			tgbotapi.NewInlineKeyboardRow(
-				tgbotapi.NewInlineKeyboardButtonData("我要如何新增複製文?", "EXP HOWTXT"),
-			),
-			tgbotapi.NewInlineKeyboardRow(
-				tgbotapi.NewInlineKeyboardButtonData("我要如何新增圖片/GIF/影片?", "EXP HOWMEDIA"),
-			),
+			tgbotapi.NewInlineKeyboardRow(tgbotapi.NewInlineKeyboardButtonData("這個 bot 是幹嘛用的", "EXP WHATISTHIS")),
+			tgbotapi.NewInlineKeyboardRow(tgbotapi.NewInlineKeyboardButtonData("我要如何新增複製文?", "EXP HOWTXT")),
+			tgbotapi.NewInlineKeyboardRow(tgbotapi.NewInlineKeyboardButtonData("我要如何新增圖片/GIF/影片?", "EXP HOWMEDIA")),
 			tgbotapi.NewInlineKeyboardRow(
 				tgbotapi.NewInlineKeyboardButtonData("/add 指令", "EXP ADD"),
 				tgbotapi.NewInlineKeyboardButtonData("/new 指令", "EXP ADD"),
@@ -59,9 +53,7 @@ func handleCommand(Message *tgbotapi.Message) {
 				tgbotapi.NewInlineKeyboardButtonData("/delete 指令", "EXP DEL"),
 				tgbotapi.NewInlineKeyboardButtonData("/example 指令", "EXP EXP"),
 			),
-			tgbotapi.NewInlineKeyboardRow(
-				tgbotapi.NewInlineKeyboardButtonData("✖️取消", "NIL_WITH_REACT"),
-			),
+			tgbotapi.NewInlineKeyboardRow(tgbotapi.NewInlineKeyboardButtonData("✖️取消", "NIL_WITH_REACT")),
 		)
 		if _, err := bot.Send(replyMsg); err != nil {
 			log.Println("[new]", err)
@@ -69,18 +61,13 @@ func handleCommand(Message *tgbotapi.Message) {
 	case "random", "randomImage", "randomText": // short: RAND
 		randomHandler(Message)
 	case "new", "add": // short: NEW, ADD
-		// Parse command
 		Command_Args := strings.Fields(Message.CommandArguments())
 		if len(Command_Args) <= 1 {
 			replyMsg := tgbotapi.NewMessage(Message.Chat.ID, fmt.Sprintf("錯誤：指令格式爲 “/%s {關鍵字} {內容}”", Message.Command()))
 			replyMsg.ReplyToMessageID = Message.MessageID
 			replyMsg.ReplyMarkup = tgbotapi.NewInlineKeyboardMarkup(
-				tgbotapi.NewInlineKeyboardRow(
-					tgbotapi.NewInlineKeyboardButtonData("蛤 我不會啦 啥", "EXP HOWTXT"),
-				),
-				tgbotapi.NewInlineKeyboardRow(
-					tgbotapi.NewInlineKeyboardButtonData("阿如果我想傳圖片/GIF/影片咧", "EXP HOWMEDIA"),
-				),
+				tgbotapi.NewInlineKeyboardRow(tgbotapi.NewInlineKeyboardButtonData("蛤 我不會啦 啥", "EXP HOWTXT")),
+				tgbotapi.NewInlineKeyboardRow(tgbotapi.NewInlineKeyboardButtonData("阿如果我想傳圖片/GIF/影片咧", "EXP HOWMEDIA")),
 			)
 			if _, err := bot.Send(replyMsg); err != nil {
 				log.Println(err)
@@ -96,10 +83,7 @@ func handleCommand(Message *tgbotapi.Message) {
 			replyMsg := tgbotapi.NewMessage(Message.Chat.ID, fmt.Sprintf("錯誤：指令格式爲 “/%s {關鍵字}”", Message.Command()))
 			replyMsg.ReplyToMessageID = Message.MessageID
 			replyMsg.ReplyMarkup = tgbotapi.NewInlineKeyboardMarkup(
-				tgbotapi.NewInlineKeyboardRow(
-					tgbotapi.NewInlineKeyboardButtonData("蛤 我不會啦 啥", "EXP SERC"),
-				),
-			)
+				tgbotapi.NewInlineKeyboardRow(tgbotapi.NewInlineKeyboardButtonData("蛤 我不會啦 啥", "EXP SERC")))
 			if _, err := bot.Send(replyMsg); err != nil {
 				log.Println(err)
 			}
@@ -107,6 +91,17 @@ func handleCommand(Message *tgbotapi.Message) {
 		}
 		searchHandler(Message)
 	case "delete": // short: DEL
+		Command_Args := strings.Fields(Message.CommandArguments())
+		if len(Command_Args) < 1 {
+			replyMsg := tgbotapi.NewMessage(Message.Chat.ID, fmt.Sprintf("錯誤：指令格式爲 “/%s {關鍵字}”", Message.Command()))
+			replyMsg.ReplyToMessageID = Message.MessageID
+			replyMsg.ReplyMarkup = tgbotapi.NewInlineKeyboardMarkup(
+				tgbotapi.NewInlineKeyboardRow(tgbotapi.NewInlineKeyboardButtonData("蛤 我不會啦 啥", "EXP DEL")))
+			if _, err := bot.Send(replyMsg); err != nil {
+				log.Println(err)
+			}
+			return
+		}
 		deleteHandler(Message)
 
 	// internal usage
@@ -320,10 +315,6 @@ func searchHandler(Message *tgbotapi.Message) {
 
 func deleteHandler(Message *tgbotapi.Message) {
 	var BeDeletedKeyword = Message.CommandArguments()
-	if BeDeletedKeyword == "" {
-		SendText(Message.Chat.ID, "請輸入關鍵字", Message.MessageID)
-		return
-	}
 	if utf8.RuneCountInString(BeDeletedKeyword) >= 30 {
 		SendText(Message.Chat.ID, fmt.Sprintf("關鍵字長度不可大於 30, 目前爲 %d 字”", utf8.RuneCountInString(BeDeletedKeyword)), Message.MessageID)
 		return
