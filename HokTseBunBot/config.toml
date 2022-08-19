@@ -33,6 +33,5 @@
     USER = "" # should be stored as environment variable
     PASS = "" # should be stored as environment variable
 [DB]
-  DIR = "../HokTseBun_db"
+  DB_NAME = "HokTseBunBot-TG"
   CFormat = "%d-Copypasta" # args = ChatID int64
-  EXPORT_DIR = "../HokTseBunArchive"

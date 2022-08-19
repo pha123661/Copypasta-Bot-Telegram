@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"io"
 	"log"
 	"net/http"
@@ -103,7 +104,7 @@ func main() {
 }
 
 func NewChat(ChatID int64) {
-	if err := DB.CreateCollection(CONFIG.GetColbyChatID(ChatID)); err != nil {
+	if err := DB2.CreateCollection(context.TODO(), CONFIG.GetColbyChatID(ChatID)); err != nil {
 		log.Println("[NewChat]", err)
 	} else {
 		log.Printf("[NewChat] new db %s created!\n", CONFIG.GetColbyChatID(ChatID))

@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"fmt"
 	"log"
 	"math/rand"
@@ -11,7 +12,9 @@ import (
 
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
 	"github.com/lithammer/fuzzysearch/fuzzy"
-	c "github.com/ostafen/clover/v2"
+	"go.mongodb.org/mongo-driver/bson"
+	"go.mongodb.org/mongo-driver/mongo"
+	"go.mongodb.org/mongo-driver/mongo/options"
 )
 
 // // Deletes[ChatID]["UID"] = smth
@@ -114,8 +117,8 @@ func handleCommand(Message *tgbotapi.Message) {
 			SendText(Message.Chat.ID, "亂什麼洨 幹你娘", Message.MessageID)
 			return
 		}
-		DB.DropCollection("Beginner")
-		if err := DB.ImportCollection("Beginner", "./Beginner pack.json"); err != nil {
+		DB2.Collection("Beginner").Drop(context.TODO())
+		if err := ImportCollection(DB2, "Beginner", "./Beginner pack.json"); err != nil {
 			SendText(Message.Chat.ID, "刷新失敗: "+err.Error(), Message.MessageID)
 			log.Println(err)
 			return
@@ -133,7 +136,7 @@ func handleCommand(Message *tgbotapi.Message) {
 			SendText(Message.Chat.ID, fmt.Sprint(ChatID, err), 0)
 			return
 		}
-		DB.DropCollection(CONFIG.GetColbyChatID(ChatID))
+		DB2.Collection(CONFIG.GetColbyChatID(ChatID)).Drop(context.TODO())
 		SendText(Message.Chat.ID, fmt.Sprintf("成功刪除 %d", ChatID), 0)
 	case "import":
 		var SourceCol string
@@ -151,19 +154,34 @@ func handleCommand(Message *tgbotapi.Message) {
 		}
 
 		// type 0: system attribute
-		Criteria := c.Field("Type").Eq(0).And(c.Field("Keyword").Eq("Import")).And(c.Field("Content").Eq(SourceCol))
-		if IsExist, _ := DB.Exists(c.NewQuery(TargetCol).Where(Criteria)); IsExist {
+		Filter := bson.D{
+			{"$and",
+				bson.A{
+					bson.D{{"Type", 0}},
+					bson.D{{"Keyword", "Import"}},
+					bson.D{{"Content", SourceCol}},
+				}},
+		}
+		SingleRst := DB2.Collection(TargetCol).FindOne(context.TODO(), Filter)
+		if SingleRst.Err() != mongo.ErrNoDocuments {
 			SendText(Message.Chat.ID, "你之前匯入過了~", Message.MessageID)
 			return
 		}
-
-		docs, err := DB.FindAll(c.NewQuery(SourceCol))
+		Curser, err := DB2.Collection(SourceCol).Find(context.TODO(), bson.D{})
+		defer Curser.Close(context.TODO())
 		if err != nil {
 			SendText(Message.Chat.ID, fmt.Sprintf("匯入失敗: %s", err.Error()), Message.MessageID)
 			return
 		}
 
-		if err := DB.Insert(TargetCol, docs...); err != nil {
+		var docs []interface{}
+		if err := Curser.All(context.TODO(), &docs); err != nil {
+			SendText(Message.Chat.ID, fmt.Sprintf("匯入失敗: %s", err.Error()), Message.MessageID)
+			return
+		}
+
+		_, err = DB2.Collection(TargetCol).InsertMany(context.TODO(), docs)
+		if err != nil {
 			SendText(Message.Chat.ID, fmt.Sprintf("匯入失敗: %s", err.Error()), Message.MessageID)
 			return
 		}
@@ -183,43 +201,46 @@ func handleCommand(Message *tgbotapi.Message) {
 }
 
 func randomHandler(Message *tgbotapi.Message) {
-	var Query *c.Query
+	var Filter bson.D
 	switch Message.Command() {
 	case "randImage":
-		Criteria := c.Field("Type").Eq(2)
-		Query = c.NewQuery(CONFIG.GetColbyChatID(Message.Chat.ID)).Where(Criteria)
+		Filter = bson.D{{"Type", 2}}
 	case "randText":
-		Criteria := c.Field("Type").Eq(1)
-		Query = c.NewQuery(CONFIG.GetColbyChatID(Message.Chat.ID)).Where(Criteria)
+		Filter = bson.D{{"Type", 1}}
 	default:
-		Criteria := c.Field("Type").Neq(0)
-		Query = c.NewQuery(CONFIG.GetColbyChatID(Message.Chat.ID)).Where(Criteria)
+		Filter = bson.D{{"Type", bson.D{{"$ne", 0}}}}
 	}
-	docs, err := DB.FindAll(Query)
+	Curser, err := DB2.Collection(CONFIG.GetColbyChatID(Message.Chat.ID)).Find(context.TODO(), Filter)
+	defer Curser.Close(context.TODO())
 	if err != nil {
 		log.Println("[random]", err)
 		SendText(Message.Chat.ID, fmt.Sprintf("錯誤：%s", err), 0)
 		return
 	}
-	if len(docs) <= 0 {
+	if Curser.Next(context.TODO()) {
 		SendText(Message.Chat.ID, "資料庫沒東西是在抽屁", 0)
 		return
 	}
-	RandomIndex := rand.Intn(len(docs))
+
+	num, err := DB2.Collection(CONFIG.GetColbyChatID(Message.Chat.ID)).EstimatedDocumentCount(context.TODO())
+	RandomIndex := rand.Int63n(num)
 
 	var HTB *HokTseBun = &HokTseBun{}
-	for idx, doc := range docs {
-		if idx == RandomIndex {
-			doc.Unmarshal(HTB)
+
+	for Curser.Next(context.TODO()) {
+		if RandomIndex == 0 {
+			Curser.Decode(HTB)
+			PrintStructAsTOML(HTB)
 			break
 		}
+		RandomIndex--
 	}
 
 	switch {
 	case HTB.IsText():
-		SendText(Message.Chat.ID, fmt.Sprintf("幫你從 %d 坨大便中精心選擇了「%s」：\n%s", len(docs), HTB.Keyword, HTB.Content), 0)
+		SendText(Message.Chat.ID, fmt.Sprintf("幫你從 %d 坨大便中精心選擇了「%s」：\n%s", num, HTB.Keyword, HTB.Content), 0)
 	case HTB.IsMultiMedia():
-		SendMultiMedia(Message.Chat.ID, fmt.Sprintf("幫你從 %d 坨大便中精心選擇了「%s」", len(docs), HTB.Keyword), HTB.Content, HTB.Type)
+		SendMultiMedia(Message.Chat.ID, fmt.Sprintf("幫你從 %d 坨大便中精心選擇了「%s」", num, HTB.Keyword), HTB.Content, HTB.Type)
 	default:
 		SendText(Message.Chat.ID, fmt.Sprintf("發生了奇怪的錯誤，送不出去這個東西：%+v", HTB), 0)
 	}
@@ -237,8 +258,10 @@ func addHandler(Message *tgbotapi.Message, Keyword, Content string, Type int) {
 		return
 	}
 	// find existing files
-	Criteria := c.Field("Type").Eq(Type).And(c.Field("Keyword").Eq(Keyword).And(c.Field("Content").Eq(Content)))
-	if doc, _ := DB.FindFirst(c.NewQuery(CONFIG.GetColbyChatID(Message.Chat.ID)).Where(Criteria)); doc != nil {
+	Filter := bson.D{{
+		"$and", bson.A{bson.D{{"Type", Type}}, bson.D{{"Keyword", Keyword}}, bson.D{{"Content", Content}}},
+	}}
+	if Rst := DB2.Collection(CONFIG.GetColbyChatID(Message.Chat.ID)).FindOne(context.TODO(), Filter); Rst.Err() != nil {
 		SendText(Message.Chat.ID, "傳過了啦 腦霧?", Message.MessageID)
 		return
 	}
@@ -329,14 +352,21 @@ func searchHandler(Message *tgbotapi.Message) {
 	}
 
 	// search
-	docs, _ := DB.FindAll(c.NewQuery(CONFIG.GetColbyChatID(Message.Chat.ID)).Where(c.Field("Type").Neq(0)).Sort(c.SortOption{Field: "Type", Direction: 1}))
+	Filter := bson.D{{"Type", bson.D{{"$ne", 0}}}}
+	opts := options.Find().SetSort(bson.D{{"Type", 1}})
+	Curser, err := DB2.Collection(CONFIG.GetColbyChatID(Message.Chat.ID)).Find(context.TODO(), Filter, opts)
+	defer Curser.Close(context.TODO())
+	if err != nil {
+		SendText(Message.Chat.ID, "搜尋失敗:"+err.Error(), Message.MessageID)
+	}
+
 	HTB := &HokTseBun{}
-	for _, doc := range docs {
+	for Curser.Next(context.TODO()) {
 		if ResultCount >= MaxResults {
 			ResultCount++
 			break
 		}
-		doc.Unmarshal(HTB)
+		Curser.Decode(HTB)
 		if fuzzy.Match(Query, HTB.Keyword) || fuzzy.Match(HTB.Keyword, Query) || fuzzy.Match(Query, HTB.Summarization) || (fuzzy.Match(Query, HTB.Content) && HTB.IsText()) {
 			switch {
 			case HTB.IsText():
@@ -367,33 +397,37 @@ func deleteHandler(Message *tgbotapi.Message) {
 		SendText(Message.Chat.ID, fmt.Sprintf("關鍵字長度不可大於 30, 目前爲 %d 字”", utf8.RuneCountInString(BeDeletedKeyword)), Message.MessageID)
 		return
 	}
-	Criteria := c.Field("Keyword").Eq(BeDeletedKeyword)
-	docs, err := DB.FindAll(c.NewQuery(CONFIG.GetColbyChatID(Message.Chat.ID)).Where(Criteria))
+
+	Filter := bson.D{{"Keyword", BeDeletedKeyword}}
+	opts := options.Find().SetSort(bson.D{{"Type", 1}})
+	Curser, err := DB2.Collection(CONFIG.GetColbyChatID(Message.Chat.ID)).Find(context.TODO(), Filter, opts)
+	defer Curser.Close(context.TODO())
 	if err != nil {
 		log.Println("[delete]", err)
 		SendText(Message.Chat.ID, fmt.Sprintf("刪除「%s」失敗：%s", BeDeletedKeyword, err), Message.MessageID)
 		return
 	}
-	if len(docs) <= 0 {
-		SendText(Message.Chat.ID, "沒有大便符合關鍵字", Message.MessageID)
-		return
-	}
+	// if len(docs) <= 0 {
+	// 	SendText(Message.Chat.ID, "沒有大便符合關鍵字", Message.MessageID)
+	// 	return
+	// }
 
-	ReplyMarkup := make([][]tgbotapi.InlineKeyboardButton, 0, len(docs))
+	ReplyMarkup := make([][]tgbotapi.InlineKeyboardButton, 0)
 	TB_HTB := make(map[string]*DeleteEntity)
-	for idx, doc := range docs {
+	var idx int = 1
+	for Curser.Next(context.TODO()) {
 		HTB := &HokTseBun{}
-		doc.Unmarshal(HTB)
+		Curser.Decode(HTB)
 		var ShowEntry string
 		switch {
 		case HTB.IsText():
-			ShowEntry = fmt.Sprintf("%d. %s", idx+1, TruncateString(HTB.Content, 20))
+			ShowEntry = fmt.Sprintf("%d. %s", idx, TruncateString(HTB.Content, 20))
 		case HTB.IsImage():
 			type_prompt := "圖片："
-			ShowEntry = fmt.Sprintf("%d. %s%s", idx+1, type_prompt, TruncateString(HTB.Summarization, 15-utf8.RuneCountInString(type_prompt)))
+			ShowEntry = fmt.Sprintf("%d. %s%s", idx, type_prompt, TruncateString(HTB.Summarization, 15-utf8.RuneCountInString(type_prompt)))
 		case !HTB.IsImage() && HTB.IsMultiMedia():
 			type_prompt := "動圖："
-			ShowEntry = fmt.Sprintf("%d. %s%s", idx+1, type_prompt, TruncateString(HTB.Summarization, 15-utf8.RuneCountInString(type_prompt)))
+			ShowEntry = fmt.Sprintf("%d. %s%s", idx, type_prompt, TruncateString(HTB.Summarization, 15-utf8.RuneCountInString(type_prompt)))
 		}
 		ReplyMarkup = append(ReplyMarkup, tgbotapi.NewInlineKeyboardRow(tgbotapi.NewInlineKeyboardButtonData(ShowEntry, "DEL_"+HTB.UID)))
 		TB_HTB["DEL_"+HTB.UID] = &DeleteEntity{HTB: *HTB}
@@ -425,15 +459,18 @@ func handleTextMessage(Message *tgbotapi.Message) {
 			Limit         = Min(500, 100*utf8.RuneCountInString(Query))
 			RunesPerImage = 200
 		)
+		Filter := bson.D{{"Keyword", bson.D{{"$ne", 0}}}}
+		opts := options.Find().SetSort(bson.D{{"Type", 1}})
+		Curser, err := DB2.Collection(CONFIG.GetColbyChatID(Message.Chat.ID)).Find(context.TODO(), Filter, opts)
+		defer Curser.Close(context.TODO())
 
-		docs, err := DB.FindAll(c.NewQuery(CONFIG.GetColbyChatID(Message.Chat.ID)).Where(c.Field("Type").Neq(0)))
 		if err != nil {
 			log.Println("[Normal]", err)
 			return
 		}
-		for _, doc := range docs {
+		for Curser.Next(context.TODO()) {
 			HTB := &HokTseBun{}
-			doc.Unmarshal(HTB)
+			Curser.Decode(HTB)
 
 			HIT := false
 			switch {

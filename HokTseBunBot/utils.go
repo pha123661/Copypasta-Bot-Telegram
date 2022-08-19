@@ -44,10 +44,15 @@ type cfg struct {
 			CURRENT_TOKEN       string
 			SUM_MODEL, MT_MODEL string
 		}
+		MONGO struct {
+			USER string
+			PASS string
+			URI  string
+		}
 	}
 
 	DB struct {
-		DIR, EXPORT_DIR, CFormat string
+		DB_NAME, CFormat string
 	}
 }
 
@@ -86,23 +91,15 @@ func InitConfig(CONFIG_PATH string) {
 	// get secret configs from environment variables
 	CONFIG.API.HF.TOKENs = strings.Fields(os.Getenv("API.HF.TOKENs"))
 	CONFIG.API.TG.TOKEN = os.Getenv("API.TG.TOKEN")
+	CONFIG.API.MONGO.USER = os.Getenv("API.MONGO.USER")
+	CONFIG.API.MONGO.PASS = os.Getenv("API.MONGO.PASS")
+	CONFIG.API.MONGO.URI = fmt.Sprintf("mongodb+srv://%s:%s@hoktsebunbot-tg.vgyvxnn.mongodb.net/?retryWrites=true&w=majority", CONFIG.API.MONGO.USER, CONFIG.API.MONGO.PASS)
 
 	SetHFAPI()
 
 	fmt.Println("********************\nConfig Loaded:")
 	PrintStructAsTOML(CONFIG)
 	fmt.Println("********************")
-
-	var CreateDirIfNotExist = func(path string) {
-		if _, err := os.Stat(path); os.IsNotExist(err) {
-			errr := os.Mkdir(path, 0755)
-			if errr != nil {
-				log.Panicln("[InitConfig]", errr)
-			}
-		}
-	}
-
-	CreateDirIfNotExist(CONFIG.DB.EXPORT_DIR)
 }
 
 func TruncateString(text string, width int) string {
