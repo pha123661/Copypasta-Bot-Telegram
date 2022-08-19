@@ -82,6 +82,10 @@ func InitConfig(CONFIG_PATH string) {
 		log.Panicln("[InitConfig]", err)
 	}
 
+	// get secret configs from environment variables
+	CONFIG.API.HF.TOKENs = strings.Fields(os.Getenv("API.HF.TOKENs"))
+	CONFIG.API.TG.TOKEN = os.Getenv("API.TG.TOKEN")
+
 	SetHFAPI()
 
 	fmt.Println("********************\nConfig Loaded:")
