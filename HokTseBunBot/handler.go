@@ -29,9 +29,45 @@ type DeleteEntity struct {
 func handleCommand(Message *tgbotapi.Message) {
 	// handle commands
 	switch Message.Command() {
+	// public available functions
 	case "start":
 		// Startup
 		NewChat(Message.Chat.ID)
+	case "example": // short: EXP
+		replyMsg := tgbotapi.NewMessage(Message.Chat.ID, "請按按鈕選擇要觀看的教學範例:")
+		replyMsg.ReplyToMessageID = Message.MessageID
+		replyMsg.ReplyMarkup = tgbotapi.NewInlineKeyboardMarkup(
+			tgbotapi.NewInlineKeyboardRow(
+				tgbotapi.NewInlineKeyboardButtonData("/random 指令", "EX RAND"),
+				tgbotapi.NewInlineKeyboardButtonData("/new 指令", "EX ADD"),
+				tgbotapi.NewInlineKeyboardButtonData("/add 指令", "EX ADD"),
+				tgbotapi.NewInlineKeyboardButtonData("/search 指令", "EX SERC"),
+				tgbotapi.NewInlineKeyboardButtonData("/delete 指令", "EX DEL"),
+				tgbotapi.NewInlineKeyboardButtonData("/example 指令", "EX EXP"),
+				tgbotapi.NewInlineKeyboardButtonData("✖️取消", "NIL_WITH_REACT"),
+			),
+		)
+		if _, err := bot.Send(replyMsg); err != nil {
+			log.Println("[new]", err)
+		}
+	case "random", "randomImage", "randomText": // short: RAND
+		randomHandler(Message)
+	case "new", "add": // short: NEW, ADD
+		// Parse command
+		Command_Args := strings.Fields(Message.CommandArguments())
+		if len(Command_Args) <= 1 {
+			SendText(Message.Chat.ID, fmt.Sprintf("錯誤：新增格式爲 “/%s {關鍵字} {內容}”", Message.Command()), Message.MessageID)
+			return
+		}
+		var Keyword string = Command_Args[0]
+		var Content string = strings.TrimSpace(Message.Text[strings.Index(Message.Text, Command_Args[1]):])
+		addHandler(Message, Keyword, Content, CONFIG.SETTING.TYPE.TXT)
+	case "search": // short: SERC
+		searchHandler(Message)
+	case "delete": // short: DEL
+		deleteHandler(Message)
+
+	// internal usage
 	// case "import":
 	// 	DB.DropCollection(CONFIG.GetColbyChatID(Message.Chat.ID))
 	// 	DB.ImportCollection(CONFIG.GetColbyChatID(Message.Chat.ID), Message.CommandArguments())
@@ -53,22 +89,7 @@ func handleCommand(Message *tgbotapi.Message) {
 	case "echo":
 		// Echo
 		SendText(Message.Chat.ID, Message.CommandArguments(), Message.MessageID)
-	case "random", "randomImage", "randomText":
-		randomHandler(Message)
-	case "new", "add": // new hok tse bun
-		// Parse command
-		Command_Args := strings.Fields(Message.CommandArguments())
-		if len(Command_Args) <= 1 {
-			SendText(Message.Chat.ID, fmt.Sprintf("錯誤：新增格式爲 “/%s {關鍵字} {內容}”", Message.Command()), Message.MessageID)
-			return
-		}
-		var Keyword string = Command_Args[0]
-		var Content string = strings.TrimSpace(Message.Text[strings.Index(Message.Text, Command_Args[1]):])
-		addHandler(Message, Keyword, Content, CONFIG.SETTING.TYPE.TXT)
-	case "search":
-		searchHandler(Message)
-	case "delete":
-		deleteHandler(Message)
+
 	default:
 		SendText(Message.Chat.ID, fmt.Sprintf("錯誤：我不會 “/%s” 啦QQ", Message.Command()), Message.MessageID)
 	}
@@ -293,10 +314,10 @@ func deleteHandler(Message *tgbotapi.Message) {
 			type_prompt := "動圖："
 			ShowEntry = fmt.Sprintf("%d. %s%s", idx+1, type_prompt, TruncateString(HTB.Summarization, 15-utf8.RuneCountInString(type_prompt)))
 		}
-		ReplyMarkup = append(ReplyMarkup, tgbotapi.NewInlineKeyboardRow(tgbotapi.NewInlineKeyboardButtonData(ShowEntry, HTB.UID)))
-		TB_HTB[HTB.UID] = &DeleteEntity{HTB: *HTB}
+		ReplyMarkup = append(ReplyMarkup, tgbotapi.NewInlineKeyboardRow(tgbotapi.NewInlineKeyboardButtonData(ShowEntry, "DEL_"+HTB.UID)))
+		TB_HTB["DEL_"+HTB.UID] = &DeleteEntity{HTB: *HTB}
 	}
-	ReplyMarkup = append(ReplyMarkup, tgbotapi.NewInlineKeyboardRow(tgbotapi.NewInlineKeyboardButtonData("❌", "NIL")))
+	ReplyMarkup = append(ReplyMarkup, tgbotapi.NewInlineKeyboardRow(tgbotapi.NewInlineKeyboardButtonData("✖️取消", "NIL_WITH_REACT")))
 
 	replyMsg := tgbotapi.NewMessage(Message.Chat.ID, "請選擇要刪除以下哪個？")
 	replyMsg.ReplyMarkup = tgbotapi.NewInlineKeyboardMarkup(ReplyMarkup...)
@@ -451,7 +472,8 @@ func handleCallbackQuery(CallbackQuery *tgbotapi.CallbackQuery) {
 	}
 
 	var ChatID = CallbackQuery.Message.Chat.ID
-	if CallbackQuery.Data == "NIL" {
+	switch {
+	case CallbackQuery.Data == "NIL_WITH_REACT":
 		// 否
 		// show respond
 		callback := tgbotapi.NewCallback(CallbackQuery.ID, "不新增")
@@ -463,7 +485,7 @@ func handleCallbackQuery(CallbackQuery *tgbotapi.CallbackQuery) {
 			bot.Request(tgbotapi.NewDeleteMessage(ChatID, CallbackQuery.Message.ReplyToMessage.MessageID))
 		}
 		bot.Request(tgbotapi.NewDeleteMessage(ChatID, CallbackQuery.Message.MessageID))
-	} else {
+	case CallbackQuery.Data[:4] == "DEL_":
 		var (
 			ok      bool
 			DEntity *DeleteEntity
@@ -485,6 +507,7 @@ func handleCallbackQuery(CallbackQuery *tgbotapi.CallbackQuery) {
 		switch {
 		case !DEntity.Confirmed:
 			DEntity.Confirmed = true
+
 			// find HTB
 			doc, err := DB.FindById(CONFIG.GetColbyChatID(CallbackQuery.Message.Chat.ID), UID)
 			if err != nil {
@@ -497,17 +520,18 @@ func handleCallbackQuery(CallbackQuery *tgbotapi.CallbackQuery) {
 			HTB := &HokTseBun{}
 			doc.Unmarshal(HTB)
 
+			ReplyMarkup := tgbotapi.NewInlineKeyboardMarkup(
+				tgbotapi.NewInlineKeyboardRow(
+					tgbotapi.NewInlineKeyboardButtonData("✔️確認", "DEL_"+UID),
+					tgbotapi.NewInlineKeyboardButtonData("✖️取消", "NIL_WITH_REACT"),
+				),
+			)
 			// send confirmation
 			switch HTB.Type {
 			case 1:
 				replyMsg := tgbotapi.NewMessage(ChatID, fmt.Sprintf("請再次確認是否要刪除「%s」：\n「%s」？", HTB.Keyword, HTB.Content))
 				replyMsg.ReplyToMessageID = CallbackQuery.Message.MessageID
-				replyMsg.ReplyMarkup = tgbotapi.NewInlineKeyboardMarkup(
-					tgbotapi.NewInlineKeyboardRow(
-						tgbotapi.NewInlineKeyboardButtonData("⭕", UID),
-						tgbotapi.NewInlineKeyboardButtonData("❌", "NIL"),
-					),
-				)
+				replyMsg.ReplyMarkup = ReplyMarkup
 				_, err := bot.Send(replyMsg)
 				if err != nil {
 					log.Println("[CallBQ]", err)
@@ -517,12 +541,7 @@ func handleCallbackQuery(CallbackQuery *tgbotapi.CallbackQuery) {
 				Config := tgbotapi.NewPhoto(ChatID, tgbotapi.FileID(HTB.Content))
 				Config.Caption = fmt.Sprintf("請再次確認是否要刪除「%s」？", HTB.Keyword)
 				Config.ReplyToMessageID = CallbackQuery.Message.MessageID
-				Config.ReplyMarkup = tgbotapi.NewInlineKeyboardMarkup(
-					tgbotapi.NewInlineKeyboardRow(
-						tgbotapi.NewInlineKeyboardButtonData("⭕", UID),
-						tgbotapi.NewInlineKeyboardButtonData("❌", "NIL"),
-					),
-				)
+				Config.ReplyMarkup = ReplyMarkup
 				_, err := bot.Request(Config)
 				if err != nil {
 					log.Println("[CallBQ]", err)
@@ -532,12 +551,7 @@ func handleCallbackQuery(CallbackQuery *tgbotapi.CallbackQuery) {
 				Config := tgbotapi.NewAnimation(ChatID, tgbotapi.FileID(HTB.Content))
 				Config.Caption = fmt.Sprintf("請再次確認是否要刪除「%s」？", HTB.Keyword)
 				Config.ReplyToMessageID = CallbackQuery.Message.MessageID
-				Config.ReplyMarkup = tgbotapi.NewInlineKeyboardMarkup(
-					tgbotapi.NewInlineKeyboardRow(
-						tgbotapi.NewInlineKeyboardButtonData("⭕", UID),
-						tgbotapi.NewInlineKeyboardButtonData("❌", "NIL"),
-					),
-				)
+				Config.ReplyMarkup = ReplyMarkup
 				_, err := bot.Request(Config)
 				if err != nil {
 					log.Println("[CallBQ]", err)
@@ -547,12 +561,7 @@ func handleCallbackQuery(CallbackQuery *tgbotapi.CallbackQuery) {
 				Config := tgbotapi.NewVideo(ChatID, tgbotapi.FileID(HTB.Content))
 				Config.Caption = fmt.Sprintf("請再次確認是否要刪除「%s」？", HTB.Keyword)
 				Config.ReplyToMessageID = CallbackQuery.Message.MessageID
-				Config.ReplyMarkup = tgbotapi.NewInlineKeyboardMarkup(
-					tgbotapi.NewInlineKeyboardRow(
-						tgbotapi.NewInlineKeyboardButtonData("⭕", UID),
-						tgbotapi.NewInlineKeyboardButtonData("❌", "NIL"),
-					),
-				)
+				Config.ReplyMarkup = ReplyMarkup
 				_, err := bot.Request(Config)
 				if err != nil {
 					log.Println("[CallBQ]", err)
@@ -616,8 +625,8 @@ func handleCallbackQuery(CallbackQuery *tgbotapi.CallbackQuery) {
 	// 	replyMsg.ReplyToMessageID = Message.MessageID
 	// 	replyMsg.ReplyMarkup = tgbotapi.NewInlineKeyboardMarkup(
 	// 		tgbotapi.NewInlineKeyboardRow(
-	// 			tgbotapi.NewInlineKeyboardButtonData("⭕", Keyword),
-	// 			tgbotapi.NewInlineKeyboardButtonData("❌", "NIL"),
+	// 			tgbotapi.NewInlineKeyboardButtonData("✔️確認", Keyword),
+	// 			tgbotapi.NewInlineKeyboardButtonData("✖️取消", "NIL_WITH_REACT"),
 	// 		),
 	// 	)
 	// 	if _, err := bot.Send(replyMsg); err != nil {
