@@ -26,6 +26,8 @@ Supported commands atm:
 1. random: select a Ho̍k tsè bûn randomly and post it  
 1. search: fuzzy search every file in database  
 1. Automatically insert new media into the database whenever an media with caption is sent  
+1. delete: delete copypasta
+1. example: show tutorial  
 
 # Deploy on [Replit.com](http://replit.com/)
 1. Import the repo into replit
@@ -41,7 +43,19 @@ go mod tidy
 
 
 # Config Setup
-Uses TOML format  
+## Environment Variable
+Environment Variable: ``API.TG.TOKEN``  
+Description: API token for your telegram bot  
+Default value: ``"YOUR_TELEGRAM_API_TOKEN"`` (no this does not work)  
+
+---
+
+Environment Variable: ``API.HT.TOKENs``   
+Description: A list of huggingface tokens, bot switchs token whenever it fails (ex: quota exceeded)  
+Default value= ``["YOUR_HUGGINGFACETOKEN1", "YOUR_HUGGINGFACETOKEN2",]``  
+
+---
+
 ## [SETTING]
 
 Setting: ``LOG_FILE``  
@@ -51,19 +65,7 @@ Default value: ``"../log.log"``
 ---
 
 ## [API]
-### [API.TG]
-
-Setting: ``TOKEN``  
-Description: API token for your telegram bot  
-Default value: ``"YOUR_TELEGRAM_API_TOKEN"`` (no this does not work)  
-
----
-
 ### [API.HF]
-
-Setting: ``TOKENs``   
-Description: A list of huggingface tokens, bot switchs token whenever it fails (ex: quota exceeded)  
-Default value= ``["YOUR_HUGGINGFACETOKEN1", "YOUR_HUGGINGFACETOKEN2",]``  
 
 ---
 
