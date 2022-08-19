@@ -392,8 +392,6 @@ func handleTextMessage(Message *tgbotapi.Message) {
 			log.Println("[Normal]", err)
 			return
 		}
-
-		rand.Shuffle(len(docs), func(i, j int) { docs[i], docs[j] = docs[j], docs[i] })
 		for _, doc := range docs {
 			HTB := &HokTseBun{}
 			doc.Unmarshal(HTB)

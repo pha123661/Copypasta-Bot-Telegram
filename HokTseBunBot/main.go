@@ -3,10 +3,8 @@ package main
 import (
 	"fmt"
 	"log"
-	"math/rand"
 	"net/http"
 	"os"
-	"time"
 	"unicode/utf8"
 
 	_ "net/http/pprof"
@@ -57,7 +55,6 @@ func main() {
 
 	InitVLP()
 	InitDB()
-	rand.Seed(time.Now().UnixNano())
 
 	// update config
 	updateConfig := tgbotapi.NewUpdate(0)
