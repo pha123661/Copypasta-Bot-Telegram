@@ -5,23 +5,30 @@
     IMG=2
     ANI=3
     VID=4
+  
   [SETTING.NAME]
     TXT="複製文"
     IMG="圖片"
     ANI="動圖"
     VID="影片"
+  
+  [SETTING.CONCURRENT]
+    [SETTING.CONCURRENT.SUM]
+      COOLDOWN = 150 # ms
+      LIMIT = 6
+    [SETTING.CONCURRENT.CAP]
+      COOLDOWN = 300 # ms
+      LIMIT = 3
+    
 
 [API]
   [API.TG]
-    TOKEN = "YOUR_TELEGRAM_API_TOKEN"
+    TOKEN = "" # you shold set your telegram token as environment variable "API.TG.TOKEN": "YOUR_BOT_TOKEN"
   [API.HF]
-    TOKENs = [
-        "YOUR_HUGGINGFACETOKEN1", 
-        "YOUR_HUGGINGFACETOKEN2", 
-    ]
+    TOKENs = [""] # you shold set your Huggingface token as environment variable "API.HF.TOKENs": ["HF_TOKEN_1", "HF_TOKEN_2"]
     SUM_MODEL = "csebuetnlp/mT5_multilingual_XLSum"
     MT_MODEL = "Helsinki-NLP/opus-mt-en-zh" # not used, using google translation atm
 [DB]
   DIR = "../HokTseBun_db"
-  COLLECTION = "Copypasta"
+  CFormat = "%d-Copypasta" # args = ChatID int64
   EXPORT_DIR = "../HokTseBunArchive"
