@@ -107,7 +107,7 @@ func NewChat(ChatID int64) {
 	if err := DB.CreateCollection(CONFIG.GetColbyChatID(ChatID)); err != nil {
 		log.Println("[NewChat]", err)
 	} else {
-		log.Printf("[NewChat], new db %s created!\n", CONFIG.GetColbyChatID(ChatID))
+		log.Printf("[NewChat] new db %s created!\n", CONFIG.GetColbyChatID(ChatID))
 	}
-	SendText(ChatID, "歡迎使用，使用方式可以參考我的github: https://github.com/pha123661/Hok_tse_bun_tgbot", 0)
+	SendText(ChatID, "歡迎使用，請輸入或點擊 /example 以查看使用方式\n我的github: https://github.com/pha123661/Hok_tse_bun_tgbot", 0)
 }

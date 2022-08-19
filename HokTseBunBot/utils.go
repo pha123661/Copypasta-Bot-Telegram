@@ -19,8 +19,7 @@ type Empty struct{}
 
 type cfg struct {
 	SETTING struct {
-		LOG_FILE string
-		TYPE     struct {
+		TYPE struct {
 			TXT, IMG, ANI, VID int
 		}
 		NAME struct {
@@ -32,6 +31,8 @@ type cfg struct {
 				LIMIT    int
 			}
 		}
+		LOG_FILE        string
+		EXAMPLE_PIC_DIR string
 	}
 
 	API struct {
