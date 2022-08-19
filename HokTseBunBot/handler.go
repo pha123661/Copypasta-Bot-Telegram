@@ -37,6 +37,7 @@ func handleCommand(Message *tgbotapi.Message) {
 	case "start":
 		// Startup
 		NewChat(Message.Chat.ID)
+
 	case "example": // short: EXP
 		replyMsg := tgbotapi.NewMessage(Message.Chat.ID, "請按按鈕選擇要觀看的教學範例:")
 		replyMsg.ReplyToMessageID = Message.MessageID
@@ -62,8 +63,10 @@ func handleCommand(Message *tgbotapi.Message) {
 			log.Println("[new]", err)
 			return
 		}
+
 	case "random", "randImage", "randText": // short: RAND
 		randomHandler(Message)
+
 	case "new", "add": // short: NEW, ADD
 		Command_Args := strings.Fields(Message.CommandArguments())
 		if len(Command_Args) <= 1 {
@@ -93,15 +96,13 @@ func handleCommand(Message *tgbotapi.Message) {
 		if strings.Contains(Command_Args[0], Command_Args[1]) {
 			Index = find_nth(Message.Text, Command_Args[1], 2)
 			if Index == -1 {
-				Index = find_nth(Message.Text, Command_Args[1], 1)
+				Index = strings.Index(Message.Text, Command_Args[1])
 			}
 		} else {
-			Index = find_nth(Message.Text, Command_Args[1], 1)
+			Index = strings.Index(Message.Text, Command_Args[1])
 		}
+		addHandler(Message, Command_Args[0], strings.TrimSpace(Message.Text[Index:]), CONFIG.SETTING.TYPE.TXT)
 
-		var Keyword string = Command_Args[0]
-		var Content string = strings.TrimSpace(Message.Text[Index:])
-		addHandler(Message, Keyword, Content, CONFIG.SETTING.TYPE.TXT)
 	case "search": // short: SERC
 		Command_Args := strings.Fields(Message.CommandArguments())
 		if len(Command_Args) < 1 {
@@ -115,6 +116,7 @@ func handleCommand(Message *tgbotapi.Message) {
 			return
 		}
 		searchHandler(Message)
+
 	case "delete": // short: DEL
 		Command_Args := strings.Fields(Message.CommandArguments())
 		if len(Command_Args) < 1 {
@@ -132,6 +134,7 @@ func handleCommand(Message *tgbotapi.Message) {
 	// internal usag
 	case "chatid":
 		SendText(Message.Chat.ID, fmt.Sprintf("此聊天室的 ChatID: %d", Message.Chat.ID), 0)
+
 	case "drop":
 		if Message.CommandArguments() != fmt.Sprint(Message.Chat.ID) {
 			SendText(Message.Chat.ID, "防呆: 請和指令一起送出 ChatID, 格式爲\"/drop {ChatID}\"", 0)
@@ -145,6 +148,7 @@ func handleCommand(Message *tgbotapi.Message) {
 		}
 		DB.Collection(CONFIG.GetColbyChatID(ChatID)).Drop(context.TODO())
 		SendText(Message.Chat.ID, fmt.Sprintf("成功刪除 %d", ChatID), 0)
+
 	case "import":
 		var SourceCol string
 		var TargetCol string = CONFIG.GetColbyChatID(Message.Chat.ID)
@@ -218,6 +222,7 @@ func handleCommand(Message *tgbotapi.Message) {
 
 		// update system attribute
 		InsertHTB(TargetCol, &HokTseBun{Type: 0, Keyword: "Import", Content: SourceCol})
+
 	case "echo":
 		// Echo
 		SendText(Message.Chat.ID, Message.CommandArguments(), Message.MessageID)
