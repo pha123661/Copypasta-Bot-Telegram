@@ -1,7 +1,7 @@
 package main
 
 import (
-	"fmt"
+	"io"
 	"log"
 	"net/http"
 	"os"
@@ -30,18 +30,19 @@ var bot *tgbotapi.BotAPI
 
 func init() {
 	InitConfig("./config.toml")
-	// setup log file
-	file, _ := os.OpenFile(CONFIG.SETTING.LOG_FILE, os.O_RDWR|os.O_CREATE|os.O_APPEND, 0666)
-	log.SetOutput(file)
+	// setup log log_file
+	log_file, err := os.OpenFile(CONFIG.SETTING.LOG_FILE, os.O_RDWR|os.O_CREATE|os.O_APPEND, 0666)
+	if err != nil {
+		panic(err)
+	}
+	log_file_and_stdout := io.MultiWriter(os.Stdout, log_file)
+	log.SetOutput(log_file_and_stdout)
 	log.SetFlags(log.Ldate | log.Ltime | log.Lshortfile)
 	log.Println("*** Starting Server ***")
 }
 
 func main() {
 	// keep alive
-	// http.HandleFunc("/", func(res http.ResponseWriter, req *http.Request) {
-	// 	fmt.Fprint(res, "Hello World!")
-	// })
 	go http.ListenAndServe(":6060", nil)
 
 	var err error
@@ -51,7 +52,7 @@ func main() {
 		log.Panicln(err)
 	}
 	bot.Debug = true
-	fmt.Println("***", "Sucessful logged in as", bot.Self.UserName, "***")
+	log.Println("***", "Sucessful logged in as", bot.Self.UserName, "***")
 
 	InitVLP()
 	InitDB()
@@ -89,10 +90,8 @@ func main() {
 			go handleCallbackQuery(update.CallbackQuery)
 		case update.MyChatMember != nil:
 			if update.MyChatMember.NewChatMember.Status == "restricted" || update.MyChatMember.NewChatMember.Status == "kicked" || update.MyChatMember.NewChatMember.Status == "left" {
-				fmt.Println("[Kicked] Get Kicked by", update.MyChatMember.Chat.ID, update.MyChatMember.Chat.UserName, update.MyChatMember.Chat.Title)
 				log.Println("[Kicked] Get Kicked by", update.MyChatMember.Chat.ID, update.MyChatMember.Chat.UserName, update.MyChatMember.Chat.Title)
 			} else {
-				fmt.Println("[Joining] Joining", update.MyChatMember.Chat.ID, update.MyChatMember.Chat.UserName, update.MyChatMember.Chat.Title)
 				log.Println("[Joining] Joining", update.MyChatMember.Chat.ID, update.MyChatMember.Chat.UserName, update.MyChatMember.Chat.Title)
 			}
 			if update.MyChatMember.Chat.Type == "group" || update.MyChatMember.Chat.Type == "supergroup" {

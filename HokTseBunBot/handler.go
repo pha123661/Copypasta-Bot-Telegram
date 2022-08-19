@@ -58,7 +58,7 @@ func handleCommand(Message *tgbotapi.Message) {
 		if _, err := bot.Send(replyMsg); err != nil {
 			log.Println("[new]", err)
 		}
-	case "random", "randomImage", "randomText": // short: RAND
+	case "random", "randImage", "randText": // short: RAND
 		randomHandler(Message)
 	case "new", "add": // short: NEW, ADD
 		Command_Args := strings.Fields(Message.CommandArguments())
@@ -109,6 +109,14 @@ func handleCommand(Message *tgbotapi.Message) {
 	// 	DB.DropCollection(CONFIG.GetColbyChatID(Message.Chat.ID))
 	// 	DB.ImportCollection(CONFIG.GetColbyChatID(Message.Chat.ID), Message.CommandArguments())
 	// 	SendText(Message.Chat.ID, Message.CommandArguments(), Message.MessageID)
+	case "refresh_beginner":
+		if Message.CommandArguments() != CONFIG.API.TG.TOKEN {
+			SendText(Message.Chat.ID, "亂什麼洨 幹你娘", Message.MessageID)
+			return
+		}
+		DB.DropCollection("Beginner")
+		DB.ImportCollection("Beginner", "./Beginner pack.json")
+		SendText(Message.Chat.ID, "成功刷新 Beginner DB", Message.MessageID)
 	case "chatid":
 		SendText(Message.Chat.ID, fmt.Sprintf("此聊天室的 ChatID: %d", Message.Chat.ID), 0)
 	case "drop":
@@ -123,6 +131,42 @@ func handleCommand(Message *tgbotapi.Message) {
 		}
 		DB.DropCollection(CONFIG.GetColbyChatID(ChatID))
 		SendText(Message.Chat.ID, fmt.Sprintf("成功刪除 %d", ChatID), 0)
+	case "import":
+		var SourceCol string
+		var TargetCol string = CONFIG.GetColbyChatID(Message.Chat.ID)
+
+		if Message.CommandArguments() == "Beginner" {
+			SourceCol = "Beginner"
+		} else {
+			SourceChatID, err := strconv.ParseInt(Message.CommandArguments(), 10, 64)
+			if err != nil {
+				SendText(Message.Chat.ID, fmt.Sprintf("匯入失敗: %s", err.Error()), Message.MessageID)
+				return
+			}
+			SourceCol = CONFIG.GetColbyChatID(SourceChatID)
+		}
+
+		// type 0: system attribute
+		Criteria := c.Field("Type").Eq(0).And(c.Field("Keyword").Eq("Import")).And(c.Field("Content").Eq(SourceCol))
+		if IsExist, _ := DB.Exists(c.NewQuery(TargetCol).Where(Criteria)); IsExist {
+			SendText(Message.Chat.ID, "你之前匯入過了~", Message.MessageID)
+			return
+		}
+		InsertHTB(TargetCol, &HokTseBun{Type: 0, Keyword: "Import", Content: SourceCol})
+
+		docs, err := DB.FindAll(c.NewQuery(SourceCol))
+		if err != nil {
+			SendText(Message.Chat.ID, fmt.Sprintf("匯入失敗: %s", err.Error()), Message.MessageID)
+			return
+		}
+
+		if err := DB.Insert(TargetCol, docs...); err != nil {
+			SendText(Message.Chat.ID, fmt.Sprintf("匯入失敗: %s", err.Error()), Message.MessageID)
+			return
+		}
+
+		SendText(Message.Chat.ID, fmt.Sprintf("成功從 %s 匯入 %d 筆資料", SourceCol, len(docs)), Message.MessageID)
+
 	case "echo":
 		// Echo
 		SendText(Message.Chat.ID, Message.CommandArguments(), Message.MessageID)
@@ -135,10 +179,10 @@ func handleCommand(Message *tgbotapi.Message) {
 func randomHandler(Message *tgbotapi.Message) {
 	var Query *c.Query
 	switch Message.Command() {
-	case "randomImage":
+	case "randImage":
 		Criteria := c.Field("Type").Eq(2)
 		Query = c.NewQuery(CONFIG.GetColbyChatID(Message.Chat.ID)).Where(Criteria)
-	case "randomText":
+	case "randText":
 		Criteria := c.Field("Type").Eq(1)
 		Query = c.NewQuery(CONFIG.GetColbyChatID(Message.Chat.ID)).Where(Criteria)
 	default:
@@ -155,14 +199,11 @@ func randomHandler(Message *tgbotapi.Message) {
 		return
 	}
 	RandomIndex := rand.Intn(len(docs))
-	fmt.Println(len(docs), RandomIndex)
 
 	var HTB *HokTseBun = &HokTseBun{}
 	for idx, doc := range docs {
-		fmt.Println(idx, RandomIndex)
 		if idx == RandomIndex {
 			doc.Unmarshal(HTB)
-			fmt.Printf("%+v\n%+v\n", doc, HTB)
 			break
 		}
 	}
@@ -566,8 +607,7 @@ func handleCallbackQuery(CallbackQuery *tgbotapi.CallbackQuery) {
 		}
 
 		if !ok {
-			fmt.Printf("%+v\n%+v", QueuedDeletes, CallbackQuery.Message)
-			panic("HERE")
+			SendText(CallbackQuery.Message.Chat.ID, "bot 不知道爲啥壞了 笑死 你可以找作者出來講", 0)
 		}
 
 		UID = DEntity.HTB.UID

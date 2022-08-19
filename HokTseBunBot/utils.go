@@ -169,7 +169,9 @@ func SendMultiMedia(ChatID int64, Caption string, FileID_Str string, Type int) *
 			Config.Caption = Caption
 		}
 		Msg, err = bot.Request(Config)
-		if err != nil {
+		if !Msg.Ok {
+			log.Println("[SendIR]", Msg.ErrorCode, Msg.Description, fmt.Sprintf("%+v", Config))
+		} else if err != nil {
 			log.Println("[SendIR]", err)
 		}
 
@@ -179,7 +181,9 @@ func SendMultiMedia(ChatID int64, Caption string, FileID_Str string, Type int) *
 			Config.Caption = Caption
 		}
 		Msg, err = bot.Request(Config)
-		if err != nil {
+		if !Msg.Ok {
+			log.Println("[SendIR]", Msg.ErrorCode, Msg.Description, fmt.Sprintf("%+v", Config))
+		} else if err != nil {
 			log.Println("[SendIR]", err)
 		}
 
@@ -189,9 +193,12 @@ func SendMultiMedia(ChatID int64, Caption string, FileID_Str string, Type int) *
 			Config.Caption = Caption
 		}
 		Msg, err = bot.Request(Config)
-		if err != nil {
+		if !Msg.Ok {
+			log.Println("[SendIR]", Msg.ErrorCode, Msg.Description, fmt.Sprintf("%+v", Config))
+		} else if err != nil {
 			log.Println("[SendIR]", err)
 		}
+
 	}
 	return Msg
 }
