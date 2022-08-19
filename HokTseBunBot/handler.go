@@ -114,8 +114,16 @@ func handleCommand(Message *tgbotapi.Message) {
 			SendText(Message.Chat.ID, "亂什麼洨 幹你娘", Message.MessageID)
 			return
 		}
-		DB.DropCollection("Beginner")
-		DB.ImportCollection("Beginner", "./Beginner pack.json")
+		if err := DB.DropCollection("Beginner"); err != nil {
+			SendText(Message.Chat.ID, "刷新失敗: "+err.Error(), Message.MessageID)
+			log.Println(err)
+			return
+		}
+		if err := DB.ImportCollection("Beginner", "./Beginner pack.json"); err != nil {
+			SendText(Message.Chat.ID, "刷新失敗: "+err.Error(), Message.MessageID)
+			log.Println(err)
+			return
+		}
 		SendText(Message.Chat.ID, "成功刷新 Beginner DB", Message.MessageID)
 	case "chatid":
 		SendText(Message.Chat.ID, fmt.Sprintf("此聊天室的 ChatID: %d", Message.Chat.ID), 0)
@@ -152,7 +160,6 @@ func handleCommand(Message *tgbotapi.Message) {
 			SendText(Message.Chat.ID, "你之前匯入過了~", Message.MessageID)
 			return
 		}
-		InsertHTB(TargetCol, &HokTseBun{Type: 0, Keyword: "Import", Content: SourceCol})
 
 		docs, err := DB.FindAll(c.NewQuery(SourceCol))
 		if err != nil {
@@ -166,6 +173,9 @@ func handleCommand(Message *tgbotapi.Message) {
 		}
 
 		SendText(Message.Chat.ID, fmt.Sprintf("成功從 %s 匯入 %d 筆資料", SourceCol, len(docs)), Message.MessageID)
+
+		// update system attribute
+		InsertHTB(TargetCol, &HokTseBun{Type: 0, Keyword: "Import", Content: SourceCol})
 
 	case "echo":
 		// Echo
