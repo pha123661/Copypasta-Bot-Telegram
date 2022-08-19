@@ -1,5 +1,6 @@
 [SETTING]
   LOG_FILE = "../log.log"
+  EXAMPLE_PIC_DIR = "./ExamplePics"
   [SETTING.TYPE]
     TXT=1
     IMG=2
@@ -14,20 +15,23 @@
   
   [SETTING.CONCURRENT]
     [SETTING.CONCURRENT.SUM]
-      COOLDOWN = 150 # ms
-      LIMIT = 6
+      COOLDOWN = 100 # default: 100 ms
+      LIMIT = 6 # default: 6
     [SETTING.CONCURRENT.CAP]
-      COOLDOWN = 300 # ms
-      LIMIT = 3
+      COOLDOWN = 300 # default: 300 ms
+      LIMIT = 3 # default: 3
     
 
 [API]
   [API.TG]
-    TOKEN = "" # you shold set your telegram token as environment variable "API.TG.TOKEN": "YOUR_BOT_TOKEN"
+    TOKEN = "" # should be stored as environment variable
   [API.HF]
-    TOKENs = [""] # you shold set your Huggingface token as environment variable "API.HF.TOKENs": ["HF_TOKEN_1", "HF_TOKEN_2"]
+    TOKENs = [""] # should be stored as environment variable
     SUM_MODEL = "csebuetnlp/mT5_multilingual_XLSum"
     MT_MODEL = "Helsinki-NLP/opus-mt-en-zh" # not used, using google translation atm
+  [API.MONGO]
+    USER = "" # should be stored as environment variable
+    PASS = "" # should be stored as environment variable
 [DB]
   DIR = "../HokTseBun_db"
   CFormat = "%d-Copypasta" # args = ChatID int64

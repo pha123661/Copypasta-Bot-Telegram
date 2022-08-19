@@ -1,10 +1,8 @@
 .vscode
 HokTseBun_db
 HokTseBunArchive
-config.toml
 go.mod
 go.sum
-testdata
 
 *.exe
 *.log
