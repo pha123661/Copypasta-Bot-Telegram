@@ -34,4 +34,4 @@
     PASS = "" # should be stored as environment variable
 [DB]
   DB_NAME = "HokTseBunBot-TG"
-  CFormat = "%d-Copypasta" # args = ChatID int64
+  CFormat = "%d-Copypasta-Testing" # args = ChatID int64

@@ -15,14 +15,14 @@ import (
 var DB2 *mongo.Database
 
 type HokTseBun struct {
-	Type          int       `json:"Type"`
-	Keyword       string    `json:"Keyword"`
-	Summarization string    `json:"Summarization"`
-	Content       string    `json:"Content"`
-	From          int64     `json:"From"`
-	CreateTime    time.Time `json:"CreateTime"`
-	UID           string    `json:"_id"`
-	URL           string    `json:"URL"`
+	UID           primitive.ObjectID `bson:"_id"`
+	Type          int                `bson:"Type"`
+	Keyword       string             `bson:"Keyword"`
+	Summarization string             `bson:"Summarization"`
+	Content       string             `bson:"Content"`
+	From          int64              `bson:"From"`
+	CreateTime    time.Time          `bson:"CreateTime"`
+	URL           string             `bson:"URL"`
 }
 
 func (HTB *HokTseBun) IsText() bool {
@@ -56,10 +56,18 @@ func InitDB() {
 
 func InsertHTB(Collection string, HTB *HokTseBun) (primitive.ObjectID, error) {
 	// Create doc
-	HTB.CreateTime = time.Now()
-	doc, err := bson.Marshal(HTB)
-	if err != nil {
-		log.Println(err)
+	// doc, err := bson.Marshal(HTB)
+	// if err != nil {
+	// 	log.Println(err)
+	// }
+	doc := bson.D{
+		{Key: "Type", Value: HTB.Type},
+		{Key: "Keyword", Value: HTB.Keyword},
+		{Key: "Summarization", Value: HTB.Summarization},
+		{Key: "Content", Value: HTB.Content},
+		{Key: "From", Value: HTB.From},
+		{Key: "CreateTime", Value: time.Now()},
+		{Key: "URL", Value: HTB.URL},
 	}
 
 	// Insert doc
