@@ -114,11 +114,7 @@ func handleCommand(Message *tgbotapi.Message) {
 			SendText(Message.Chat.ID, "亂什麼洨 幹你娘", Message.MessageID)
 			return
 		}
-		if err := DB.DropCollection("Beginner"); err != nil {
-			SendText(Message.Chat.ID, "刷新失敗: "+err.Error(), Message.MessageID)
-			log.Println(err)
-			return
-		}
+		DB.DropCollection("Beginner")
 		if err := DB.ImportCollection("Beginner", "./Beginner pack.json"); err != nil {
 			SendText(Message.Chat.ID, "刷新失敗: "+err.Error(), Message.MessageID)
 			log.Println(err)
