@@ -78,8 +78,29 @@ func handleCommand(Message *tgbotapi.Message) {
 			}
 			return
 		}
+		find_nth := func(haystack, needle string, n int) int {
+			start := strings.Index(haystack, needle)
+			for start >= 0 && n > 1 {
+				if start+len(needle) >= len(haystack) {
+					return -1
+				}
+				start = strings.Index(haystack[start+len(needle):], needle) + start + len(needle)
+				n--
+			}
+			return start
+		}
+		var Index int
+		if strings.Contains(Command_Args[0], Command_Args[1]) {
+			Index = find_nth(Message.Text, Command_Args[1], 2)
+			if Index == -1 {
+				Index = find_nth(Message.Text, Command_Args[1], 1)
+			}
+		} else {
+			Index = find_nth(Message.Text, Command_Args[1], 1)
+		}
+
 		var Keyword string = Command_Args[0]
-		var Content string = strings.TrimSpace(Message.Text[strings.Index(Message.Text, Command_Args[1]):])
+		var Content string = strings.TrimSpace(Message.Text[Index:])
 		addHandler(Message, Keyword, Content, CONFIG.SETTING.TYPE.TXT)
 	case "search": // short: SERC
 		Command_Args := strings.Fields(Message.CommandArguments())
