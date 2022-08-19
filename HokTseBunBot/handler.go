@@ -186,7 +186,8 @@ func randomHandler(Message *tgbotapi.Message) {
 		Criteria := c.Field("Type").Eq(1)
 		Query = c.NewQuery(CONFIG.GetColbyChatID(Message.Chat.ID)).Where(Criteria)
 	default:
-		Query = c.NewQuery(CONFIG.GetColbyChatID(Message.Chat.ID))
+		Criteria := c.Field("Type").Neq(0)
+		Query = c.NewQuery(CONFIG.GetColbyChatID(Message.Chat.ID)).Where(Criteria)
 	}
 	docs, err := DB.FindAll(Query)
 	if err != nil {
@@ -322,7 +323,7 @@ func searchHandler(Message *tgbotapi.Message) {
 	}
 
 	// search
-	docs, _ := DB.FindAll(c.NewQuery(CONFIG.GetColbyChatID(Message.Chat.ID)).Sort(c.SortOption{Field: "Type", Direction: 1}))
+	docs, _ := DB.FindAll(c.NewQuery(CONFIG.GetColbyChatID(Message.Chat.ID)).Where(c.Field("Type").Neq(0)).Sort(c.SortOption{Field: "Type", Direction: 1}))
 	HTB := &HokTseBun{}
 	for _, doc := range docs {
 		if ResultCount >= MaxResults {
@@ -419,7 +420,7 @@ func handleTextMessage(Message *tgbotapi.Message) {
 			RunesPerImage = 200
 		)
 
-		docs, err := DB.FindAll(c.NewQuery(CONFIG.GetColbyChatID(Message.Chat.ID)))
+		docs, err := DB.FindAll(c.NewQuery(CONFIG.GetColbyChatID(Message.Chat.ID)).Where(c.Field("Type").Neq(0)))
 		if err != nil {
 			log.Println("[Normal]", err)
 			return
