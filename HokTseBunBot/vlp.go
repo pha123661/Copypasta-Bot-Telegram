@@ -54,15 +54,16 @@ func SetHFAPI() {
 		if err := TestHFAPI(); err == nil {
 			CONFIG.API.HF.CURRENT_TOKEN = CONFIG.API.HF.TOKENs[i]
 			success = true
+			log.Println("HF api:", CONFIG.API.HF.TOKENs[i][:8]+"...", "is available")
 			break
 		} else {
-			log.Printf("HF api \"%s\" not available: %s\n", CONFIG.API.HF.TOKENs[i][:8]+"...", err)
+			log.Printf("HF api \"%s\" is not available: %s\n", CONFIG.API.HF.TOKENs[i][:8]+"...", err)
 		}
 	}
 
 	if !success {
 		CONFIG.API.HF.CURRENT_TOKEN = ""
-		log.Panicln("No available hf api!")
+		log.Panicln("No available HF api!")
 	}
 }
 
