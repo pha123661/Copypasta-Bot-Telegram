@@ -142,7 +142,10 @@ func addHandler(Message *tgbotapi.Message, Keyword, Content string, Type int) {
 			SendText(Message.Chat.ID, fmt.Sprintf("新增%s「%s」失敗：%s", CONFIG.GetNameByType(CONFIG.SETTING.TYPE.IMG), Keyword, err), Message.MessageID)
 			Sum = ""
 		} else {
-			Sum = ImageCaptioning(Keyword, URL)
+			Sum, err = ImageCaptioning(Keyword, URL)
+			if err != nil {
+				SendText(Message.Chat.ID, fmt.Sprintf("新增%s「%s」失敗，可能我濫用API被ban了：%s", CONFIG.GetNameByType(CONFIG.SETTING.TYPE.IMG), Keyword, err), Message.MessageID)
+			}
 		}
 	case CONFIG.SETTING.TYPE.ANI:
 		// get url
@@ -157,7 +160,10 @@ func addHandler(Message *tgbotapi.Message, Keyword, Content string, Type int) {
 			log.Printf("[add] Keyword: %s, Content: %s, Type: %d, Message: %+v\n", Keyword, Content, Type, Message)
 			log.Println("[add]", err)
 		}
-		Sum = ImageCaptioning(Keyword, Thumb_URL)
+		Sum, err = ImageCaptioning(Keyword, Thumb_URL)
+		if err != nil {
+			SendText(Message.Chat.ID, fmt.Sprintf("新增%s「%s」失敗，可能我濫用API被ban了：%s", CONFIG.GetNameByType(CONFIG.SETTING.TYPE.IMG), Keyword, err), Message.MessageID)
+		}
 	case CONFIG.SETTING.TYPE.VID:
 		// get url
 		URL, err = bot.GetFileDirectURL(Content)
@@ -171,7 +177,10 @@ func addHandler(Message *tgbotapi.Message, Keyword, Content string, Type int) {
 			log.Printf("[add] Keyword: %s, Content: %s, Type: %d, Message: %+v\n", Keyword, Content, Type, Message)
 			log.Println("[add]", err)
 		}
-		Sum = ImageCaptioning(Keyword, Thumb_URL)
+		Sum, err = ImageCaptioning(Keyword, Thumb_URL)
+		if err != nil {
+			SendText(Message.Chat.ID, fmt.Sprintf("新增%s「%s」失敗，可能我濫用API被ban了：%s", CONFIG.GetNameByType(CONFIG.SETTING.TYPE.IMG), Keyword, err), Message.MessageID)
+		}
 	}
 	// Delete tmp message
 	bot.Request(tgbotapi.NewDeleteMessage(Message.Chat.ID, to_be_delete_message.MessageID))

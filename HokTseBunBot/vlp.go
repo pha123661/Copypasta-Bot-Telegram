@@ -90,7 +90,7 @@ func TextSummarization(Keyword, Content string) string {
 			log.Printf("[TxtSum] Keyword:%s, Content: %s\n", Keyword, Content)
 			log.Println("[TxtSum]", err)
 			// input too long
-			Summarization = ""
+			return ""
 		} else {
 			log.Printf("[TxtSum] Keyword:%s, Content: %s\n", Keyword, Content)
 			log.Println("[TxtSum]", err)
@@ -105,7 +105,7 @@ func TextSummarization(Keyword, Content string) string {
 	return Summarization
 }
 
-func ImageCaptioning(Keyword, Image_URL string) string {
+func ImageCaptioning(Keyword, Image_URL string) (string, error) {
 	/*
 		Preprocessing:
 		1. Download image (as []byte) by given url
@@ -133,7 +133,7 @@ func ImageCaptioning(Keyword, Image_URL string) string {
 	if err != nil {
 		log.Printf("[ImgSum] Keyword:%s, Image_URL: %s\n", Keyword, Image_URL)
 		log.Println("[ImgSum]", err)
-		return ""
+		return "", err
 	}
 
 	// No image captioning inference api available -> reply on user-hosted space api
@@ -144,7 +144,7 @@ func ImageCaptioning(Keyword, Image_URL string) string {
 	if err != nil {
 		log.Printf("[ImgSum] Keyword:%s, Image_URL: %s\n", Keyword, Image_URL)
 		log.Println("[ImgSum]", err)
-		return ""
+		return "", err
 	}
 	req.Header.Set("Content-Type", "application/json")
 	client := &http.Client{}
@@ -152,13 +152,13 @@ func ImageCaptioning(Keyword, Image_URL string) string {
 	if err != nil {
 		log.Printf("[ImgSum] Keyword:%s, Image_URL: %s\n", Keyword, Image_URL)
 		log.Println("[ImgSum]", err)
-		return ""
+		return "", err
 	}
 	defer resp.Body.Close()
 	if resp.StatusCode != 200 {
 		log.Printf("[ImgSum] Keyword:%s, Image_URL: %s\n", Keyword, Image_URL)
 		log.Printf("[ImgSum] received non 200 response code: %d", resp.StatusCode)
-		return ""
+		return "", err
 	}
 	j := &struct {
 		Data          []string  `json:"data"`
@@ -169,7 +169,7 @@ func ImageCaptioning(Keyword, Image_URL string) string {
 	if err != nil {
 		log.Printf("[ImgSum] Keyword:%s, Image_URL: %s\n", Keyword, Image_URL)
 		log.Println("[ImgSum]", err)
-		return ""
+		return "", err
 	}
 
 	// translate
@@ -177,10 +177,10 @@ func ImageCaptioning(Keyword, Image_URL string) string {
 	if err != nil {
 		log.Printf("[ImgSum] Keyword:%s, Image_URL: %s\n", Keyword, Image_URL)
 		log.Println("[ImgSum]", err)
-		return ""
+		return "", err
 	}
 	log.Println("[ImgSum] Get request for", Keyword, "caption:", CaptionZHTW)
-	return CaptionZHTW
+	return CaptionZHTW, nil
 }
 
 // helper functions
