@@ -48,7 +48,6 @@ func (HTB *HokTseBun) IsMultiMedia() bool {
 }
 
 func InitDB() {
-	var err error
 	DBClient, err := mongo.Connect(context.TODO(), options.Client().ApplyURI(CONFIG.API.MONGO.URI))
 	if err != nil {
 		log.Panicln(err)
@@ -78,34 +77,6 @@ func InitDB() {
 		}
 	}
 
-	// Archive := "../HokTseBunArchive"
-	// items, err := os.ReadDir(Archive)
-	// if os.IsNotExist(err) {
-	// 	fmt.Println("Skip importing")
-	// 	return
-	// }
-	// if err != nil {
-	// 	panic(err)
-	// }
-
-	// var wg sync.WaitGroup
-
-	// for _, item_out := range items {
-	// 	if item_out.IsDir() {
-	// 		continue
-	// 	}
-	// 	tmp := strings.Split(item_out.Name(), "-")[0]
-	// 	fmt.Println(item_out.Name())
-
-	// 	wg.Add(1)
-	// 	go func(item fs.DirEntry) {
-	// 		ImportCollection(DB, item.Name()[len(tmp)+1+7:len(item.Name())-5], path.Join(Archive, item.Name()))
-	// 		wg.Done()
-	// 	}(item_out)
-	// }
-	// wg.Wait()
-	// os.Rename(Archive, Archive+"_imported")
-
 	// create index for every collection
 	Collections, err = DB.ListCollectionNames(context.TODO(), bson.D{})
 	if err != nil {
@@ -133,6 +104,12 @@ func InitDB() {
 					{Key: "Type", Value: 1},
 					{Key: "Keyword", Value: 1},
 					{Key: "Content", Value: 1},
+				}},
+				// index 4
+				{Keys: bson.D{
+					{Key: "Type", Value: 1},
+					{Key: "Keyword", Value: 1},
+					{Key: "FileUniqueID", Value: 1},
 				}},
 			},
 		)
