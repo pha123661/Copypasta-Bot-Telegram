@@ -165,6 +165,7 @@ func SendText(ChatID int64, Content string, ReplyMsgID int) tgbotapi.Message {
 	if ReplyMsgID != 0 {
 		replyMsg.ReplyToMessageID = ReplyMsgID
 	}
+	replyMsg.DisableNotification = true
 	Msg, err := bot.Send(replyMsg)
 	if err != nil {
 		log.Printf("[SendTR] ChatID: %d, Content:%s, MeplyMsgID: %d\n", ChatID, Content, ReplyMsgID)
@@ -188,6 +189,7 @@ func SendMultiMedia(ChatID int64, Caption string, FileID_Str string, Type int) *
 		if Caption != "" {
 			Config.Caption = Caption
 		}
+		Config.DisableNotification = true
 		Msg, err = bot.Request(Config)
 		if !Msg.Ok {
 			log.Printf("[SendIR] ChatID: %d, Caption:%s, FileID_Str: %s, Type: %d\n", ChatID, Caption, FileID_Str, Type)
@@ -204,6 +206,7 @@ func SendMultiMedia(ChatID int64, Caption string, FileID_Str string, Type int) *
 		if Caption != "" {
 			Config.Caption = Caption
 		}
+		Config.DisableNotification = true
 		Msg, err = bot.Request(Config)
 		if !Msg.Ok {
 			log.Printf("[SendIR] ChatID: %d, Caption:%s, FileID_Str: %s, Type: %d\n", ChatID, Caption, FileID_Str, Type)
@@ -220,6 +223,7 @@ func SendMultiMedia(ChatID int64, Caption string, FileID_Str string, Type int) *
 		if Caption != "" {
 			Config.Caption = Caption
 		}
+		Config.DisableNotification = true
 		Msg, err = bot.Request(Config)
 		if !Msg.Ok {
 			log.Printf("[SendIR] ChatID: %d, Caption:%s, FileID_Str: %s, Type: %d\n", ChatID, Caption, FileID_Str, Type)

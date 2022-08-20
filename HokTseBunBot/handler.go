@@ -35,6 +35,7 @@ func exampleHandler(Message *tgbotapi.Message) {
 		),
 		tgbotapi.NewInlineKeyboardRow(tgbotapi.NewInlineKeyboardButtonData("✖️取消", "NIL_WITH_REACT")),
 	)
+	replyMsg.DisableNotification = true
 	if _, err := bot.Send(replyMsg); err != nil {
 		log.Printf("[exp], %+v\n", Message)
 		log.Println("[exp]", err)
@@ -313,6 +314,7 @@ func deleteHandler(Message *tgbotapi.Message) {
 
 	replyMsg := tgbotapi.NewMessage(Message.Chat.ID, "請選擇要刪除以下哪個？")
 	replyMsg.ReplyMarkup = tgbotapi.NewInlineKeyboardMarkup(ReplyMarkup...)
+	replyMsg.DisableNotification = true
 
 	Msg, err := bot.Send(replyMsg)
 	if err != nil {

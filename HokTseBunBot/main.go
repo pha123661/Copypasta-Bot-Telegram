@@ -60,7 +60,6 @@ func main() {
 		log.Panicln(err)
 	}
 	bot.Debug = true
-	log.Println("***", "Sucessful logged in as", bot.Self.UserName, "***")
 
 	InitVLP()
 	InitDB()
@@ -69,6 +68,7 @@ func main() {
 	updateConfig := tgbotapi.NewUpdate(0)
 	updateConfig.Timeout = 60
 
+	log.Println("***", "Sucessful logged in as", bot.Self.UserName, "***")
 	// get messages
 	updates := bot.GetUpdatesChan(updateConfig)
 	for update := range updates {
@@ -130,6 +130,7 @@ func ParseCommand(Message *tgbotapi.Message) {
 				tgbotapi.NewInlineKeyboardRow(tgbotapi.NewInlineKeyboardButtonData("蛤 我不會啦 啥", "EXP HOWTXT")),
 				tgbotapi.NewInlineKeyboardRow(tgbotapi.NewInlineKeyboardButtonData("阿如果我想傳圖片/GIF/影片咧", "EXP HOWMEDIA")),
 			)
+			replyMsg.DisableNotification = true
 			if _, err := bot.Send(replyMsg); err != nil {
 				log.Println(err)
 			}
@@ -154,6 +155,7 @@ func ParseCommand(Message *tgbotapi.Message) {
 			replyMsg.ReplyToMessageID = Message.MessageID
 			replyMsg.ReplyMarkup = tgbotapi.NewInlineKeyboardMarkup(
 				tgbotapi.NewInlineKeyboardRow(tgbotapi.NewInlineKeyboardButtonData("蛤 我不會啦 啥", "EXP SERC")))
+			replyMsg.DisableNotification = true
 			if _, err := bot.Send(replyMsg); err != nil {
 				log.Println(err)
 			}
@@ -168,6 +170,7 @@ func ParseCommand(Message *tgbotapi.Message) {
 			replyMsg.ReplyToMessageID = Message.MessageID
 			replyMsg.ReplyMarkup = tgbotapi.NewInlineKeyboardMarkup(
 				tgbotapi.NewInlineKeyboardRow(tgbotapi.NewInlineKeyboardButtonData("蛤 我不會啦 啥", "EXP DEL")))
+			replyMsg.DisableNotification = true
 			if _, err := bot.Send(replyMsg); err != nil {
 				log.Println(err)
 			}

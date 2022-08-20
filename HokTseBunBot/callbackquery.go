@@ -36,10 +36,10 @@ func CallQ(CallbackQuery *tgbotapi.CallbackQuery) {
 		SendText(ChatID, "其實不按也沒差啦🈹", 0)
 		if CallbackQuery.Message.ReplyToMessage != nil {
 			bot.Request(tgbotapi.NewDeleteMessage(ChatID, CallbackQuery.Message.ReplyToMessage.MessageID))
+			delete(QueuedDeletes[ChatID], CallbackQuery.Message.ReplyToMessage.MessageID)
 		}
 		bot.Request(tgbotapi.NewDeleteMessage(ChatID, CallbackQuery.Message.MessageID))
 		delete(QueuedDeletes[ChatID], CallbackQuery.Message.MessageID)
-		delete(QueuedDeletes[ChatID], CallbackQuery.Message.ReplyToMessage.MessageID)
 
 	case CallbackQuery.Data[:3] == "EXP":
 		Command := strings.Fields(CallbackQuery.Data)[1]
@@ -69,6 +69,7 @@ func CallQ(CallbackQuery *tgbotapi.CallbackQuery) {
 		// send example image
 		File := tgbotapi.FilePath(path.Join(CONFIG.SETTING.EXAMPLE_PIC_DIR, Command+".jpg"))
 		replyMsg := tgbotapi.NewPhoto(ChatID, File)
+		replyMsg.DisableNotification = true
 		bot.Request(replyMsg)
 
 		// delete prompt
@@ -117,6 +118,7 @@ func CallQ(CallbackQuery *tgbotapi.CallbackQuery) {
 				replyMsg := tgbotapi.NewMessage(ChatID, fmt.Sprintf("請再次確認是否要刪除「%s」：\n「%s」？", HTB.Keyword, HTB.Content))
 				replyMsg.ReplyToMessageID = CallbackQuery.Message.MessageID
 				replyMsg.ReplyMarkup = ReplyMarkup
+				replyMsg.DisableNotification = true
 				_, err := bot.Send(replyMsg)
 				if err != nil {
 					log.Println("[CallBQ]", err)
@@ -127,6 +129,7 @@ func CallQ(CallbackQuery *tgbotapi.CallbackQuery) {
 				Config.Caption = fmt.Sprintf("請再次確認是否要刪除「%s」？", HTB.Keyword)
 				Config.ReplyToMessageID = CallbackQuery.Message.MessageID
 				Config.ReplyMarkup = ReplyMarkup
+				Config.DisableNotification = true
 				_, err := bot.Request(Config)
 				if err != nil {
 					log.Println("[CallBQ]", err)
@@ -137,6 +140,7 @@ func CallQ(CallbackQuery *tgbotapi.CallbackQuery) {
 				Config.Caption = fmt.Sprintf("請再次確認是否要刪除「%s」？", HTB.Keyword)
 				Config.ReplyToMessageID = CallbackQuery.Message.MessageID
 				Config.ReplyMarkup = ReplyMarkup
+				Config.DisableNotification = true
 				_, err := bot.Request(Config)
 				if err != nil {
 					log.Println("[CallBQ]", err)
@@ -147,6 +151,7 @@ func CallQ(CallbackQuery *tgbotapi.CallbackQuery) {
 				Config.Caption = fmt.Sprintf("請再次確認是否要刪除「%s」？", HTB.Keyword)
 				Config.ReplyToMessageID = CallbackQuery.Message.MessageID
 				Config.ReplyMarkup = ReplyMarkup
+				Config.DisableNotification = true
 				_, err := bot.Request(Config)
 				if err != nil {
 					log.Println("[CallBQ]", err)
