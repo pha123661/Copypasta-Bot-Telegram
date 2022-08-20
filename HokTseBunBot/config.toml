@@ -30,8 +30,6 @@
     SUM_MODEL = "csebuetnlp/mT5_multilingual_XLSum"
     MT_MODEL = "Helsinki-NLP/opus-mt-en-zh" # not used, using google translation atm
   [API.MONGO]
-    USER = "" # should be stored as environment variable
-    PASS = "" # should be stored as environment variable
     URI = ""# should be stored as environment variable
 [DB]
   DB_NAME = "Testing_HokTseBunBot-TG"

@@ -103,9 +103,7 @@ func InitConfig(CONFIG_PATH string) {
 	// get secret configs from environment variables
 	CONFIG.API.HF.TOKENs = strings.Fields(os.Getenv("API.HF.TOKENs"))
 	CONFIG.API.TG.TOKEN = os.Getenv("API.TG.TOKEN")
-	CONFIG.API.MONGO.USER = os.Getenv("API.MONGO.USER")
-	CONFIG.API.MONGO.PASS = os.Getenv("API.MONGO.PASS")
-	CONFIG.API.MONGO.URI = fmt.Sprintf(os.Getenv("API.MONGO.URI"), CONFIG.API.MONGO.USER, CONFIG.API.MONGO.PASS)
+	CONFIG.API.MONGO.URI = os.Getenv("API.MONGO.URI")
 
 	SetHFAPI()
 
