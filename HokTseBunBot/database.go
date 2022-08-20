@@ -89,7 +89,10 @@ func InitDB() {
 			log.Println("Begginer initialized")
 		}
 	}
-
+	// Create default collections
+	DB.CreateCollection(context.TODO(), CONFIG.DB.GLOBAL_COL)
+	DB.CreateCollection(context.TODO(), CONFIG.DB.USER_STATUS)
+	DB.CreateCollection(context.TODO(), CONFIG.DB.CHAT_STATUS)
 	// create index for every collection
 	Collections, err = DB.ListCollectionNames(context.TODO(), bson.D{})
 	if err != nil {
