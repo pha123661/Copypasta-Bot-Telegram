@@ -32,6 +32,7 @@
   [API.MONGO]
     USER = "" # should be stored as environment variable
     PASS = "" # should be stored as environment variable
+    URI = ""# should be stored as environment variable
 [DB]
   DB_NAME = "Testing_HokTseBunBot-TG"
   CFormat = "%d-Copypasta" # args = ChatID int64

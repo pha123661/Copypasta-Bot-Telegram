@@ -118,12 +118,12 @@ func addHandler(Message *tgbotapi.Message, Keyword, Content string, Type int) {
 	if Rst := DB.Collection(CONFIG.GetColbyChatID(Message.Chat.ID)).FindOne(context.TODO(), Filter); Rst.Err() != mongo.ErrNoDocuments {
 		SendText(Message.Chat.ID, "傳過了啦 腦霧?", Message.MessageID)
 		return
-	} else if Rst.Err() != nil {
+	} else if Rst.Err() != nil && Rst.Err() != mongo.ErrNoDocuments {
 		log.Printf("[add] Keyword: %s, Content: %s, Type: %d, Message: %+v\n", Keyword, Content, Type, Message)
 		log.Println("[add]", Rst.Err())
-		SendText(Message.Chat.ID, fmt.Sprintf(fmt.Sprintf("新增%s「%s」失敗：%s", CONFIG.GetNameByType(CONFIG.SETTING.TYPE.IMG), Keyword, Rst.Err()), Message.MessageID), 0)
+		SendText(Message.Chat.ID, fmt.Sprintf(fmt.Sprintf("新增%s「%s」失敗：%s", CONFIG.GetNameByType(Type), Keyword, Rst.Err()), Message.MessageID), 0)
+		return
 	}
-
 	// Create tmp message
 	to_be_delete_message := SendText(Message.Chat.ID, "運算中，請稍後……", Message.MessageID)
 	// Insert HTB

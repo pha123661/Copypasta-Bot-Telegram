@@ -105,7 +105,7 @@ func InitConfig(CONFIG_PATH string) {
 	CONFIG.API.TG.TOKEN = os.Getenv("API.TG.TOKEN")
 	CONFIG.API.MONGO.USER = os.Getenv("API.MONGO.USER")
 	CONFIG.API.MONGO.PASS = os.Getenv("API.MONGO.PASS")
-	CONFIG.API.MONGO.URI = fmt.Sprintf("mongodb+srv://%s:%s@hoktsebunbot-tg.vgyvxnn.mongodb.net/?retryWrites=true&w=majority", CONFIG.API.MONGO.USER, CONFIG.API.MONGO.PASS)
+	CONFIG.API.MONGO.URI = fmt.Sprintf(os.Getenv("API.MONGO.URI"), CONFIG.API.MONGO.USER, CONFIG.API.MONGO.PASS)
 
 	SetHFAPI()
 
