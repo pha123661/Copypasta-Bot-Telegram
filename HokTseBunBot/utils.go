@@ -15,9 +15,6 @@ import (
 
 var CONFIG cfg
 
-var ChatStatus map[int64]ChatStatusEntity
-var UserStatus map[int64]UserStatusEntity
-
 // QueuedDeletes[ChatID][MessageID][doc_id] = doc
 var QueuedDeletes = make(map[int64]map[int]map[string]*DeleteEntity)
 
@@ -31,16 +28,6 @@ type DeleteEntity struct {
 	Global    bool
 	Confirmed bool
 	Done      bool
-}
-
-type ChatStatusEntity struct {
-	ChatID int64
-	Global bool
-}
-
-type UserStatusEntity struct {
-	UserID int64
-	Banned bool
 }
 
 type cfg struct {

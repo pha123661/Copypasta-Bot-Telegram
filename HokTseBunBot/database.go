@@ -14,6 +14,19 @@ import (
 )
 
 var DB *mongo.Database
+var ChatStatus map[int64]ChatStatusEntity
+var UserStatus map[int64]UserStatusEntity
+
+type ChatStatusEntity struct {
+	ChatID int64 `bson:"ChatID"`
+	Global bool  `bson:"Global"`
+}
+
+type UserStatusEntity struct {
+	UserID       int64 `bson:"UserID"`
+	Contribution int   `bson:"Contribution"`
+	Banned       bool  `bson:"Banned"`
+}
 
 type HokTseBun struct {
 	UID           primitive.ObjectID `bson:"_id"`
@@ -83,13 +96,43 @@ func InitDB() {
 		log.Panicln(err)
 	}
 	for _, Col_name := range Collections {
-		if Col_name == CONFIG.DB.GLOBAL_COL || Col_name == CONFIG.DB.CHAT_STATUS || Col_name == CONFIG.DB.USER_STATUS {
-			continue
-		}
 		Col := DB.Collection(Col_name)
-		_, err := Col.Indexes().CreateMany(
-			context.TODO(),
-			[]mongo.IndexModel{
+		Col.Indexes().DropAll(context.TODO())
+		switch Col_name {
+		case CONFIG.DB.CHAT_STATUS:
+			_, err := Col.Indexes().CreateOne(context.Background(), mongo.IndexModel{
+				Keys:    bson.D{{Key: "ChatID", Value: 1}},
+				Options: options.Index().SetUnique(true),
+			})
+			if err != nil {
+				panic(err)
+			}
+		case CONFIG.DB.USER_STATUS:
+			_, err := Col.Indexes().CreateOne(context.Background(), mongo.IndexModel{
+				Keys:    bson.D{{Key: "UserID", Value: 1}},
+				Options: options.Index().SetUnique(true),
+			})
+			if err != nil {
+				panic(err)
+			}
+		case CONFIG.DB.GLOBAL_COL:
+			_, err := Col.Indexes().CreateMany(context.Background(), []mongo.IndexModel{
+				// index 1
+				{
+					Keys:    bson.D{{Key: "Type", Value: 1}, {Key: "Keyword", Value: 1}, {Key: "Content", Value: 1}},
+					Options: options.Index().SetUnique(true),
+				},
+				// index 2
+				{
+					Keys:    bson.D{{Key: "Type", Value: 1}, {Key: "Keyword", Value: 1}, {Key: "FileUniqueID", Value: 1}},
+					Options: options.Index().SetUnique(true),
+				},
+			})
+			if err != nil {
+				panic(err)
+			}
+		default:
+			_, err := Col.Indexes().CreateMany(context.TODO(), []mongo.IndexModel{
 				// index 1
 				{Keys: bson.D{
 					{Key: "Type", Value: 1},
@@ -111,10 +154,10 @@ func InitDB() {
 					{Key: "Keyword", Value: 1},
 					{Key: "FileUniqueID", Value: 1},
 				}},
-			},
-		)
-		if err != nil {
-			panic(err)
+			})
+			if err != nil {
+				panic(err)
+			}
 		}
 	}
 
@@ -146,26 +189,38 @@ func BuildStatusMap() {
 		UserStatus[US.UserID] = US
 	}
 
-	fmt.Println(UserStatus, ChatStatus)
 }
 
 func UpdateChatStatus(CS ChatStatusEntity) error {
 	COL := DB.Collection(CONFIG.DB.CHAT_STATUS)
 	Filter := bson.D{{Key: "ChatID", Value: CS.ChatID}}
 	Update := bson.D{{Key: "$set", Value: bson.D{{Key: "Global", Value: CS.Global}}}}
+	opts := options.FindOneAndUpdate().SetUpsert(true)
 
 	// Update
-	SRst := COL.FindOneAndUpdate(context.TODO(), Filter, Update)
-	// Not in collection
-	if SRst.Err() == mongo.ErrNoDocuments {
-		_, err := COL.InsertOne(context.TODO(), bson.M{"ChatID": CS.ChatID, "Global": CS.Global})
-		if err != nil {
-			return err
-		}
-	} else if SRst.Err() != nil {
+	SRst := COL.FindOneAndUpdate(context.TODO(), Filter, Update, opts)
+	if SRst.Err() != nil && SRst.Err() != mongo.ErrNoDocuments {
 		return SRst.Err()
 	}
 	return nil
+}
+
+func AddUserContribution(UserID int64, DeltaContribution int) (int, error) {
+	COL := DB.Collection(CONFIG.DB.USER_STATUS)
+	Filter := bson.D{{Key: "UserID", Value: UserID}}
+	Update := bson.D{{Key: "$inc", Value: bson.D{{Key: "Contribution", Value: DeltaContribution}}}}
+	comment := fmt.Sprintf("Increment %d contribution by %d", UserID, DeltaContribution)
+	opts := options.FindOneAndUpdate().SetUpsert(true).SetComment(comment)
+
+	// Update
+	SRst := COL.FindOneAndUpdate(context.TODO(), Filter, Update, opts)
+	if SRst.Err() != nil && SRst.Err() != mongo.ErrNoDocuments {
+		return 0, SRst.Err()
+	}
+
+	var NewUS UserStatusEntity
+	SRst.Decode(&NewUS)
+	return int(NewUS.Contribution) + DeltaContribution, nil
 }
 
 func InsertHTB(Collection string, HTB *HokTseBun) (primitive.ObjectID, error) {

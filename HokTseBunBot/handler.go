@@ -23,6 +23,7 @@ func toggleHandler(Message *tgbotapi.Message) {
 		if err != nil {
 			log.Println("[toggleG]", err)
 			SendText(Message.Chat.ID, "關閉公共模式失敗:"+err.Error(), 0)
+			return
 		}
 		ChatStatus[Message.Chat.ID] = TmpChatStatus
 
@@ -48,6 +49,7 @@ func toggleHandler(Message *tgbotapi.Message) {
 	if err != nil {
 		log.Println("[toggleG]", err)
 		SendText(Message.Chat.ID, "開啓公共模式失敗:"+err.Error(), 0)
+		return
 	}
 	ChatStatus[Message.Chat.ID] = TmpChatStatus
 
@@ -373,7 +375,11 @@ func deleteHandler(Message *tgbotapi.Message) {
 		return
 	}
 	if num <= 0 {
-		SendText(Message.Chat.ID, "沒有大便符合關鍵字", Message.MessageID)
+		if Global {
+			SendText(Message.Chat.ID, "沒有大便符合關鍵字/是別人新增的", Message.MessageID)
+		} else {
+			SendText(Message.Chat.ID, "沒有大便符合關鍵字", Message.MessageID)
+		}
 		return
 	}
 
