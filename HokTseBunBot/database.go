@@ -3,12 +3,8 @@ package main
 import (
 	"context"
 	"fmt"
-	"io/fs"
 	"log"
 	"os"
-	"path"
-	"strings"
-	"sync"
 	"time"
 
 	"go.mongodb.org/mongo-driver/bson"
@@ -81,34 +77,35 @@ func InitDB() {
 		}
 	}
 
-	Archive := "../HokTseBunArchive"
-	items, err := os.ReadDir(Archive)
-	if os.IsNotExist(err) {
-		fmt.Println("Skip importing")
-		return
-	}
-	if err != nil {
-		panic(err)
-	}
+	// Archive := "../HokTseBunArchive"
+	// items, err := os.ReadDir(Archive)
+	// if os.IsNotExist(err) {
+	// 	fmt.Println("Skip importing")
+	// 	return
+	// }
+	// if err != nil {
+	// 	panic(err)
+	// }
 
-	var wg sync.WaitGroup
+	// var wg sync.WaitGroup
 
-	for _, item_out := range items {
-		if item_out.IsDir() {
-			continue
-		}
-		tmp := strings.Split(item_out.Name(), "-")[0]
-		fmt.Println(item_out.Name())
+	// for _, item_out := range items {
+	// 	if item_out.IsDir() {
+	// 		continue
+	// 	}
+	// 	tmp := strings.Split(item_out.Name(), "-")[0]
+	// 	fmt.Println(item_out.Name())
 
-		wg.Add(1)
-		go func(item fs.DirEntry) {
-			ImportCollection(DB, item.Name()[len(tmp)+1+7:len(item.Name())-5], path.Join(Archive, item.Name()))
-			wg.Done()
-		}(item_out)
-	}
-	wg.Wait()
-	os.Rename(Archive, Archive+"_imported")
+	// 	wg.Add(1)
+	// 	go func(item fs.DirEntry) {
+	// 		ImportCollection(DB, item.Name()[len(tmp)+1+7:len(item.Name())-5], path.Join(Archive, item.Name()))
+	// 		wg.Done()
+	// 	}(item_out)
+	// }
+	// wg.Wait()
+	// os.Rename(Archive, Archive+"_imported")
 
+	// create index for every collection
 	Collections, err = DB.ListCollectionNames(context.TODO(), bson.D{})
 	if err != nil {
 		log.Panicln(err)
