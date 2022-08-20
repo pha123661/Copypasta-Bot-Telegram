@@ -1,25 +1,33 @@
 package main
 
 import (
+	"context"
 	"fmt"
+	"io/fs"
 	"log"
-	"math/rand"
+	"os"
+	"path"
+	"strings"
+	"sync"
 	"time"
 
-	c "github.com/ostafen/clover/v2"
+	"go.mongodb.org/mongo-driver/bson"
+	"go.mongodb.org/mongo-driver/bson/primitive"
+	"go.mongodb.org/mongo-driver/mongo"
+	"go.mongodb.org/mongo-driver/mongo/options"
 )
 
-var DB *c.DB
+var DB *mongo.Database
 
 type HokTseBun struct {
-	Type          int       `json:"Type"`
-	Keyword       string    `json:"Keyword"`
-	Summarization string    `json:"Summarization"`
-	Content       string    `json:"Content"`
-	From          int64     `json:"From"`
-	CreateTime    time.Time `json:"CreateTime"`
-	UID           string    `json:"_id"`
-	URL           string    `json:"URL"`
+	UID           primitive.ObjectID `bson:"_id" json:"_id"`
+	Type          int                `bson:"Type"`
+	Keyword       string             `bson:"Keyword"`
+	Summarization string             `bson:"Summarization"`
+	Content       string             `bson:"Content"`
+	From          int64              `bson:"From"`
+	CreateTime    time.Time          `bson:"CreateTime"`
+	URL           string             `bson:"URL"`
 }
 
 func (HTB *HokTseBun) IsText() bool {
@@ -43,189 +51,137 @@ func (HTB *HokTseBun) IsMultiMedia() bool {
 }
 
 func InitDB() {
-	// Open DB and create documents
 	var err error
-	DB, err = c.Open(CONFIG.DB.DIR)
+	DBClient, err := mongo.Connect(context.TODO(), options.Client().ApplyURI(CONFIG.API.MONGO.URI))
 	if err != nil {
-		log.Panicln("[InitDB]", err)
+		log.Panicln(err)
+	}
+	DB = DBClient.Database(CONFIG.DB.DB_NAME)
+
+	Collections, err := DB.ListCollectionNames(context.TODO(), bson.D{})
+	if err != nil {
+		log.Panicln(err)
 	}
 
-	Collections, _ := DB.ListCollections()
-	for idx, Collection := range Collections {
-		DB.ExportCollection(Collection, fmt.Sprintf("%s/%d-BACKUP_%s.json", CONFIG.DB.EXPORT_DIR, idx+1, Collection))
-	}
-	// DB.CreateCollection(CONFIG.DB.COLLECTION)
-	// DB.ExportCollection(CONFIG.DB.COLLECTION, fmt.Sprintf("../BACKUP_%s.json", CONFIG.DB.COLLECTION))
-	// DB.DropCollection(CONFIG.DB.COLLECTION)
-	// DB.ImportCollection(CONFIG.DB.COLLECTION, "../BACKUP_Copypasta.json")
-
-	// update out-dated documents
-	// var wg = &sync.WaitGroup{}
-
-	// semaphore := make(chan struct{}, 5) // maximum limit of chan, blocks when full
-
-	// Criteria := c.Field("Type").Gt(1).And(c.Field("URL").Eq("").Or(c.Field("Summarization").Eq("")))
-	// docs, _ := DB.FindAll(c.NewQuery(CONFIG.DB.COLLECTION).Where(Criteria))
-	// for _, doc := range docs {
-	// 	HTB := &HokTseBun{}
-	// 	err := doc.Unmarshal(HTB)
-	// 	if err != nil {
-	// 		fmt.Println(err)
-	// 	}
-	// 	// Update media files' URLs
-	// 	if HTB.IsMultiMedia() && HTB.URL == "" {
-	// 		func() {
-	// 			defer func() { fmt.Printf("[Done] Update URL for %s, %s\n", HTB.Keyword, HTB.URL) }()
-
-	// 			URL, err := bot.GetFileDirectURL(HTB.Content)
-	// 			if err != nil {
-	// 				return // give up
-	// 			}
-	// 			DB.UpdateById(CONFIG.DB.COLLECTION, HTB.UID, Dict{"URL": URL})
-	// 		}()
-	// 	}
-	// 	// User re-upload
-	// 	if (HTB.IsAnimation() || HTB.IsVideo()) && HTB.Summarization == "" {
-	// 		fmt.Println(HTB.Keyword, "has no summarization")
-	// 	}
-	// 	// Update image captions
-	// 	if HTB.IsImage() && HTB.Summarization == "" {
-	// 		wg.Add(1)
-	// 		// add caption
-	// 		go func() {
-	// 			semaphore <- struct{}{} // acquire to work (channel), blocks when the channel is full
-	// 			defer func() {
-	// 				wg.Done()
-	// 				<-semaphore // release
-	// 				fmt.Printf("[Done] Image %s: %s\n", HTB.Keyword, HTB.Summarization)
-	// 			}()
-
-	// 			fmt.Printf("[Updating] Image %s\n", HTB.Keyword)
-	// 			if HTB.URL == "" {
-	// 				URL, err := bot.GetFileDirectURL(HTB.Content)
-	// 				if err != nil {
-	// 					return // give up
-	// 				}
-	// 				HTB.URL = URL
-	// 			}
-	// 			Cap := ImageCaptioning(HTB.Keyword, HTB.URL)
-	// 			DB.UpdateById(CONFIG.DB.COLLECTION, HTB.UID, Dict{"Summarization": Cap})
-	// 		}()
-	// 		time.Sleep(3 * time.Second)
-	// 	}
-	// }
-	// wg.Wait() // wait for all updates to finish
-}
-
-func InsertHTB(Collection string, HTB *HokTseBun) (string, error) {
-	doc := c.NewDocument()
-	doc.SetAll(Dict{
-		"Type":          HTB.Type, // clover only supports int64
-		"Keyword":       HTB.Keyword,
-		"Summarization": HTB.Summarization,
-		"Content":       HTB.Content,
-		"URL":           HTB.URL,
-		"From":          HTB.From,
-		"CreateTime":    time.Now(),
-	})
-
-	var _id string
-	var err error
-	_id, err = DB.InsertOne(Collection, doc)
-	if err != nil {
-		wait_ms := rand.NormFloat64()*70 + 100
-		log.Println("[InsertHTB] Sleeping for", time.Duration(wait_ms*float64(time.Nanosecond)))
-		time.Sleep(time.Duration(wait_ms * float64(time.Nanosecond))) // wait 0.1s and try again
-		_id, err = DB.InsertOne(Collection, doc)
-		if err != nil {
-			return "", err
+	var BeginnerExists bool
+	for _, Col := range Collections {
+		if Col == "Beginner" {
+			BeginnerExists = true
+			break
 		}
 	}
-	return _id, nil
+
+	if !BeginnerExists {
+		if err := ImportCollection(DB, "Beginner", "./Beginner.json"); err != nil {
+			log.Println("Begginer initialization failed!")
+			log.Panicln(err)
+			return
+		} else {
+			log.Println("Begginer initialized")
+		}
+	}
+
+	Archive := "../HokTseBunArchive"
+	items, err := os.ReadDir(Archive)
+	if os.IsNotExist(err) {
+		fmt.Println("Skip importing")
+		return
+	}
+	if err != nil {
+		panic(err)
+	}
+
+	var wg sync.WaitGroup
+
+	for _, item_out := range items {
+		if item_out.IsDir() {
+			continue
+		}
+		tmp := strings.Split(item_out.Name(), "-")[0]
+		fmt.Println(item_out.Name())
+
+		wg.Add(1)
+		go func(item fs.DirEntry) {
+			ImportCollection(DB, item.Name()[len(tmp)+1+7:len(item.Name())-5], path.Join(Archive, item.Name()))
+			wg.Done()
+		}(item_out)
+	}
+	wg.Wait()
+	os.Rename(Archive, Archive+"_imported")
+
+	Collections, err = DB.ListCollectionNames(context.TODO(), bson.D{})
+	if err != nil {
+		log.Panicln(err)
+	}
+	for _, Col_name := range Collections {
+		Col := DB.Collection(Col_name)
+		str, err := Col.Indexes().CreateMany(
+			context.TODO(),
+			[]mongo.IndexModel{
+				// index 1
+				{Keys: bson.D{
+					{Key: "Type", Value: 1},
+				}},
+				// index 2
+				{Keys: bson.D{
+					{Key: "Type", Value: 1},
+					{Key: "Keyword", Value: 1},
+				}},
+				// index 3
+				{Keys: bson.D{
+					{Key: "Type", Value: 1},
+					{Key: "Keyword", Value: 1},
+					{Key: "Content", Value: 1},
+				}},
+			},
+		)
+		if err != nil {
+			panic(err)
+		}
+		fmt.Println(str)
+	}
 }
 
-// func InsertCP(FromID int64, Keyword, Content string, Type int64, Message *tgbotapi.Message) (string, error) {
-// 	var Summarization string
-// 	var URL string
-// 	switch Type {
-// 	case 0:
-// 		// Reserved
-// 		return "", fmt.Errorf(`"InsertCP" not implemented for type 0`)
-// 	case 1:
-// 		// Text
-// 		Summarization = TextSummarization(Keyword, Content)
-// 	case 2:
-// 		// Image
-// 		URL, err := bot.GetFileDirectURL(Content)
-// 		if err != nil {
-// 			log.Println("[InsertCP]", err)
-// 			break // do not do summarization
-// 		}
-// 		Summarization = ImageCaptioning(Keyword, URL)
-// 	case 3:
-// 		// 3: animation
-// 		if Message.Animation.FileSize >= 20000 {
-// 			// too large
-// 			return "", fmt.Errorf("file size %d is too large", Message.Animation.FileSize)
-// 		}
+func InsertHTB(Collection string, HTB *HokTseBun) (primitive.ObjectID, error) {
+	// Create doc
+	// doc, err := bson.Marshal(HTB)
+	// if err != nil {
+	// 	log.Println(err)
+	// }
+	doc := bson.D{
+		{Key: "Type", Value: HTB.Type},
+		{Key: "Keyword", Value: HTB.Keyword},
+		{Key: "Summarization", Value: HTB.Summarization},
+		{Key: "Content", Value: HTB.Content},
+		{Key: "From", Value: HTB.From},
+		{Key: "CreateTime", Value: time.Now()},
+		{Key: "URL", Value: HTB.URL},
+	}
 
-// 		var err error
-// 		URL, err = bot.GetFileDirectURL(Content)
-// 		if err != nil {
-// 			log.Println("[InsertCP]", err)
-// 		}
+	// Insert doc
+	Col := DB.Collection(Collection)
+	InRst, err := Col.InsertOne(context.TODO(), doc)
+	if err != nil {
+		return primitive.ObjectID{}, err
+	}
+	return InRst.InsertedID.(primitive.ObjectID), nil
+}
 
-// 		if Message == nil || Message.Animation == nil {
-// 			break
-// 		}
-
-// 		// get caption by thumbnail
-// 		Thumb_URL, err := bot.GetFileDirectURL(Message.Animation.Thumbnail.FileID)
-// 		if err != nil {
-// 			log.Println("[InsertCP]", err)
-// 		}
-// 		Summarization = ImageCaptioning(Keyword, Thumb_URL)
-// 	case 4:
-// 		// 4: video
-// 		if Message.Video.FileSize >= 20000 {
-// 			// too large
-// 			return "", fmt.Errorf("file size %d is too large", Message.Video.FileSize)
-// 		}
-
-// 		var err error
-// 		URL, err = bot.GetFileDirectURL(Content)
-// 		if err != nil {
-// 			log.Println("[InsertCP]", err)
-// 		}
-
-// 		if Message == nil || Message.Video == nil {
-// 			break
-// 		}
-
-// 		// get caption by thumbnail
-// 		Thumb_URL, err := bot.GetFileDirectURL(Message.Video.Thumbnail.FileID)
-// 		if err != nil {
-// 			log.Println("[InsertCP]", err)
-// 		}
-// 		Summarization = ImageCaptioning(Keyword, Thumb_URL)
-
-// 	default:
-// 		return "", fmt.Errorf(`"InsertCP" not implemented for type %d`, Type)
-// 	}
-// 	doc := c.NewDocument()
-// 	doc.SetAll(Dict{
-// 		"Type":          Type, // clover only supports int64
-// 		"Keyword":       Keyword,
-// 		"Summarization": Summarization,
-// 		"Content":       Content,
-// 		"URL":           URL,
-// 		"From":          FromID,
-// 		"CreateTime":    time.Now(),
-// 	})
-
-// 	_, err := DB.InsertOne(CONFIG.DB.COLLECTION, doc)
-// 	if err != nil {
-// 		log.Println("[InsertCP]", err)
-// 	}
-// 	return Summarization, nil
-// }
+func ImportCollection(DB *mongo.Database, Collection, path string) error {
+	var docs []interface{}
+	jsonbytes, err := os.ReadFile(path)
+	if err != nil {
+		log.Printf("[ImpCol], Col: %s, path: %s\n", Collection, path)
+		log.Println("[ImpCol]", err)
+		return err
+	}
+	jsonbytes, err = DeleteFieldFromJson("_id", jsonbytes)
+	if err != nil {
+		log.Printf("[ImpCol], Col: %s, path: %s\n", Collection, path)
+		log.Println("[ImpCol]", err)
+		return err
+	}
+	bson.UnmarshalExtJSON(jsonbytes, true, &docs)
+	_, err = DB.Collection(Collection).InsertMany(context.TODO(), docs)
+	return err
+}

@@ -2,6 +2,7 @@ package main
 
 import (
 	"bytes"
+	"encoding/json"
 	"fmt"
 	"log"
 	"os"
@@ -16,6 +17,17 @@ var CONFIG cfg
 
 type Dict map[string]interface{}
 type Empty struct{}
+
+// QueuedDeletes[ChatID][MessageID][doc_id] = doc
+var QueuedDeletes = make(map[int64]map[int]map[string]*DeleteEntity)
+
+type DeleteEntity struct {
+	// info
+	HTB HokTseBun
+	// status
+	Confirmed bool
+	Done      bool
+}
 
 type cfg struct {
 	SETTING struct {
@@ -44,10 +56,15 @@ type cfg struct {
 			CURRENT_TOKEN       string
 			SUM_MODEL, MT_MODEL string
 		}
+		MONGO struct {
+			USER string
+			PASS string
+			URI  string
+		}
 	}
 
 	DB struct {
-		DIR, EXPORT_DIR, CFormat string
+		DB_NAME, CFormat string
 	}
 }
 
@@ -86,23 +103,14 @@ func InitConfig(CONFIG_PATH string) {
 	// get secret configs from environment variables
 	CONFIG.API.HF.TOKENs = strings.Fields(os.Getenv("API.HF.TOKENs"))
 	CONFIG.API.TG.TOKEN = os.Getenv("API.TG.TOKEN")
+	CONFIG.API.MONGO.URI = os.Getenv("API.MONGO.URI")
+	CONFIG.DB.DB_NAME = os.Getenv("DB.DB_NAME")
 
 	SetHFAPI()
 
 	fmt.Println("********************\nConfig Loaded:")
 	PrintStructAsTOML(CONFIG)
 	fmt.Println("********************")
-
-	var CreateDirIfNotExist = func(path string) {
-		if _, err := os.Stat(path); os.IsNotExist(err) {
-			errr := os.Mkdir(path, 0755)
-			if errr != nil {
-				log.Panicln("[InitConfig]", errr)
-			}
-		}
-	}
-
-	CreateDirIfNotExist(CONFIG.DB.EXPORT_DIR)
 }
 
 func TruncateString(text string, width int) string {
@@ -140,14 +148,28 @@ func PrintStructAsTOML(v interface{}) error {
 	return nil
 }
 
+func FindNthSubstr(haystack, needle string, n int) int {
+	start := strings.Index(haystack, needle)
+	for start >= 0 && n > 1 {
+		if start+len(needle) >= len(haystack) {
+			return -1
+		}
+		start = strings.Index(haystack[start+len(needle):], needle) + start + len(needle)
+		n--
+	}
+	return start
+}
+
 // Sends text message, set ReplyMsgID=0 to disable reply
 func SendText(ChatID int64, Content string, ReplyMsgID int) tgbotapi.Message {
 	replyMsg := tgbotapi.NewMessage(ChatID, Content)
 	if ReplyMsgID != 0 {
 		replyMsg.ReplyToMessageID = ReplyMsgID
 	}
+	replyMsg.DisableNotification = true
 	Msg, err := bot.Send(replyMsg)
 	if err != nil {
+		log.Printf("[SendTR] ChatID: %d, Content:%s, MeplyMsgID: %d\n", ChatID, Content, ReplyMsgID)
 		log.Println("[SendTR]", err)
 	}
 	return Msg
@@ -160,7 +182,7 @@ func SendMultiMedia(ChatID int64, Caption string, FileID_Str string, Type int) *
 	FileID := tgbotapi.FileID(FileID_Str)
 	switch Type {
 	case 1:
-		log.Println("Sending text by SendMultiMedia")
+		log.Println("[SendIR] Sending text by SendMultiMedia")
 		return nil
 
 	case 2:
@@ -168,11 +190,16 @@ func SendMultiMedia(ChatID int64, Caption string, FileID_Str string, Type int) *
 		if Caption != "" {
 			Config.Caption = Caption
 		}
+		Config.DisableNotification = true
 		Msg, err = bot.Request(Config)
 		if !Msg.Ok {
+			log.Printf("[SendIR] ChatID: %d, Caption:%s, FileID_Str: %s, Type: %d\n", ChatID, Caption, FileID_Str, Type)
 			log.Println("[SendIR]", Msg.ErrorCode, Msg.Description, fmt.Sprintf("%+v", Config))
+			SendText(ChatID, "傳不出來 tg在搞", 0)
 		} else if err != nil {
+			log.Printf("[SendIR] ChatID: %d, Caption:%s, FileID_Str: %s, Type: %d\n", ChatID, Caption, FileID_Str, Type)
 			log.Println("[SendIR]", err)
+			SendText(ChatID, "傳送失敗： "+err.Error(), 0)
 		}
 
 	case 3:
@@ -180,11 +207,16 @@ func SendMultiMedia(ChatID int64, Caption string, FileID_Str string, Type int) *
 		if Caption != "" {
 			Config.Caption = Caption
 		}
+		Config.DisableNotification = true
 		Msg, err = bot.Request(Config)
 		if !Msg.Ok {
+			log.Printf("[SendIR] ChatID: %d, Caption:%s, FileID_Str: %s, Type: %d\n", ChatID, Caption, FileID_Str, Type)
 			log.Println("[SendIR]", Msg.ErrorCode, Msg.Description, fmt.Sprintf("%+v", Config))
+			SendText(ChatID, "傳不出來 tg在搞", 0)
 		} else if err != nil {
+			log.Printf("[SendIR] ChatID: %d, Caption:%s, FileID_Str: %s, Type: %d\n", ChatID, Caption, FileID_Str, Type)
 			log.Println("[SendIR]", err)
+			SendText(ChatID, "傳送失敗： "+err.Error(), 0)
 		}
 
 	case 4:
@@ -192,13 +224,32 @@ func SendMultiMedia(ChatID int64, Caption string, FileID_Str string, Type int) *
 		if Caption != "" {
 			Config.Caption = Caption
 		}
+		Config.DisableNotification = true
 		Msg, err = bot.Request(Config)
 		if !Msg.Ok {
+			log.Printf("[SendIR] ChatID: %d, Caption:%s, FileID_Str: %s, Type: %d\n", ChatID, Caption, FileID_Str, Type)
 			log.Println("[SendIR]", Msg.ErrorCode, Msg.Description, fmt.Sprintf("%+v", Config))
+			SendText(ChatID, "傳不出來 tg在搞", 0)
 		} else if err != nil {
+			log.Printf("[SendIR] ChatID: %d, Caption:%s, FileID_Str: %s, Type: %d\n", ChatID, Caption, FileID_Str, Type)
 			log.Println("[SendIR]", err)
+			SendText(ChatID, "傳送失敗： "+err.Error(), 0)
 		}
 
 	}
 	return Msg
+}
+
+func DeleteFieldFromJson(field string, jsonbytes []byte) ([]byte, error) {
+	var docs_interface interface{}
+	err := json.Unmarshal(jsonbytes, &docs_interface)
+	if err != nil {
+		return make([]byte, 0), err
+	}
+
+	for i := 0; i < len(docs_interface.([]interface{})); i++ {
+		delete(docs_interface.([]interface{})[i].(map[string]interface{}), "_id")
+	}
+
+	return json.Marshal(docs_interface)
 }
