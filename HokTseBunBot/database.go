@@ -75,6 +75,32 @@ func InitDB() {
 			log.Println("Begginer initialized")
 		}
 	}
+
+	// items, err := os.ReadDir("../HokTseBunArchive")
+	// if os.IsNotExist(err) {
+	// 	fmt.Println("Skip importing")
+	// 	return
+	// }
+	// if err != nil {
+	// 	panic(err)
+	// }
+
+	// var wg sync.WaitGroup
+
+	// for _, item_out := range items {
+	// 	if item_out.IsDir() {
+	// 		continue
+	// 	}
+	// 	tmp := strings.Split(item_out.Name(), "-")[0]
+	// 	fmt.Println(item_out.Name())
+
+	// 	wg.Add(1)
+	// 	go func(item fs.DirEntry) {
+	// 		ImportCollection(DB, item.Name()[len(tmp)+1+7:len(item.Name())-5], path.Join("../HokTseBunArchive", item.Name()))
+	// 		wg.Done()
+	// 	}(item_out)
+	// }
+	// wg.Wait()
 }
 
 func InsertHTB(Collection string, HTB *HokTseBun) (primitive.ObjectID, error) {

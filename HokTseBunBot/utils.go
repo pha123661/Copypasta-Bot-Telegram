@@ -104,6 +104,7 @@ func InitConfig(CONFIG_PATH string) {
 	CONFIG.API.HF.TOKENs = strings.Fields(os.Getenv("API.HF.TOKENs"))
 	CONFIG.API.TG.TOKEN = os.Getenv("API.TG.TOKEN")
 	CONFIG.API.MONGO.URI = os.Getenv("API.MONGO.URI")
+	CONFIG.DB.DB_NAME = os.Getenv("DB.DB_NAME")
 
 	SetHFAPI()
 

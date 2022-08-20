@@ -32,5 +32,5 @@
   [API.MONGO]
     URI = ""# should be stored as environment variable
 [DB]
-  DB_NAME = "Testing_HokTseBunBot-TG"
+  DB_NAME = ""
   CFormat = "%d-Copypasta" # args = ChatID int64
