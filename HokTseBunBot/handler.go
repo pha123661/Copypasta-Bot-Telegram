@@ -236,7 +236,7 @@ func addHandler(Message *tgbotapi.Message, Keyword, Content, FileUniqueID string
 			FileUniqueID:  FileUniqueID,
 		},
 	)
-	Con, _ := AddUserContribution(Message.From.ID, 1)
+
 	// send response to user
 	if err != nil {
 		log.Printf("[add] Keyword: %s, Content: %s, Type: %d, Message: %+v\n", Keyword, Content, Type, Message)
@@ -244,6 +244,7 @@ func addHandler(Message *tgbotapi.Message, Keyword, Content, FileUniqueID string
 		SendText(Message.Chat.ID, fmt.Sprintf("新增%s「%s」失敗：%s", CONFIG.GetNameByType(Type), Keyword, err), Message.MessageID)
 	} else {
 		if Global {
+			Con, _ := AddUserContribution(Message.From.ID, 1)
 			SendText(Message.Chat.ID, fmt.Sprintf("新增%s「%s」成功，\n自動生成的摘要如下：「%s」\n目前貢獻值爲%d", CONFIG.GetNameByType(Type), Keyword, Sum, Con), Message.MessageID)
 		} else {
 			SendText(Message.Chat.ID, fmt.Sprintf("新增%s「%s」成功，\n自動生成的摘要如下：「%s」", CONFIG.GetNameByType(Type), Keyword, Sum), Message.MessageID)
