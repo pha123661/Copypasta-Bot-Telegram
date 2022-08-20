@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"log"
 	"math/rand"
+	"reflect"
 	"unicode/utf8"
 
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
@@ -118,6 +119,43 @@ func randomHandler(Message *tgbotapi.Message) {
 		log.Printf("[random], 發生了奇怪的錯誤，送不出去這個東西：%+v\nMsg:%+v\n", HTB, Message)
 		SendText(Message.Chat.ID, fmt.Sprintf("發生了奇怪的錯誤，送不出去這個東西：%+v", HTB), 0)
 	}
+}
+func dumpHandler(Message *tgbotapi.Message) {
+	// This command dumps copypasta that you sent in private db into public db
+	Filter := bson.D{{Key: "From", Value: Message.From.ID}}
+	Curser, err := DB.Collection(CONFIG.GetColbyChatID(Message.Chat.ID)).Find(context.TODO(), Filter)
+	if err != nil {
+		log.Println("[dump]", Message)
+		log.Println("[dump]", err)
+		SendText(Message.Chat.ID, "傾卸失敗: "+err.Error(), 0)
+		return
+	}
+
+	docs2insert := make([]interface{}, 0, 100)
+	for Curser.Next(context.TODO()) {
+		var doc interface{}
+		Curser.Decode(&doc)
+		docs2insert = append(docs2insert, doc)
+	}
+
+	opts := options.InsertMany().SetOrdered(false)
+	MRst, err := DB.Collection(CONFIG.DB.GLOBAL_COL).InsertMany(context.TODO(), docs2insert, opts)
+	if err == mongo.ErrEmptySlice {
+		SendText(Message.Chat.ID, "沒有東西能傾倒", 0)
+		return
+	} else if err != nil && reflect.TypeOf(err) != reflect.TypeOf(mongo.BulkWriteException{}) {
+		log.Println("[dump]", Message)
+		log.Println("[dump]", err)
+		SendText(Message.Chat.ID, "傾卸失敗: "+err.Error(), 0)
+		return
+	}
+
+	NewCon, err := AddUserContribution(Message.From.ID, len(MRst.InsertedIDs))
+	if err != nil {
+		log.Printf("Message: %v\n", Message)
+		log.Println("[UpdateUS]", err)
+	}
+	SendText(Message.Chat.ID, fmt.Sprintf("成功把%d坨大便倒進公共資料庫，目前累計貢獻%d坨", len(MRst.InsertedIDs), NewCon), 0)
 }
 
 func addHandler(Message *tgbotapi.Message, Keyword, Content, FileUniqueID string, Type int) {

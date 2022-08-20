@@ -7,7 +7,6 @@ import (
 	"log"
 	"net/http"
 	"os"
-	"reflect"
 	"strconv"
 	"strings"
 	"unicode/utf8"
@@ -139,41 +138,7 @@ func ParseCommand(Message *tgbotapi.Message) {
 		SendText(Message.Chat.ID, content, 0)
 
 	case "dump": // short DUMP
-		// This command dumps copypasta that you sent in private db into public db
-		Filter := bson.D{{Key: "From", Value: Message.From.ID}}
-		Curser, err := DB.Collection(CONFIG.GetColbyChatID(Message.Chat.ID)).Find(context.TODO(), Filter)
-		if err != nil {
-			log.Println("[dump]", Message)
-			log.Println("[dump]", err)
-			SendText(Message.Chat.ID, "傾卸失敗: "+err.Error(), 0)
-			return
-		}
-
-		docs2insert := make([]interface{}, 0, 100)
-		for Curser.Next(context.TODO()) {
-			var doc interface{}
-			Curser.Decode(&doc)
-			docs2insert = append(docs2insert, doc)
-		}
-
-		opts := options.InsertMany().SetOrdered(false)
-		MRst, err := DB.Collection(CONFIG.DB.GLOBAL_COL).InsertMany(context.TODO(), docs2insert, opts)
-		if err == mongo.ErrEmptySlice {
-			SendText(Message.Chat.ID, "沒有東西能傾倒", 0)
-			return
-		} else if err != nil && reflect.TypeOf(err) != reflect.TypeOf(mongo.BulkWriteException{}) {
-			log.Println("[dump]", Message)
-			log.Println("[dump]", err)
-			SendText(Message.Chat.ID, "傾卸失敗: "+err.Error(), 0)
-			return
-		}
-
-		NewCon, err := AddUserContribution(Message.From.ID, len(MRst.InsertedIDs))
-		if err != nil {
-			log.Printf("Message: %v\n", Message)
-			log.Println("[UpdateUS]", err)
-		}
-		SendText(Message.Chat.ID, fmt.Sprintf("成功把%d坨大便倒進公共資料庫，目前累計貢獻%d坨", len(MRst.InsertedIDs), NewCon), 0)
+		dumpHandler(Message)
 
 	case "new", "add": // short: NEW, ADD
 		Command_Args := strings.Fields(Message.CommandArguments())
