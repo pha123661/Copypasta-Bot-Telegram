@@ -45,9 +45,9 @@ func exampleHandler(Message *tgbotapi.Message) {
 func randomHandler(Message *tgbotapi.Message) {
 	var Filter bson.D
 	switch Message.Command() {
-	case "randImage":
+	case "randimg":
 		Filter = bson.D{{Key: "Type", Value: 2}}
-	case "randText":
+	case "randtxt":
 		Filter = bson.D{{Key: "Type", Value: 1}}
 	default:
 		Filter = bson.D{{Key: "Type", Value: bson.D{{Key: "$ne", Value: 0}}}}

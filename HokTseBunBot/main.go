@@ -118,7 +118,7 @@ func ParseCommand(Message *tgbotapi.Message) {
 	case "example": // short: EXP
 		exampleHandler(Message)
 
-	case "random", "randImage", "randText": // short: RAND
+	case "random", "randimg", "randtxt": // short: RAND
 		randomHandler(Message)
 
 	case "new", "add": // short: NEW, ADD
