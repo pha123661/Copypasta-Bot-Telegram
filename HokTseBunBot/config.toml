@@ -1,6 +1,7 @@
 [SETTING]
   LOG_FILE = "../log.log"
   EXAMPLE_PIC_DIR = "./ExamplePics"
+  EXAMPLE_TXT_DIR = "./ExampleTxts"
   [SETTING.TYPE]
     TXT=1
     IMG=2

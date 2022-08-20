@@ -99,12 +99,12 @@ func main() {
 				log.Println("[Kicked] Get Kicked by", update.MyChatMember.Chat.ID, update.MyChatMember.Chat.UserName, update.MyChatMember.Chat.Title)
 			} else {
 				log.Println("[Joining] Joining", update.MyChatMember.Chat.ID, update.MyChatMember.Chat.UserName, update.MyChatMember.Chat.Title)
-			}
-			if update.MyChatMember.Chat.Type == "group" || update.MyChatMember.Chat.Type == "supergroup" {
-				// get invited in a group
-				Content := `歡迎使用，請輸入或點擊 /example 以查看使用方式
+				if update.MyChatMember.Chat.Type == "group" || update.MyChatMember.Chat.Type == "supergroup" {
+					// get invited in a group
+					Content := `歡迎使用，請輸入或點擊 /example 以查看使用方式
 我的github: https://github.com/pha123661/Hok_tse_bun_tgbot`
-				SendText(update.MyChatMember.Chat.ID, Content, 0)
+					SendText(update.MyChatMember.Chat.ID, Content, 0)
+				}
 			}
 		}
 	}
@@ -132,9 +132,9 @@ func ParseCommand(Message *tgbotapi.Message) {
 	case "status": // short: STAT
 		var content string
 		if ChatStatus[Message.Chat.ID].Global {
-			content = "處於公共模式"
+			content = fmt.Sprintf("目前處於 公共模式\n貢獻值爲 %d", UserStatus[Message.Chat.ID].Contribution)
 		} else {
-			content = "處於私人模式"
+			content = fmt.Sprintf("目前處於 私人模式\n貢獻值爲 %d", UserStatus[Message.Chat.ID].Contribution)
 		}
 		SendText(Message.Chat.ID, content, 0)
 

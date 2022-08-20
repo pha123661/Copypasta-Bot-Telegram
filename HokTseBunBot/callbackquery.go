@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 	"log"
-	"path"
 	"strings"
 
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
@@ -43,35 +42,7 @@ func CallQ(CallbackQuery *tgbotapi.CallbackQuery) {
 
 	case CallbackQuery.Data[:3] == "EXP":
 		Command := strings.Fields(CallbackQuery.Data)[1]
-		// send text tutorial
-		var Text string = "[指令用途] %s\n[指令格式] %s\n[需要注意] %s\n實際使用範例如下圖:"
-		switch Command {
-		case "WHATISTHIS":
-			Text = "我是複製文bot, 你可以:\n1. 新增複製文或圖片/GIF/影片給我, 我會自動新增摘要/說明\n2. 提到關鍵字的時候, 我會把複製文抓出來鞭 (推薦群組使用\n3. 我有搜尋功能, 也可以當作資料庫用"
-		case "HOWMEDIA":
-			Text = "請直接傳圖片/GIF/影片, 並附上註解(傳的時候下方可以輸入註解), bot 會自動新增\n實際使用範例如下圖:"
-		case "HOWTXT":
-			Text = "可以使用 /add 指令, 使用方法如下:\n" + Text
-			Command = "ADD"
-			fallthrough
-		case "ADD":
-			Text = fmt.Sprintf(Text, "新增複製文 (文字)", "/add {關鍵字} {內容}", "\n1. /add 和 /new 功能完全一樣, 愛用哪個用哪個\n2. 關鍵字可以重複, 但不建議\n3. 關鍵字不可過長")
-		case "DEL":
-			Text = fmt.Sprintf(Text, "根據關鍵字, 選擇並刪除複製文", "/delete {關鍵字}", "\n1. 確認刪除後無法復原\n2. 會先列出所有相同關鍵字的內容供選擇, 不會全部刪除")
-		case "EXP":
-			Text = fmt.Sprintf(Text, "查詢指令如何使用", "/example", "無")
-		case "RAND":
-			Text = fmt.Sprintf(Text, "隨機選取一篇資料庫內容給你", "/random", "無")
-		case "SERC":
-			Text = fmt.Sprintf(Text, "根據給定關鍵字, 在資料庫內搜尋, 並將結果私訊給你", "/search 關鍵字", "\n1. 要先私訊(啓動/開始)bot, 它才能私訊你\n2. 搜尋範圍包含關鍵字, 摘要, 內容\n3. 因爲是模糊搜尋, 所以會搜尋出一大堆不相關的\n4. 爲了防止被TG ban, 結果超過25筆會被取消, 可以換個關鍵字再搜尋")
-		}
-		SendText(ChatID, Text, 0)
-		// send example image
-		File := tgbotapi.FilePath(path.Join(CONFIG.SETTING.EXAMPLE_PIC_DIR, Command+".jpg"))
-		replyMsg := tgbotapi.NewPhoto(ChatID, File)
-		replyMsg.DisableNotification = true
-		bot.Request(replyMsg)
-
+		SendExample(ChatID, Command)
 		// delete prompt
 		bot.Request(tgbotapi.NewDeleteMessage(ChatID, CallbackQuery.Message.MessageID))
 

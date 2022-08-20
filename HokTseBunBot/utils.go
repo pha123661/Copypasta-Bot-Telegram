@@ -46,6 +46,7 @@ type cfg struct {
 		}
 		LOG_FILE        string
 		EXAMPLE_PIC_DIR string
+		EXAMPLE_TXT_DIR string
 	}
 
 	API struct {

@@ -56,35 +56,6 @@ func toggleHandler(Message *tgbotapi.Message) {
 	SendText(Message.Chat.ID, "已開啓公共模式", 0)
 }
 
-func exampleHandler(Message *tgbotapi.Message) {
-	replyMsg := tgbotapi.NewMessage(Message.Chat.ID, "請按按鈕選擇要觀看的教學範例:")
-	replyMsg.ReplyToMessageID = Message.MessageID
-	replyMsg.ReplyMarkup = tgbotapi.NewInlineKeyboardMarkup(
-		tgbotapi.NewInlineKeyboardRow(tgbotapi.NewInlineKeyboardButtonData("這個 bot 是幹嘛用的", "EXP WHATISTHIS")),
-		tgbotapi.NewInlineKeyboardRow(tgbotapi.NewInlineKeyboardButtonData("我要如何新增複製文?", "EXP HOWTXT")),
-		tgbotapi.NewInlineKeyboardRow(tgbotapi.NewInlineKeyboardButtonData("我要如何新增圖片/GIF/影片?", "EXP HOWMEDIA")),
-		tgbotapi.NewInlineKeyboardRow(
-			tgbotapi.NewInlineKeyboardButtonData("/add 指令", "EXP ADD"),
-			tgbotapi.NewInlineKeyboardButtonData("/new 指令", "EXP ADD"),
-		),
-		tgbotapi.NewInlineKeyboardRow(
-			tgbotapi.NewInlineKeyboardButtonData("/random 指令", "EXP RAND"),
-			tgbotapi.NewInlineKeyboardButtonData("/search 指令", "EXP SERC"),
-		),
-		tgbotapi.NewInlineKeyboardRow(
-			tgbotapi.NewInlineKeyboardButtonData("/delete 指令", "EXP DEL"),
-			tgbotapi.NewInlineKeyboardButtonData("/example 指令", "EXP EXP"),
-		),
-		tgbotapi.NewInlineKeyboardRow(tgbotapi.NewInlineKeyboardButtonData("✖️取消", "NIL_WITH_REACT")),
-	)
-	replyMsg.DisableNotification = true
-	if _, err := bot.Send(replyMsg); err != nil {
-		log.Printf("[exp], %+v\n", Message)
-		log.Println("[exp]", err)
-		return
-	}
-}
-
 func randomHandler(Message *tgbotapi.Message) {
 	var Filter bson.D
 	switch Message.Command() {
