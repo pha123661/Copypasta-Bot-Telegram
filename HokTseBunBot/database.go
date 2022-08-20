@@ -106,12 +106,14 @@ func ImportCollection(DB *mongo.Database, Collection, path string) error {
 	var docs []interface{}
 	jsonbytes, err := os.ReadFile(path)
 	if err != nil {
-		log.Println(err)
+		log.Printf("[ImpCol], Col: %s, path: %s\n", Collection, path)
+		log.Println("[ImpCol]", err)
 		return err
 	}
 	jsonbytes, err = DeleteFieldFromJson("_id", jsonbytes)
 	if err != nil {
-		log.Println(err)
+		log.Printf("[ImpCol], Col: %s, path: %s\n", Collection, path)
+		log.Println("[ImpCol]", err)
 		return err
 	}
 	bson.UnmarshalExtJSON(jsonbytes, true, &docs)
