@@ -29,7 +29,6 @@ func CallQ(CallbackQuery *tgbotapi.CallbackQuery) {
 	// handle "取消"
 	case CallbackQuery.Data == "NIL_WITH_REACT":
 		// 否
-		// show respond
 		callback := tgbotapi.NewCallback(CallbackQuery.ID, "不新增")
 		if _, err := bot.Request(callback); err != nil {
 			log.Println("[CallBQ]", err)
@@ -89,7 +88,7 @@ func CallQ(CallbackQuery *tgbotapi.CallbackQuery) {
 		}
 
 		if !ok {
-			SendText(CallbackQuery.Message.Chat.ID, "bot 不知道爲啥壞了 笑死 你可以找作者出來講", 0)
+			SendText(CallbackQuery.Message.Chat.ID, "bot 不知道爲啥壞了 笑死 你可以找作者出來講 跟他說92行壞掉了", 0)
 		}
 
 		switch {
@@ -160,7 +159,6 @@ func CallQ(CallbackQuery *tgbotapi.CallbackQuery) {
 				log.Println("[CallBQ]", result.Err())
 				return
 			}
-			log.Printf("[DELETE] \"%s\" has been deleted!\n", DEntity.HTB.Keyword)
 			SendText(CallbackQuery.Message.Chat.ID, fmt.Sprintf("已成功刪除「%s」", DEntity.HTB.Keyword), 0)
 
 			if CallbackQuery.Message.ReplyToMessage != nil {

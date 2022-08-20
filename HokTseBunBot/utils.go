@@ -194,9 +194,11 @@ func SendMultiMedia(ChatID int64, Caption string, FileID_Str string, Type int) *
 		if !Msg.Ok {
 			log.Printf("[SendIR] ChatID: %d, Caption:%s, FileID_Str: %s, Type: %d\n", ChatID, Caption, FileID_Str, Type)
 			log.Println("[SendIR]", Msg.ErrorCode, Msg.Description, fmt.Sprintf("%+v", Config))
+			SendText(ChatID, "傳不出來 tg在搞", 0)
 		} else if err != nil {
 			log.Printf("[SendIR] ChatID: %d, Caption:%s, FileID_Str: %s, Type: %d\n", ChatID, Caption, FileID_Str, Type)
 			log.Println("[SendIR]", err)
+			SendText(ChatID, "傳送失敗： "+err.Error(), 0)
 		}
 
 	case 3:
@@ -208,9 +210,11 @@ func SendMultiMedia(ChatID int64, Caption string, FileID_Str string, Type int) *
 		if !Msg.Ok {
 			log.Printf("[SendIR] ChatID: %d, Caption:%s, FileID_Str: %s, Type: %d\n", ChatID, Caption, FileID_Str, Type)
 			log.Println("[SendIR]", Msg.ErrorCode, Msg.Description, fmt.Sprintf("%+v", Config))
+			SendText(ChatID, "傳不出來 tg在搞", 0)
 		} else if err != nil {
 			log.Printf("[SendIR] ChatID: %d, Caption:%s, FileID_Str: %s, Type: %d\n", ChatID, Caption, FileID_Str, Type)
 			log.Println("[SendIR]", err)
+			SendText(ChatID, "傳送失敗： "+err.Error(), 0)
 		}
 
 	case 4:
@@ -222,9 +226,11 @@ func SendMultiMedia(ChatID int64, Caption string, FileID_Str string, Type int) *
 		if !Msg.Ok {
 			log.Printf("[SendIR] ChatID: %d, Caption:%s, FileID_Str: %s, Type: %d\n", ChatID, Caption, FileID_Str, Type)
 			log.Println("[SendIR]", Msg.ErrorCode, Msg.Description, fmt.Sprintf("%+v", Config))
+			SendText(ChatID, "傳不出來 tg在搞", 0)
 		} else if err != nil {
 			log.Printf("[SendIR] ChatID: %d, Caption:%s, FileID_Str: %s, Type: %d\n", ChatID, Caption, FileID_Str, Type)
 			log.Println("[SendIR]", err)
+			SendText(ChatID, "傳送失敗： "+err.Error(), 0)
 		}
 
 	}
