@@ -16,7 +16,7 @@ import (
 var DB *mongo.Database
 
 type HokTseBun struct {
-	UID           primitive.ObjectID `bson:"_id" json:"_id"`
+	UID           primitive.ObjectID `bson:"_id"`
 	Type          int                `bson:"Type"`
 	Keyword       string             `bson:"Keyword"`
 	Summarization string             `bson:"Summarization"`
@@ -24,6 +24,7 @@ type HokTseBun struct {
 	From          int64              `bson:"From"`
 	CreateTime    time.Time          `bson:"CreateTime"`
 	URL           string             `bson:"URL"`
+	FileUniqueID  string             `bson:"FileUniqueID"`
 }
 
 func (HTB *HokTseBun) IsText() bool {
@@ -204,6 +205,7 @@ func InsertHTB(Collection string, HTB *HokTseBun) (primitive.ObjectID, error) {
 		{Key: "From", Value: HTB.From},
 		{Key: "CreateTime", Value: time.Now()},
 		{Key: "URL", Value: HTB.URL},
+		{Key: "FileUniqueID", Value: HTB.FileUniqueID},
 	}
 
 	// Insert doc

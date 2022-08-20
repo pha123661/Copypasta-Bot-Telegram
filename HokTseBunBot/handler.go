@@ -147,7 +147,7 @@ func randomHandler(Message *tgbotapi.Message) {
 	}
 }
 
-func addHandler(Message *tgbotapi.Message, Keyword, Content string, Type int) {
+func addHandler(Message *tgbotapi.Message, Keyword, Content, FileUniqueID string, Type int) {
 	switch {
 	// check Keyword length
 	case utf8.RuneCountInString(Keyword) >= 30:
@@ -169,9 +169,16 @@ func addHandler(Message *tgbotapi.Message, Keyword, Content string, Type int) {
 	}
 
 	// find existing files
-	Filter := bson.D{{Key: "$and",
-		Value: bson.A{bson.D{{Key: "Type", Value: Type}}, bson.D{{Key: "Keyword", Value: Keyword}}, bson.D{{Key: "Content", Value: Content}}},
-	}}
+	var Filter bson.D
+	if Type == CONFIG.SETTING.TYPE.TXT {
+		Filter = bson.D{{Key: "$and",
+			Value: bson.A{bson.D{{Key: "Type", Value: Type}}, bson.D{{Key: "Keyword", Value: Keyword}}, bson.D{{Key: "Content", Value: Content}}},
+		}}
+	} else {
+		Filter = bson.D{{Key: "$and",
+			Value: bson.A{bson.D{{Key: "Type", Value: Type}}, bson.D{{Key: "Keyword", Value: Keyword}}, bson.D{{Key: "FileUniqueID", Value: FileUniqueID}}},
+		}}
+	}
 	if Rst := DB.Collection(CollectionName).FindOne(context.TODO(), Filter); Rst.Err() != mongo.ErrNoDocuments {
 		SendText(Message.Chat.ID, "傳過了啦 腦霧?", Message.MessageID)
 		return
@@ -184,9 +191,11 @@ func addHandler(Message *tgbotapi.Message, Keyword, Content string, Type int) {
 	// Create tmp message
 	to_be_delete_message := SendText(Message.Chat.ID, "運算中，請稍後……", Message.MessageID)
 	// Insert HTB
-	var Sum string
-	var URL string
-	var err error
+	var (
+		Sum string
+		URL string
+		err error
+	)
 	switch Type {
 	case CONFIG.SETTING.TYPE.TXT:
 		Sum = TextSummarization(Keyword, Content)
@@ -251,6 +260,7 @@ func addHandler(Message *tgbotapi.Message, Keyword, Content string, Type int) {
 			Content:       Content,
 			URL:           URL,
 			From:          Message.From.ID,
+			FileUniqueID:  FileUniqueID,
 		},
 	)
 	// send response to user

@@ -15,10 +15,10 @@
   
   [SETTING.CONCURRENT]
     [SETTING.CONCURRENT.SUM]
-      COOLDOWN = 100 # default: 100 ms
+      COOLDOWN = 500 # default: 500 ms
       LIMIT = 6 # default: 6
     [SETTING.CONCURRENT.CAP]
-      COOLDOWN = 300 # default: 300 ms
+      COOLDOWN = 1000 # default: 1000 ms
       LIMIT = 3 # default: 3
     
 
