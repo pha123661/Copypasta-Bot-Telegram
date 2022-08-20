@@ -134,8 +134,8 @@ func addHandler(Message *tgbotapi.Message, Keyword, Content, FileUniqueID string
 	}
 
 	var CollectionName string
-
-	if ChatStatus[Message.Chat.ID].Global {
+	Global := ChatStatus[Message.Chat.ID].Global
+	if Global {
 		CollectionName = CONFIG.DB.GLOBAL_COL
 	} else {
 		CollectionName = CONFIG.GetColbyChatID(Message.Chat.ID)
@@ -236,13 +236,18 @@ func addHandler(Message *tgbotapi.Message, Keyword, Content, FileUniqueID string
 			FileUniqueID:  FileUniqueID,
 		},
 	)
+	Con, _ := AddUserContribution(Message.From.ID, 1)
 	// send response to user
 	if err != nil {
 		log.Printf("[add] Keyword: %s, Content: %s, Type: %d, Message: %+v\n", Keyword, Content, Type, Message)
 		log.Println("[add]", err)
 		SendText(Message.Chat.ID, fmt.Sprintf("新增%s「%s」失敗：%s", CONFIG.GetNameByType(Type), Keyword, err), Message.MessageID)
 	} else {
-		SendText(Message.Chat.ID, fmt.Sprintf("新增%s「%s」成功，\n自動生成的摘要如下：「%s」", CONFIG.GetNameByType(Type), Keyword, Sum), Message.MessageID)
+		if Global {
+			SendText(Message.Chat.ID, fmt.Sprintf("新增%s「%s」成功，\n自動生成的摘要如下：「%s」\n目前貢獻值爲%d", CONFIG.GetNameByType(Type), Keyword, Sum, Con), Message.MessageID)
+		} else {
+			SendText(Message.Chat.ID, fmt.Sprintf("新增%s「%s」成功，\n自動生成的摘要如下：「%s」", CONFIG.GetNameByType(Type), Keyword, Sum), Message.MessageID)
+		}
 	}
 }
 
