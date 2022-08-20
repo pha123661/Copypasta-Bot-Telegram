@@ -221,9 +221,14 @@ func AddUserContribution(UserID int64, DeltaContribution int) (int, error) {
 		return 0, SRst.Err()
 	}
 
-	var NewUS UserStatusEntity
-	SRst.Decode(&NewUS)
-	return int(NewUS.Contribution) + DeltaContribution, nil
+	NewUS := &UserStatusEntity{}
+	SRst.Decode(NewUS)
+	NewUS.Contribution += DeltaContribution
+
+	// Update cache
+	UserStatus[UserID] = *NewUS
+
+	return NewUS.Contribution, nil
 }
 
 func InsertHTB(Collection string, HTB *HokTseBun) (primitive.ObjectID, error) {
