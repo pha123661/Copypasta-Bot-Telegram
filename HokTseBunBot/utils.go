@@ -15,18 +15,32 @@ import (
 
 var CONFIG cfg
 
-type Dict map[string]interface{}
-type Empty struct{}
+var ChatStatus map[int64]ChatStatusEntity
+var UserStatus map[int64]UserStatusEntity
 
 // QueuedDeletes[ChatID][MessageID][doc_id] = doc
 var QueuedDeletes = make(map[int64]map[int]map[string]*DeleteEntity)
+
+type Dict map[string]interface{}
+type Empty struct{}
 
 type DeleteEntity struct {
 	// info
 	HTB HokTseBun
 	// status
+	Global    bool
 	Confirmed bool
 	Done      bool
+}
+
+type ChatStatusEntity struct {
+	ChatID int64
+	Global bool
+}
+
+type UserStatusEntity struct {
+	UserID int64
+	Banned bool
 }
 
 type cfg struct {
@@ -64,7 +78,8 @@ type cfg struct {
 	}
 
 	DB struct {
-		DB_NAME, CFormat string
+		DB_NAME, CFormat                     string
+		GLOBAL_COL, CHAT_STATUS, USER_STATUS string
 	}
 }
 

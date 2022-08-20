@@ -111,8 +111,11 @@ func InitDB() {
 		log.Panicln(err)
 	}
 	for _, Col_name := range Collections {
+		if Col_name == CONFIG.DB.GLOBAL_COL || Col_name == CONFIG.DB.CHAT_STATUS || Col_name == CONFIG.DB.USER_STATUS {
+			continue
+		}
 		Col := DB.Collection(Col_name)
-		str, err := Col.Indexes().CreateMany(
+		_, err := Col.Indexes().CreateMany(
 			context.TODO(),
 			[]mongo.IndexModel{
 				// index 1
@@ -135,8 +138,56 @@ func InitDB() {
 		if err != nil {
 			panic(err)
 		}
-		fmt.Println(str)
 	}
+
+	BuildStatusMap()
+}
+
+func BuildStatusMap() {
+	// Import ChatStatus
+	ChatStatus = make(map[int64]ChatStatusEntity)
+	Curser, err := DB.Collection(CONFIG.DB.CHAT_STATUS).Find(context.TODO(), bson.D{})
+	if err != nil {
+		log.Panic(err)
+	}
+	for Curser.Next(context.TODO()) {
+		CS := ChatStatusEntity{}
+		Curser.Decode(&CS)
+		ChatStatus[CS.ChatID] = CS
+	}
+
+	// Import UserStatus
+	UserStatus = make(map[int64]UserStatusEntity)
+	Curser, err = DB.Collection(CONFIG.DB.USER_STATUS).Find(context.TODO(), bson.D{})
+	if err != nil {
+		log.Panic(err)
+	}
+	for Curser.Next(context.TODO()) {
+		US := UserStatusEntity{}
+		Curser.Decode(&US)
+		UserStatus[US.UserID] = US
+	}
+
+	fmt.Println(UserStatus, ChatStatus)
+}
+
+func UpdateChatStatus(CS ChatStatusEntity) error {
+	COL := DB.Collection(CONFIG.DB.CHAT_STATUS)
+	Filter := bson.D{{Key: "ChatID", Value: CS.ChatID}}
+	Update := bson.D{{Key: "$set", Value: bson.D{{Key: "Global", Value: CS.Global}}}}
+
+	// Update
+	SRst := COL.FindOneAndUpdate(context.TODO(), Filter, Update)
+	// Not in collection
+	if SRst.Err() == mongo.ErrNoDocuments {
+		_, err := COL.InsertOne(context.TODO(), bson.M{"ChatID": CS.ChatID, "Global": CS.Global})
+		if err != nil {
+			return err
+		}
+	} else if SRst.Err() != nil {
+		return SRst.Err()
+	}
+	return nil
 }
 
 func InsertHTB(Collection string, HTB *HokTseBun) (primitive.ObjectID, error) {

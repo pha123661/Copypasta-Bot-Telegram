@@ -95,9 +95,28 @@ func CallQ(CallbackQuery *tgbotapi.CallbackQuery) {
 		switch {
 		case !DEntity.Confirmed:
 			DEntity.Confirmed = true
+			// check did not toggle between deletion
+			if ChatStatus[CallbackQuery.Message.Chat.ID].Global != DEntity.Global {
+				SendText(CallbackQuery.Message.Chat.ID, "很皮哦 delete 時不能 toggle", 0)
+
+				if CallbackQuery.Message.ReplyToMessage != nil {
+					bot.Request(tgbotapi.NewDeleteMessage(ChatID, CallbackQuery.Message.ReplyToMessage.MessageID))
+				}
+				bot.Request(tgbotapi.NewDeleteMessage(ChatID, CallbackQuery.Message.MessageID))
+				delete(QueuedDeletes[ChatID], CallbackQuery.Message.MessageID)
+				return
+			}
+
+			var CollectionName string
+
+			if ChatStatus[CallbackQuery.Message.Chat.ID].Global {
+				CollectionName = CONFIG.DB.GLOBAL_COL
+			} else {
+				CollectionName = CONFIG.GetColbyChatID(CallbackQuery.Message.Chat.ID)
+			}
 
 			// Find by id
-			result := DB.Collection(CONFIG.GetColbyChatID(CallbackQuery.Message.Chat.ID)).FindOne(context.Background(), bson.M{"_id": DEntity.HTB.UID})
+			result := DB.Collection(CollectionName).FindOne(context.Background(), bson.M{"_id": DEntity.HTB.UID})
 			if result.Err() != nil {
 				log.Println("[CallBQ]", result.Err())
 				return
@@ -159,7 +178,27 @@ func CallQ(CallbackQuery *tgbotapi.CallbackQuery) {
 			}
 		case !DEntity.Done:
 			DEntity.Done = true
-			result := DB.Collection(CONFIG.GetColbyChatID(CallbackQuery.Message.Chat.ID)).FindOneAndDelete(context.Background(), bson.M{"_id": DEntity.HTB.UID})
+			// check did not toggle between deletion
+			if ChatStatus[CallbackQuery.Message.Chat.ID].Global != DEntity.Global {
+				SendText(CallbackQuery.Message.Chat.ID, "很皮哦 在 delete 時不能 toggle", 0)
+
+				if CallbackQuery.Message.ReplyToMessage != nil {
+					bot.Request(tgbotapi.NewDeleteMessage(ChatID, CallbackQuery.Message.ReplyToMessage.MessageID))
+				}
+				bot.Request(tgbotapi.NewDeleteMessage(ChatID, CallbackQuery.Message.MessageID))
+				delete(QueuedDeletes[ChatID], CallbackQuery.Message.ReplyToMessage.MessageID)
+				return
+			}
+
+			var CollectionName string
+
+			if ChatStatus[CallbackQuery.Message.Chat.ID].Global {
+				CollectionName = CONFIG.DB.GLOBAL_COL
+			} else {
+				CollectionName = CONFIG.GetColbyChatID(CallbackQuery.Message.Chat.ID)
+			}
+
+			result := DB.Collection(CollectionName).FindOneAndDelete(context.Background(), bson.M{"_id": DEntity.HTB.UID})
 			if result.Err() != nil {
 				log.Println("[CallBQ]", result.Err())
 				return

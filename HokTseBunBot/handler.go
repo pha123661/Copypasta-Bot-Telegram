@@ -14,6 +14,46 @@ import (
 	"go.mongodb.org/mongo-driver/mongo/options"
 )
 
+func toggleHandler(Message *tgbotapi.Message) {
+	// check if exist already
+	if v, ok := ChatStatus[Message.Chat.ID]; ok && v.Global {
+		// Close
+		TmpChatStatus := ChatStatusEntity{Global: false, ChatID: Message.Chat.ID}
+		err := UpdateChatStatus(TmpChatStatus)
+		if err != nil {
+			log.Println("[toggleG]", err)
+			SendText(Message.Chat.ID, "關閉公共模式失敗:"+err.Error(), 0)
+		}
+		ChatStatus[Message.Chat.ID] = TmpChatStatus
+
+		SendText(Message.Chat.ID, "已關閉公共模式", 0)
+		return
+	} else if !ok {
+		// First time entering public mode
+		content := `第一次進入公共模式，請注意：
+		1. 這裡的資料庫是所有人共享的
+		2. 只能刪除自己新增的東西
+		3. 我不想管裡面有啥 但你亂加東西讓我管 我就ban你
+		4. 可以再次使用 /toggle 來退出`
+		SendText(Message.Chat.ID, content, 0)
+	}
+	// Open
+	if UserStatus[Message.From.ID].Banned {
+		SendText(Message.Chat.ID, "你被ban了 不能開啓公共模式 覺得莫名奇妙的話也可能是bug 請找作者🤷", 0)
+		return
+	}
+
+	TmpChatStatus := ChatStatusEntity{Global: true, ChatID: Message.Chat.ID}
+	err := UpdateChatStatus(TmpChatStatus)
+	if err != nil {
+		log.Println("[toggleG]", err)
+		SendText(Message.Chat.ID, "開啓公共模式失敗:"+err.Error(), 0)
+	}
+	ChatStatus[Message.Chat.ID] = TmpChatStatus
+
+	SendText(Message.Chat.ID, "已開啓公共模式", 0)
+}
+
 func exampleHandler(Message *tgbotapi.Message) {
 	replyMsg := tgbotapi.NewMessage(Message.Chat.ID, "請按按鈕選擇要觀看的教學範例:")
 	replyMsg.ReplyToMessageID = Message.MessageID
@@ -54,8 +94,16 @@ func randomHandler(Message *tgbotapi.Message) {
 		Filter = bson.D{{Key: "Type", Value: bson.D{{Key: "$ne", Value: 0}}}}
 	}
 
+	var CollectionName string
+
+	if ChatStatus[Message.Chat.ID].Global {
+		CollectionName = CONFIG.DB.GLOBAL_COL
+	} else {
+		CollectionName = CONFIG.GetColbyChatID(Message.Chat.ID)
+	}
+
 	// Get Docs length
-	num, err := DB.Collection(CONFIG.GetColbyChatID(Message.Chat.ID)).CountDocuments(context.TODO(), Filter)
+	num, err := DB.Collection(CollectionName).CountDocuments(context.TODO(), Filter)
 	if err != nil {
 		log.Printf("[random], %+v\n", Message)
 		log.Println("[random]", err)
@@ -68,7 +116,7 @@ func randomHandler(Message *tgbotapi.Message) {
 	}
 
 	// Get Curser
-	Curser, err := DB.Collection(CONFIG.GetColbyChatID(Message.Chat.ID)).Find(context.TODO(), Filter)
+	Curser, err := DB.Collection(CollectionName).Find(context.TODO(), Filter)
 	defer func() { Curser.Close(context.TODO()) }()
 	if err != nil {
 		log.Printf("[random], %+v\n", Message)
@@ -112,11 +160,19 @@ func addHandler(Message *tgbotapi.Message, Keyword, Content string, Type int) {
 
 	}
 
+	var CollectionName string
+
+	if ChatStatus[Message.Chat.ID].Global {
+		CollectionName = CONFIG.DB.GLOBAL_COL
+	} else {
+		CollectionName = CONFIG.GetColbyChatID(Message.Chat.ID)
+	}
+
 	// find existing files
 	Filter := bson.D{{Key: "$and",
 		Value: bson.A{bson.D{{Key: "Type", Value: Type}}, bson.D{{Key: "Keyword", Value: Keyword}}, bson.D{{Key: "Content", Value: Content}}},
 	}}
-	if Rst := DB.Collection(CONFIG.GetColbyChatID(Message.Chat.ID)).FindOne(context.TODO(), Filter); Rst.Err() != mongo.ErrNoDocuments {
+	if Rst := DB.Collection(CollectionName).FindOne(context.TODO(), Filter); Rst.Err() != mongo.ErrNoDocuments {
 		SendText(Message.Chat.ID, "傳過了啦 腦霧?", Message.MessageID)
 		return
 	} else if Rst.Err() != nil && Rst.Err() != mongo.ErrNoDocuments {
@@ -187,7 +243,7 @@ func addHandler(Message *tgbotapi.Message, Keyword, Content string, Type int) {
 	bot.Request(tgbotapi.NewDeleteMessage(Message.Chat.ID, to_be_delete_message.MessageID))
 
 	_, err = InsertHTB(
-		CONFIG.GetColbyChatID(Message.Chat.ID),
+		CollectionName,
 		&HokTseBun{
 			Type:          Type,
 			Keyword:       Keyword,
@@ -214,6 +270,14 @@ func searchHandler(Message *tgbotapi.Message) {
 		MaxResults  int    = 25
 	)
 
+	var CollectionName string
+
+	if ChatStatus[Message.Chat.ID].Global {
+		CollectionName = CONFIG.DB.GLOBAL_COL
+	} else {
+		CollectionName = CONFIG.GetColbyChatID(Message.Chat.ID)
+	}
+
 	if utf8.RuneCountInString(Query) >= 200 || utf8.RuneCountInString(Query) == 0 {
 		SendText(Message.Chat.ID, fmt.Sprintf("關鍵字要介於1 ~ 200字，不然我的CPU要燒了，目前爲%d字", utf8.RuneCountInString(Query)), 0)
 		return
@@ -228,7 +292,7 @@ func searchHandler(Message *tgbotapi.Message) {
 	// search
 	Filter := bson.D{{Key: "Type", Value: bson.D{{Key: "$ne", Value: 0}}}}
 	opts := options.Find().SetSort(bson.D{{Key: "Type", Value: 1}})
-	Curser, err := DB.Collection(CONFIG.GetColbyChatID(Message.Chat.ID)).Find(context.TODO(), Filter, opts)
+	Curser, err := DB.Collection(CollectionName).Find(context.TODO(), Filter, opts)
 	defer func() { Curser.Close(context.TODO()) }()
 	if err != nil {
 		log.Printf("[search] Message: %+v\n", Message)
@@ -275,9 +339,36 @@ func deleteHandler(Message *tgbotapi.Message) {
 		return
 	}
 
-	Filter := bson.D{{Key: "Keyword", Value: BeDeletedKeyword}}
+	var (
+		CollectionName string
+		Filter         bson.D
+	)
+	Global := ChatStatus[Message.Chat.ID].Global
+
+	if Global {
+		CollectionName = CONFIG.DB.GLOBAL_COL
+		Filter = bson.D{{Key: "$and",
+			Value: bson.A{bson.D{{Key: "Keyword", Value: BeDeletedKeyword}}, bson.D{{Key: "From", Value: Message.From.ID}}},
+		}}
+	} else {
+		CollectionName = CONFIG.GetColbyChatID(Message.Chat.ID)
+		Filter = bson.D{{Key: "Keyword", Value: BeDeletedKeyword}}
+	}
+
+	num, err := DB.Collection(CollectionName).CountDocuments(context.TODO(), Filter)
+	if err != nil {
+		log.Printf("[delete] Message: %+v\n", Message)
+		log.Println("[delete]", err)
+		SendText(Message.Chat.ID, fmt.Sprintf("刪除「%s」失敗：%s", BeDeletedKeyword, err), Message.MessageID)
+		return
+	}
+	if num <= 0 {
+		SendText(Message.Chat.ID, "沒有大便符合關鍵字", Message.MessageID)
+		return
+	}
+
 	opts := options.Find().SetSort(bson.D{{Key: "Type", Value: 1}})
-	Curser, err := DB.Collection(CONFIG.GetColbyChatID(Message.Chat.ID)).Find(context.TODO(), Filter, opts)
+	Curser, err := DB.Collection(CollectionName).Find(context.TODO(), Filter, opts)
 	defer func() { Curser.Close(context.TODO()) }()
 	if err != nil {
 		log.Printf("[delete] Message: %+v\n", Message)
@@ -285,10 +376,6 @@ func deleteHandler(Message *tgbotapi.Message) {
 		SendText(Message.Chat.ID, fmt.Sprintf("刪除「%s」失敗：%s", BeDeletedKeyword, err), Message.MessageID)
 		return
 	}
-	// if len(docs) <= 0 {
-	// 	SendText(Message.Chat.ID, "沒有大便符合關鍵字", Message.MessageID)
-	// 	return
-	// }
 
 	ReplyMarkup := make([][]tgbotapi.InlineKeyboardButton, 0)
 	TB_HTB := make(map[string]*DeleteEntity)
@@ -300,15 +387,12 @@ func deleteHandler(Message *tgbotapi.Message) {
 		switch {
 		case HTB.IsText():
 			ShowEntry = fmt.Sprintf("%d. %s", idx, TruncateString(HTB.Content, 20))
-		case HTB.IsImage():
-			type_prompt := "圖片："
-			ShowEntry = fmt.Sprintf("%d. %s%s", idx, type_prompt, TruncateString(HTB.Summarization, 15-utf8.RuneCountInString(type_prompt)))
-		case !HTB.IsImage() && HTB.IsMultiMedia():
-			type_prompt := "動圖："
+		case HTB.IsMultiMedia():
+			type_prompt := CONFIG.GetNameByType(HTB.Type) + "："
 			ShowEntry = fmt.Sprintf("%d. %s%s", idx, type_prompt, TruncateString(HTB.Summarization, 15-utf8.RuneCountInString(type_prompt)))
 		}
 		ReplyMarkup = append(ReplyMarkup, tgbotapi.NewInlineKeyboardRow(tgbotapi.NewInlineKeyboardButtonData(ShowEntry, "DEL_"+HTB.UID.Hex())))
-		TB_HTB["DEL_"+HTB.UID.Hex()] = &DeleteEntity{HTB: *HTB}
+		TB_HTB["DEL_"+HTB.UID.Hex()] = &DeleteEntity{HTB: *HTB, Global: Global}
 	}
 	ReplyMarkup = append(ReplyMarkup, tgbotapi.NewInlineKeyboardRow(tgbotapi.NewInlineKeyboardButtonData("✖️取消", "NIL_WITH_REACT")))
 

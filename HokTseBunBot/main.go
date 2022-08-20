@@ -101,7 +101,9 @@ func main() {
 			}
 			if update.MyChatMember.Chat.Type == "group" || update.MyChatMember.Chat.Type == "supergroup" {
 				// get invited in a group
-				SendText(update.MyChatMember.Chat.ID, "歡迎使用，使用方式可以參考我的github: https://github.com/pha123661/Hok_tse_bun_tgbot", 0)
+				Content := `歡迎使用，請輸入或點擊 /example 以查看使用方式
+我的github: https://github.com/pha123661/Hok_tse_bun_tgbot`
+				SendText(update.MyChatMember.Chat.ID, Content, 0)
 			}
 		}
 	}
@@ -113,13 +115,27 @@ func ParseCommand(Message *tgbotapi.Message) {
 	// public available functions
 	case "start":
 		// Startup
-		SendText(Message.Chat.ID, "歡迎使用，請輸入或點擊 /example 以查看使用方式\n我的github: https://github.com/pha123661/Hok_tse_bun_tgbot", 0)
+		Content := `歡迎使用，請輸入或點擊 /example 以查看使用方式
+我的github: https://github.com/pha123661/Hok_tse_bun_tgbot`
+		SendText(Message.Chat.ID, Content, 0)
 
 	case "example": // short: EXP
 		exampleHandler(Message)
 
 	case "random", "randimg", "randtxt": // short: RAND
 		randomHandler(Message)
+
+	case "toggle": // short: TOG
+		toggleHandler(Message)
+
+	case "status": // short: STAT
+		var content string
+		if ChatStatus[Message.Chat.ID].Global {
+			content = "處於公共模式"
+		} else {
+			content = "處於私人模式"
+		}
+		SendText(Message.Chat.ID, content, 0)
 
 	case "new", "add": // short: NEW, ADD
 		Command_Args := strings.Fields(Message.CommandArguments())
@@ -304,6 +320,13 @@ func NormalTextMessage(Message *tgbotapi.Message) {
 		return
 	}
 
+	var CollectionName string
+	if ChatStatus[Message.Chat.ID].Global {
+		CollectionName = CONFIG.DB.GLOBAL_COL
+	} else {
+		CollectionName = CONFIG.GetColbyChatID(Message.Chat.ID)
+	}
+
 	// asyc search
 	go func() {
 		var (
@@ -313,7 +336,7 @@ func NormalTextMessage(Message *tgbotapi.Message) {
 		)
 		Filter := bson.D{{Key: "Keyword", Value: bson.D{{Key: "$ne", Value: 0}}}}
 		opts := options.Find().SetSort(bson.D{{Key: "Type", Value: 1}})
-		Curser, err := DB.Collection(CONFIG.GetColbyChatID(Message.Chat.ID)).Find(context.TODO(), Filter, opts)
+		Curser, err := DB.Collection(CollectionName).Find(context.TODO(), Filter, opts)
 		defer func() { Curser.Close(context.TODO()) }()
 		if err != nil {
 			log.Printf("[Normal] Message: %+v\n", Message)

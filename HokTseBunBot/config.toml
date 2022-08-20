@@ -34,3 +34,7 @@
 [DB]
   DB_NAME = ""
   CFormat = "%d-Copypasta" # args = ChatID int64
+  
+  GLOBAL_COL = "0_GLOBAL-Copypasta"
+  CHAT_STATUS = "0_ChatStatus"
+  USER_STATUS = "0_UserStatus"
