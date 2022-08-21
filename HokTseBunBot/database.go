@@ -6,6 +6,7 @@ import (
 	"log"
 	"os"
 	"strings"
+	"sync"
 	"time"
 	"unicode/utf8"
 
@@ -100,9 +101,39 @@ func InitDB() {
 	if err != nil {
 		log.Panicln(err)
 	}
+
+	AddFileUIDForText := func(Col *mongo.Collection) {
+		// Add file UID for text
+		Filter := bson.D{{Key: "$and", Value: bson.A{
+			bson.D{{Key: "Type", Value: 1}},
+			bson.D{{Key: "$or", Value: bson.A{
+				bson.D{{Key: "FileUniqueID", Value: ""}},
+				bson.D{{Key: "FileUniqueID", Value: bson.D{{Key: "$exists", Value: false}}}},
+			},
+			}},
+		}}}
+
+		Curser, err := Col.Find(context.TODO(), Filter)
+		defer func() { Curser.Close(context.TODO()) }()
+		if err != nil {
+			log.Panic(err)
+		}
+
+		for Curser.Next(context.TODO()) {
+			var doc HokTseBun
+			Curser.Decode(&doc)
+
+			FileUniqueID := Sha256String(doc.Content)
+			Update := bson.D{{Key: "$set", Value: bson.D{{Key: "FileUniqueID", Value: FileUniqueID}}}}
+			Col.UpdateByID(context.TODO(), doc.UID, Update)
+			fmt.Println("Added FUID")
+		}
+	}
+	var wg sync.WaitGroup
 	for _, Col_name := range Collections {
 		Col := DB.Collection(Col_name)
-		// Col.Indexes().DropAll(context.TODO())
+		// Update index
+		Col.Indexes().DropAll(context.TODO())
 		switch Col_name {
 		case CONFIG.DB.CHAT_STATUS:
 			_, err := Col.Indexes().CreateOne(context.Background(), mongo.IndexModel{
@@ -121,50 +152,35 @@ func InitDB() {
 				panic(err)
 			}
 		case CONFIG.DB.GLOBAL_COL:
-			_, err := Col.Indexes().CreateMany(context.Background(), []mongo.IndexModel{
-				// index 1
-				{
-					Keys:    bson.D{{Key: "Type", Value: 1}, {Key: "Keyword", Value: 1}, {Key: "Content", Value: 1}},
-					Options: options.Index().SetUnique(true),
-				},
-				// index 2
-				{
-					Keys:    bson.D{{Key: "Type", Value: 1}, {Key: "Keyword", Value: 1}, {Key: "FileUniqueID", Value: 1}},
-					Options: options.Index().SetUnique(true),
-				},
-			})
-			if err != nil {
-				panic(err)
-			}
+			fallthrough
+
 		default:
+			fmt.Println(Col_name)
+			wg.Add(1)
+			func() {
+				AddFileUIDForText(Col)
+				wg.Done()
+			}()
 			_, err := Col.Indexes().CreateMany(context.TODO(), []mongo.IndexModel{
 				// index 1
-				{Keys: bson.D{
-					{Key: "Type", Value: 1},
-				}},
+				{
+					Keys: bson.D{{Key: "Type", Value: 1}},
+				},
 				// index 2
-				{Keys: bson.D{
-					{Key: "Type", Value: 1},
-					{Key: "Keyword", Value: 1},
-				}},
+				{
+					Keys: bson.D{{Key: "Type", Value: 1}, {Key: "Keyword", Value: 1}},
+				},
 				// index 3
-				{Keys: bson.D{
-					{Key: "Type", Value: 1},
-					{Key: "Keyword", Value: 1},
-					{Key: "Content", Value: 1},
-				}},
-				// index 4
-				{Keys: bson.D{
-					{Key: "Type", Value: 1},
-					{Key: "Keyword", Value: 1},
-					{Key: "FileUniqueID", Value: 1},
-				}},
+				{
+					Keys: bson.D{{Key: "Type", Value: 1}, {Key: "Keyword", Value: 1}, {Key: "FileUniqueID", Value: 1}},
+				},
 			})
 			if err != nil {
 				panic(err)
 			}
 		}
 	}
+	wg.Wait()
 
 	BuildStatusMap()
 }

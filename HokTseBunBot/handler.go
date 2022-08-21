@@ -15,6 +15,8 @@ import (
 	"go.mongodb.org/mongo-driver/mongo/options"
 )
 
+var ChannelCriticalLock = NewMutextMap()
+
 func statusHandler(Message *tgbotapi.Message) {
 	// Send learderboard info
 	LeaderBoard, _ := GetLBInfo(3)
@@ -104,7 +106,8 @@ func randomHandler(Message *tgbotapi.Message) {
 	}
 
 	// Get Curser
-	Curser, err := DB.Collection(CollectionName).Find(context.TODO(), Filter)
+	opts := options.Find().SetLimit(num)
+	Curser, err := DB.Collection(CollectionName).Find(context.TODO(), Filter, opts)
 	defer func() { Curser.Close(context.TODO()) }()
 	if err != nil {
 		log.Printf("[random], %+v\n", Message)
@@ -136,6 +139,10 @@ func randomHandler(Message *tgbotapi.Message) {
 }
 
 func dumpHandler(Message *tgbotapi.Message) {
+	// only one handler running for each chat
+	ChannelCriticalLock.Lock(int(Message.Chat.ID))
+	defer ChannelCriticalLock.Release(int(Message.Chat.ID))
+
 	// This command dumps copypasta that you sent in private db into public db
 	Filter := bson.D{{Key: "From", Value: Message.From.ID}}
 	Curser, err := DB.Collection(CONFIG.GetColbyChatID(Message.Chat.ID)).Find(context.TODO(), Filter)
@@ -175,6 +182,10 @@ func dumpHandler(Message *tgbotapi.Message) {
 }
 
 func addHandler(Message *tgbotapi.Message, Keyword, Content, FileUniqueID string, Type int) {
+	// only one handler running for each chat
+	ChannelCriticalLock.Lock(int(Message.Chat.ID))
+	defer ChannelCriticalLock.Release(int(Message.Chat.ID))
+
 	switch {
 	// check Keyword length
 	case utf8.RuneCountInString(Keyword) >= 30:
@@ -196,16 +207,9 @@ func addHandler(Message *tgbotapi.Message, Keyword, Content, FileUniqueID string
 	}
 
 	// find existing files
-	var Filter bson.D
-	if Type == CONFIG.SETTING.TYPE.TXT {
-		Filter = bson.D{{Key: "$and",
-			Value: bson.A{bson.D{{Key: "Type", Value: Type}}, bson.D{{Key: "Keyword", Value: Keyword}}, bson.D{{Key: "Content", Value: Content}}},
-		}}
-	} else {
-		Filter = bson.D{{Key: "$and",
-			Value: bson.A{bson.D{{Key: "Type", Value: Type}}, bson.D{{Key: "Keyword", Value: Keyword}}, bson.D{{Key: "FileUniqueID", Value: FileUniqueID}}},
-		}}
-	}
+	Filter := bson.D{{Key: "$and",
+		Value: bson.A{bson.D{{Key: "Type", Value: Type}}, bson.D{{Key: "Keyword", Value: Keyword}}, bson.D{{Key: "FileUniqueID", Value: FileUniqueID}}},
+	}}
 	if Rst := DB.Collection(CollectionName).FindOne(context.TODO(), Filter); Rst.Err() != mongo.ErrNoDocuments {
 		SendText(Message.Chat.ID, "傳過了啦 腦霧?", Message.MessageID)
 		return

@@ -159,7 +159,10 @@ func ParseCommand(Message *tgbotapi.Message) {
 		} else {
 			Index = strings.Index(Message.Text, Command_Args[1])
 		}
-		addHandler(Message, Command_Args[0], strings.TrimSpace(Message.Text[Index:]), "", CONFIG.SETTING.TYPE.TXT)
+		Keyword := Command_Args[0]
+		Content := strings.TrimSpace(Message.Text[Index:])
+		FileUniqueID := Sha256String(Content)
+		addHandler(Message, Keyword, Content, FileUniqueID, CONFIG.SETTING.TYPE.TXT)
 
 	case "search": // short: SERC
 		Command_Args := strings.Fields(Message.CommandArguments())

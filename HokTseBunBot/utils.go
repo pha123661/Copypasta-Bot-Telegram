@@ -2,11 +2,14 @@ package main
 
 import (
 	"bytes"
+	"crypto/sha256"
+	"encoding/hex"
 	"encoding/json"
 	"fmt"
 	"log"
 	"os"
 	"strings"
+	"sync"
 	"unicode/utf8"
 
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
@@ -20,6 +23,42 @@ var QueuedDeletes = make(map[int64]map[int]map[string]*DeleteEntity)
 
 type Dict map[string]interface{}
 type Empty struct{}
+
+type MutexMap struct {
+	mut     *sync.RWMutex       // handle concurrent access of chanMap
+	chanMap map[int](chan bool) // dynamic mutexes map
+}
+
+func NewMutextMap() *MutexMap {
+	return &MutexMap{
+		mut:     new(sync.RWMutex),
+		chanMap: make(map[int](chan bool)),
+	}
+}
+
+// Acquire a lock, with timeout
+func (mm *MutexMap) Lock(id int) error {
+	// get global lock to read from map and get a channel
+	mm.mut.Lock()
+	if _, ok := mm.chanMap[id]; !ok {
+		mm.chanMap[id] = make(chan bool, 1)
+	}
+	ch := mm.chanMap[id]
+	mm.mut.Unlock()
+
+	// try to write to buffered channel
+	ch <- true
+	return nil
+
+}
+
+// release lock
+func (mm *MutexMap) Release(id int) {
+	mm.mut.Lock()
+	ch := mm.chanMap[id]
+	mm.mut.Unlock()
+	<-ch
+}
 
 type DeleteEntity struct {
 	// info
@@ -277,4 +316,10 @@ func GetUserNameByID(ChatID int64) ([]rune, error) {
 	default:
 		return []rune(C.Title + C.FirstName + C.LastName + C.UserName), nil
 	}
+}
+
+func Sha256String(str string) string {
+	h := sha256.New()
+	h.Write([]byte(str))
+	return hex.EncodeToString(h.Sum(nil))
 }
