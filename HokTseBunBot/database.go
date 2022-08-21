@@ -220,7 +220,7 @@ func GetLBInfo(num int64) (string, error) {
 
 		NameRune, _ := GetUserNameByID(UserID)
 
-		Mask := "..."
+		Mask := strings.Repeat("*", Max(len(NameRune)-6, 2))
 		UnmaskIdx := (len(NameRune) - utf8.RuneCountInString(Mask)) / 2
 
 		Name := string(NameRune[:UnmaskIdx]) + Mask + string(NameRune[UnmaskIdx+utf8.RuneCountInString(Mask):])

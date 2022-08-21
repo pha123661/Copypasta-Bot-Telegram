@@ -140,6 +140,13 @@ func Min(a int, b int) int {
 	return b
 }
 
+func Max(a int, b int) int {
+	if a > b {
+		return a
+	}
+	return b
+}
+
 func PrintStructAsTOML(v interface{}) error {
 	buf := bytes.Buffer{}
 	enc := toml.NewEncoder(&buf)
