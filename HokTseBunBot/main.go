@@ -132,6 +132,9 @@ func ParseCommand(Message *tgbotapi.Message) {
 	case "dump": // short DUMP
 		dumpHandler(Message)
 
+	case "recent": // short: RCNT
+		recentHandler(Message)
+
 	case "new", "add": // short: NEW, ADD
 		Command_Args := strings.Fields(Message.CommandArguments())
 		if len(Command_Args) <= 1 {

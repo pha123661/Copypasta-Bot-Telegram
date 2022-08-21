@@ -318,6 +318,18 @@ func GetUserNameByID(ChatID int64) ([]rune, error) {
 	}
 }
 
+func GetMaskedNameByID(UserID int64) string {
+	NameRune, err := GetUserNameByID(UserID)
+	if err != nil {
+		NameRune = []rune("東躲西藏__")
+	}
+
+	Mask := strings.Repeat("*", Max(len(NameRune)-6, 2))
+	UnmaskIdx := (len(NameRune) - utf8.RuneCountInString(Mask)) / 2
+
+	return string(NameRune[:UnmaskIdx]) + Mask + string(NameRune[UnmaskIdx+utf8.RuneCountInString(Mask):])
+}
+
 func Sha256String(str string) string {
 	h := sha256.New()
 	h.Write([]byte(str))

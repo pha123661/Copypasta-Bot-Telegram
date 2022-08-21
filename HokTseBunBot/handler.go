@@ -6,6 +6,7 @@ import (
 	"log"
 	"math/rand"
 	"reflect"
+	"strconv"
 	"unicode/utf8"
 
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
@@ -16,6 +17,42 @@ import (
 )
 
 var ChannelCriticalLock = NewMutextMap()
+
+func recentHandler(Message *tgbotapi.Message) {
+	ChatID := Message.Chat.ID
+
+	if !ChatStatus[ChatID].Global {
+		SendText(ChatID, fmt.Sprintf("執行失敗:%s", "此指令只能在公共模式下執行"), Message.MessageID)
+		return
+	}
+
+	// Parse args
+	num, err := strconv.Atoi(Message.CommandArguments())
+	if err != nil {
+		num = 3
+	}
+
+	Filter := bson.M{"From": bson.M{"$ne": Message.From.ID}}
+	opts := options.Find().SetLimit(int64(num))
+	Curser, err := DB.Collection(CONFIG.DB.GLOBAL_COL).Find(context.TODO(), Filter, opts)
+	if err != nil {
+		log.Printf("%v\n", Message)
+		log.Println("[recent]", err)
+		SendText(ChatID, fmt.Sprintf("執行失敗:%s", err), Message.MessageID)
+		return
+	}
+
+	for Curser.Next(context.TODO()) {
+		var HTB HokTseBun
+		Curser.Decode(&HTB)
+		switch {
+		case HTB.IsText():
+			SendText(ChatID, fmt.Sprintf("來自：「%s」\n名稱：「%s」\n摘要：「%s」\n內容：「%s」", GetMaskedNameByID(HTB.From), HTB.Keyword, HTB.Summarization, HTB.Content), 0)
+		case HTB.IsMultiMedia():
+			SendMultiMedia(ChatID, fmt.Sprintf("來自：「%s」\n名稱：「%s」\n摘要：「%s」", GetMaskedNameByID(HTB.From), HTB.Keyword, HTB.Summarization), HTB.Content, HTB.Type)
+		}
+	}
+}
 
 func statusHandler(Message *tgbotapi.Message) {
 	// Send learderboard info

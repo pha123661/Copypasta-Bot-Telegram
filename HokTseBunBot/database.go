@@ -8,7 +8,6 @@ import (
 	"strings"
 	"sync"
 	"time"
-	"unicode/utf8"
 
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/bson/primitive"
@@ -255,12 +254,7 @@ func GetLBInfo(num int64) (string, error) {
 		Con := US.Contribution
 		UserID := US.UserID
 
-		NameRune, _ := GetUserNameByID(UserID)
-
-		Mask := strings.Repeat("*", Max(len(NameRune)-6, 2))
-		UnmaskIdx := (len(NameRune) - utf8.RuneCountInString(Mask)) / 2
-
-		Name := string(NameRune[:UnmaskIdx]) + Mask + string(NameRune[UnmaskIdx+utf8.RuneCountInString(Mask):])
+		Name := GetMaskedNameByID(UserID)
 		Ret.WriteString(fmt.Sprintf("%d. %v, 貢獻值:%d\n", Idx, Name, Con))
 	}
 	return Ret.String(), nil
