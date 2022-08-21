@@ -4,6 +4,7 @@ HokTseBunArchive
 go.mod
 go.sum
 
+*.md
 *.exe
 *.log
 **replit**
