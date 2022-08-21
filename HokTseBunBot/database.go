@@ -133,7 +133,7 @@ func InitDB() {
 	for _, Col_name := range Collections {
 		Col := DB.Collection(Col_name)
 		// Update index
-		Col.Indexes().DropAll(context.TODO())
+		// Col.Indexes().DropAll(context.TODO())
 		switch Col_name {
 		case CONFIG.DB.CHAT_STATUS:
 			_, err := Col.Indexes().CreateOne(context.Background(), mongo.IndexModel{

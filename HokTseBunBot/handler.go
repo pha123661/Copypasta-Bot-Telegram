@@ -324,8 +324,9 @@ func searchHandler(Message *tgbotapi.Message) {
 
 	SendText(Message.From.ID, fmt.Sprintf("「%s」的搜尋結果如下：", Query), 0)
 
+	var to_be_delete_message tgbotapi.Message
 	if Message.Chat.ID != Message.From.ID {
-		SendText(Message.Chat.ID, "正在搜尋中…… 請稍後", 0)
+		to_be_delete_message = SendText(Message.Chat.ID, "正在搜尋中…… 請稍後", 0)
 	}
 
 	// search
@@ -358,6 +359,9 @@ func searchHandler(Message *tgbotapi.Message) {
 		}
 	}
 
+	// Delete tmp message
+	bot.Request(tgbotapi.NewDeleteMessage(Message.Chat.ID, to_be_delete_message.MessageID))
+
 	if ResultCount <= MaxResults {
 		SendText(Message.From.ID, fmt.Sprintf("搜尋完成，共 %d 筆吻合\n", ResultCount), 0)
 		if Message.Chat.ID != Message.From.ID {
@@ -367,6 +371,63 @@ func searchHandler(Message *tgbotapi.Message) {
 		SendText(Message.From.ID, fmt.Sprintf("搜尋完成，結果超過%d筆上限，請嘗試更換關鍵字", MaxResults), 0)
 		if Message.Chat.ID != Message.From.ID {
 			SendText(Message.Chat.ID, fmt.Sprintf("搜尋完成，結果超過%d筆上限，請嘗試更換關鍵字\n(結果在與bot的私訊中)", MaxResults), 0)
+		}
+	}
+}
+
+func searchMediaHandler(ChatID, FromID int64, FileID_str, FileUniqueID string, Type int) {
+	var CollectionName string
+	if ChatStatus[ChatID].Global {
+		CollectionName = CONFIG.DB.GLOBAL_COL
+	} else {
+		CollectionName = CONFIG.GetColbyChatID(ChatID)
+	}
+
+	SendMultiMedia(FromID, "此圖片的搜尋結果如下：", FileID_str, Type)
+
+	// create tmp message
+	var to_be_delete_message tgbotapi.Message
+	if ChatID != FromID {
+		to_be_delete_message = SendText(ChatID, "正在搜尋中…… 請稍後, 圖片只會搜尋完全相同的圖片", 0)
+	}
+
+	// search for same media in db
+	Filter := bson.D{{Key: "$and", Value: bson.A{
+		bson.D{{Key: "Type", Value: Type}},
+		bson.D{{Key: "FileUniqueID", Value: FileUniqueID}},
+	}}}
+	Curser, err := DB.Collection(CollectionName).Find(context.TODO(), Filter)
+	defer func() { Curser.Close(context.TODO()) }()
+	if err != nil {
+		log.Printf("[search] ChatID: %d, FilUID: %s, Type: %d\n", ChatID, FileUniqueID, Type)
+		log.Println("[search]", err)
+		SendText(ChatID, "搜尋失敗:"+err.Error(), 0)
+		return
+	}
+
+	var (
+		HTB         HokTseBun
+		ResultCount = 0
+		MaxResults  = 25
+	)
+	for Curser.Next(context.TODO()) {
+		Curser.Decode(&HTB)
+		SendText(FromID, fmt.Sprintf("名稱：「%s」\n描述：「%s」", HTB.Keyword, HTB.Summarization), 0)
+		ResultCount++
+	}
+
+	// Delete tmp message
+	bot.Request(tgbotapi.NewDeleteMessage(ChatID, to_be_delete_message.MessageID))
+
+	if ResultCount <= MaxResults {
+		SendText(FromID, fmt.Sprintf("搜尋完成，共 %d 筆吻合\n", ResultCount), 0)
+		if ChatID != FromID {
+			SendText(ChatID, fmt.Sprintf("搜尋完成，共 %d 筆吻合\n(結果在與bot的私訊中)", ResultCount), 0)
+		}
+	} else {
+		SendText(FromID, fmt.Sprintf("搜尋完成，結果超過%d筆上限，請嘗試更換關鍵字", MaxResults), 0)
+		if ChatID != FromID {
+			SendText(ChatID, fmt.Sprintf("搜尋完成，結果超過%d筆上限，請嘗試更換關鍵字\n(結果在與bot的私訊中)", MaxResults), 0)
 		}
 	}
 }

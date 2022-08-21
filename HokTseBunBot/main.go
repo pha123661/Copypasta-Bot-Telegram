@@ -400,8 +400,8 @@ func MediaMessage(Message *tgbotapi.Message) {
 		for _, image := range Message.Photo {
 			if image.Width*image.Height >= max_area {
 				max_area = image.Width * image.Height
-				Content = image.FileID
 				FileSize = image.FileSize
+				Content = image.FileID
 				FileUniqueID = image.FileUniqueID
 			}
 		}
@@ -418,6 +418,11 @@ func MediaMessage(Message *tgbotapi.Message) {
 		Content = Message.Video.FileID
 		FileUniqueID = Message.Video.FileUniqueID
 		Type = CONFIG.SETTING.TYPE.VID
+	}
+
+	if strings.Contains(Message.Caption, "/search") {
+		searchMediaHandler(Message.Chat.ID, Message.From.ID, Content, FileUniqueID, Type)
+		return
 	}
 
 	// check file size
