@@ -15,9 +15,13 @@ import (
 	"go.mongodb.org/mongo-driver/mongo/options"
 )
 
-var DB *mongo.Database
-var ChatStatus map[int64]ChatStatusEntity
-var UserStatus map[int64]UserStatusEntity
+var (
+	DB         *mongo.Database
+	ChatStatus map[int64]ChatStatusEntity
+	CSLock     sync.RWMutex
+	UserStatus map[int64]UserStatusEntity
+	USLock     sync.RWMutex
+)
 
 type ChatStatusEntity struct {
 	ChatID int64 `bson:"ChatID"`
@@ -206,6 +210,7 @@ func InitDB() {
 }
 
 func BuildStatusMap() {
+	CSLock.Lock()
 	// Import ChatStatus
 	ChatStatus = make(map[int64]ChatStatusEntity)
 	Curser, err := DB.Collection(CONFIG.DB.CHAT_STATUS).Find(context.TODO(), bson.D{})
@@ -218,7 +223,9 @@ func BuildStatusMap() {
 		Curser.Decode(&CS)
 		ChatStatus[CS.ChatID] = CS
 	}
+	CSLock.Unlock()
 
+	USLock.Lock()
 	// Import UserStatus
 	UserStatus = make(map[int64]UserStatusEntity)
 	Curser, err = DB.Collection(CONFIG.DB.USER_STATUS).Find(context.TODO(), bson.D{})
@@ -231,6 +238,7 @@ func BuildStatusMap() {
 		Curser.Decode(&US)
 		UserStatus[US.UserID] = US
 	}
+	USLock.Unlock()
 
 }
 
@@ -292,7 +300,9 @@ func AddUserContribution(UserID int64, DeltaContribution int) (int, error) {
 	NewUS.Contribution += DeltaContribution
 
 	// Update cache
+	USLock.Lock()
 	UserStatus[UserID] = *NewUS
+	USLock.Unlock()
 
 	return NewUS.Contribution, nil
 }

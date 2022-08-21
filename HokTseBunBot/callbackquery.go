@@ -66,8 +66,13 @@ func CallQ(CallbackQuery *tgbotapi.CallbackQuery) {
 		switch {
 		case !DEntity.Confirmed:
 			DEntity.Confirmed = true
+
+			CSLock.RLock()
+			CSE := ChatStatus[CallbackQuery.Message.Chat.ID]
+			CSLock.RUnlock()
+
 			// check did not toggle between deletion
-			if ChatStatus[CallbackQuery.Message.Chat.ID].Global != DEntity.Global {
+			if CSE.Global != DEntity.Global {
 				SendText(CallbackQuery.Message.Chat.ID, "很皮哦 delete 時不能 toggle", 0)
 
 				if CallbackQuery.Message.ReplyToMessage != nil {
@@ -80,7 +85,7 @@ func CallQ(CallbackQuery *tgbotapi.CallbackQuery) {
 
 			var CollectionName string
 
-			if ChatStatus[CallbackQuery.Message.Chat.ID].Global {
+			if CSE.Global {
 				CollectionName = CONFIG.DB.GLOBAL_COL
 			} else {
 				CollectionName = CONFIG.GetColbyChatID(CallbackQuery.Message.Chat.ID)
@@ -149,8 +154,13 @@ func CallQ(CallbackQuery *tgbotapi.CallbackQuery) {
 			}
 		case !DEntity.Done:
 			DEntity.Done = true
+
+			CSLock.RLock()
+			CSE := ChatStatus[CallbackQuery.Message.Chat.ID]
+			CSLock.RUnlock()
+
 			// check did not toggle between deletion
-			if ChatStatus[CallbackQuery.Message.Chat.ID].Global != DEntity.Global {
+			if CSE.Global != DEntity.Global {
 				SendText(CallbackQuery.Message.Chat.ID, "很皮哦 在 delete 時不能 toggle", 0)
 
 				if CallbackQuery.Message.ReplyToMessage != nil {
@@ -163,7 +173,7 @@ func CallQ(CallbackQuery *tgbotapi.CallbackQuery) {
 
 			var CollectionName string
 
-			if ChatStatus[CallbackQuery.Message.Chat.ID].Global {
+			if CSE.Global {
 				CollectionName = CONFIG.DB.GLOBAL_COL
 			} else {
 				CollectionName = CONFIG.GetColbyChatID(CallbackQuery.Message.Chat.ID)

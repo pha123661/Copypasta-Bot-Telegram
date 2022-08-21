@@ -20,8 +20,10 @@ var ChannelCriticalLock = NewMutextMap()
 
 func recentHandler(Message *tgbotapi.Message) {
 	ChatID := Message.Chat.ID
-
-	if !ChatStatus[ChatID].Global {
+	CSLock.RLock()
+	CSE := ChatStatus[ChatID]
+	CSLock.RUnlock()
+	if !CSE.Global {
 		SendText(ChatID, fmt.Sprintf("執行失敗:%s", "此指令只能在公共模式下執行"), Message.MessageID)
 		return
 	}
@@ -61,17 +63,30 @@ func statusHandler(Message *tgbotapi.Message) {
 	SendText(Message.Chat.ID, LeaderBoard, 0)
 	// Send user status
 	var content string
-	if ChatStatus[Message.Chat.ID].Global {
-		content = fmt.Sprintf("目前處於 公共模式\n貢獻值爲 %d", UserStatus[Message.From.ID].Contribution)
+
+	CSLock.RLock()
+	CSE := ChatStatus[Message.Chat.ID]
+	CSLock.RUnlock()
+
+	USLock.RLock()
+	USE := UserStatus[Message.From.ID]
+	USLock.RUnlock()
+
+	if CSE.Global {
+		content = fmt.Sprintf("目前處於 公共模式\n貢獻值爲 %d", USE.Contribution)
 	} else {
-		content = fmt.Sprintf("目前處於 私人模式\n貢獻值爲 %d", UserStatus[Message.From.ID].Contribution)
+		content = fmt.Sprintf("目前處於 私人模式\n貢獻值爲 %d", USE.Contribution)
 	}
 	SendText(Message.Chat.ID, content, 0)
 }
 
 func toggleHandler(Message *tgbotapi.Message) {
 	// check if exist already
-	if v, ok := ChatStatus[Message.Chat.ID]; ok && v.Global {
+	CSLock.RLock()
+	CSE, CSEok := ChatStatus[Message.Chat.ID]
+	CSLock.RUnlock()
+
+	if CSEok && CSE.Global {
 		// Close
 		TmpChatStatus := ChatStatusEntity{Global: false, ChatID: Message.Chat.ID}
 		err := UpdateChatStatus(TmpChatStatus)
@@ -80,11 +95,13 @@ func toggleHandler(Message *tgbotapi.Message) {
 			SendText(Message.Chat.ID, "關閉公共模式失敗:"+err.Error(), 0)
 			return
 		}
+		CSLock.Lock()
 		ChatStatus[Message.Chat.ID] = TmpChatStatus
+		CSLock.Unlock()
 
 		SendText(Message.Chat.ID, "已關閉公共模式", 0)
 		return
-	} else if !ok {
+	} else if !CSEok {
 		// First time entering public mode
 		content := `第一次進入公共模式，請注意：
 		1. 這裡的資料庫是所有人共享的
@@ -93,8 +110,13 @@ func toggleHandler(Message *tgbotapi.Message) {
 		4. 可以再次使用 /toggle 來退出`
 		SendText(Message.Chat.ID, content, 0)
 	}
+
 	// Open
-	if UserStatus[Message.From.ID].Banned {
+	USLock.RLock()
+	USE := UserStatus[Message.From.ID]
+	USLock.RUnlock()
+
+	if USE.Banned {
 		SendText(Message.Chat.ID, "你被ban了 不能開啓公共模式 覺得莫名奇妙的話也可能是bug 請找作者🤷", 0)
 		return
 	}
@@ -106,7 +128,10 @@ func toggleHandler(Message *tgbotapi.Message) {
 		SendText(Message.Chat.ID, "開啓公共模式失敗:"+err.Error(), 0)
 		return
 	}
+
+	CSLock.Lock()
 	ChatStatus[Message.Chat.ID] = TmpChatStatus
+	CSLock.Unlock()
 
 	SendText(Message.Chat.ID, "已開啓公共模式", 0)
 }
@@ -124,7 +149,11 @@ func randomHandler(Message *tgbotapi.Message) {
 
 	var CollectionName string
 
-	if ChatStatus[Message.Chat.ID].Global {
+	CSLock.RLock()
+	CSE := ChatStatus[Message.Chat.ID]
+	CSLock.RUnlock()
+
+	if CSE.Global {
 		CollectionName = CONFIG.DB.GLOBAL_COL
 	} else {
 		CollectionName = CONFIG.GetColbyChatID(Message.Chat.ID)
@@ -229,7 +258,11 @@ func addHandler(Message *tgbotapi.Message, Keyword, Content, FileUniqueID string
 	}
 
 	var CollectionName string
+
+	CSLock.RLock()
 	Global := ChatStatus[Message.Chat.ID].Global
+	CSLock.RUnlock()
+
 	if Global {
 		CollectionName = CONFIG.DB.GLOBAL_COL
 	} else {
@@ -349,7 +382,11 @@ func searchHandler(Message *tgbotapi.Message) {
 
 	var CollectionName string
 
-	if ChatStatus[Message.Chat.ID].Global {
+	CSLock.RLock()
+	CSE := ChatStatus[Message.Chat.ID]
+	CSLock.RUnlock()
+
+	if CSE.Global {
 		CollectionName = CONFIG.DB.GLOBAL_COL
 	} else {
 		CollectionName = CONFIG.GetColbyChatID(Message.Chat.ID)
@@ -415,7 +452,11 @@ func searchHandler(Message *tgbotapi.Message) {
 
 func searchMediaHandler(ChatID, FromID int64, FileID_str, FileUniqueID string, Type int) {
 	var CollectionName string
-	if ChatStatus[ChatID].Global {
+	CSLock.RLock()
+	CSE := ChatStatus[ChatID]
+	CSLock.RUnlock()
+
+	if CSE.Global {
 		CollectionName = CONFIG.DB.GLOBAL_COL
 	} else {
 		CollectionName = CONFIG.GetColbyChatID(ChatID)
@@ -481,7 +522,9 @@ func deleteHandler(Message *tgbotapi.Message) {
 		CollectionName string
 		Filter         bson.D
 	)
+	CSLock.RLock()
 	Global := ChatStatus[Message.Chat.ID].Global
+	CSLock.RUnlock()
 
 	if Global {
 		CollectionName = CONFIG.DB.GLOBAL_COL

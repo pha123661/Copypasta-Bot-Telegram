@@ -322,7 +322,11 @@ func NormalTextMessage(Message *tgbotapi.Message) {
 	}
 
 	var CollectionName string
-	if ChatStatus[Message.Chat.ID].Global {
+	CSLock.RLock()
+	CSE := ChatStatus[Message.Chat.ID]
+	CSLock.RUnlock()
+
+	if CSE.Global {
 		CollectionName = CONFIG.DB.GLOBAL_COL
 	} else {
 		CollectionName = CONFIG.GetColbyChatID(Message.Chat.ID)
