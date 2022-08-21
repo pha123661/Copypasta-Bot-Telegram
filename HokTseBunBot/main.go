@@ -11,8 +11,6 @@ import (
 	"strings"
 	"unicode/utf8"
 
-	_ "net/http/pprof"
-
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
 	"github.com/lithammer/fuzzysearch/fuzzy"
 	"go.mongodb.org/mongo-driver/bson"
