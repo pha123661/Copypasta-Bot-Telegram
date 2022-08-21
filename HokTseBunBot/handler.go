@@ -31,6 +31,7 @@ func recentHandler(Message *tgbotapi.Message) {
 	if err != nil {
 		num = 3
 	}
+	num = Min(10, num)
 
 	Filter := bson.M{"From": bson.M{"$ne": Message.From.ID}}
 	opts := options.Find().SetLimit(int64(num))
