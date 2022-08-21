@@ -94,6 +94,7 @@ func randomHandler(Message *tgbotapi.Message) {
 
 	// Get Docs length
 	num, err := DB.Collection(CollectionName).CountDocuments(context.TODO(), Filter)
+	RandomIndex := rand.Int63n(num)
 	if err != nil {
 		log.Printf("[random], %+v\n", Message)
 		log.Println("[random]", err)
@@ -106,26 +107,17 @@ func randomHandler(Message *tgbotapi.Message) {
 	}
 
 	// Get Curser
-	opts := options.Find().SetLimit(num)
-	Curser, err := DB.Collection(CollectionName).Find(context.TODO(), Filter, opts)
-	defer func() { Curser.Close(context.TODO()) }()
-	if err != nil {
+	opts := options.FindOne().SetSkip(RandomIndex)
+	SRst := DB.Collection(CollectionName).FindOne(context.TODO(), Filter, opts)
+	if SRst.Err() != nil {
 		log.Printf("[random], %+v\n", Message)
 		log.Println("[random]", err)
 		SendText(Message.Chat.ID, fmt.Sprintf("錯誤：%s", err), 0)
 		return
 	}
 
-	var HTB *HokTseBun = &HokTseBun{}
-	RandomIndex := rand.Int63n(num)
-
-	for Curser.Next(context.TODO()) {
-		if RandomIndex <= 0 {
-			Curser.Decode(HTB)
-			break
-		}
-		RandomIndex--
-	}
+	var HTB HokTseBun
+	SRst.Decode(&HTB)
 
 	switch {
 	case HTB.IsText():
