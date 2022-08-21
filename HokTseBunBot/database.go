@@ -152,12 +152,33 @@ func InitDB() {
 				panic(err)
 			}
 		case CONFIG.DB.GLOBAL_COL:
-			fallthrough
+			wg.Add(1)
+			go func() {
+				AddFileUIDForText(Col)
+				wg.Done()
+			}()
+			_, err := Col.Indexes().CreateMany(context.TODO(), []mongo.IndexModel{
+				// index 1
+				{
+					Keys: bson.D{{Key: "Type", Value: 1}},
+				},
+				// index 2
+				{
+					Keys: bson.D{{Key: "Type", Value: 1}, {Key: "Keyword", Value: 1}},
+				},
+				// index 3
+				{
+					Keys:    bson.D{{Key: "Type", Value: 1}, {Key: "Keyword", Value: 1}, {Key: "FileUniqueID", Value: 1}},
+					Options: options.Index().SetUnique(true),
+				},
+			})
+			if err != nil {
+				panic(err)
+			}
 
 		default:
-			fmt.Println(Col_name)
 			wg.Add(1)
-			func() {
+			go func() {
 				AddFileUIDForText(Col)
 				wg.Done()
 			}()
