@@ -5,7 +5,9 @@ import (
 	"fmt"
 	"log"
 	"os"
+	"strings"
 	"time"
+	"unicode/utf8"
 
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/bson/primitive"
@@ -171,6 +173,7 @@ func BuildStatusMap() {
 	// Import ChatStatus
 	ChatStatus = make(map[int64]ChatStatusEntity)
 	Curser, err := DB.Collection(CONFIG.DB.CHAT_STATUS).Find(context.TODO(), bson.D{})
+	defer func() { Curser.Close(context.TODO()) }()
 	if err != nil {
 		log.Panic(err)
 	}
@@ -183,6 +186,7 @@ func BuildStatusMap() {
 	// Import UserStatus
 	UserStatus = make(map[int64]UserStatusEntity)
 	Curser, err = DB.Collection(CONFIG.DB.USER_STATUS).Find(context.TODO(), bson.D{})
+	defer func() { Curser.Close(context.TODO()) }()
 	if err != nil {
 		log.Panic(err)
 	}
@@ -192,6 +196,37 @@ func BuildStatusMap() {
 		UserStatus[US.UserID] = US
 	}
 
+}
+
+func GetLBInfo(num int64) (string, error) {
+	opts := options.Find().SetLimit(num).SetSort(bson.D{{Key: "Contribution", Value: -1}})
+	Curser, err := DB.Collection(CONFIG.DB.USER_STATUS).Find(context.TODO(), bson.D{}, opts)
+	defer func() { Curser.Close(context.TODO()) }()
+	if err != nil {
+		return "", err
+	}
+
+	var (
+		Ret strings.Builder
+		Idx int = 0
+		US  UserStatusEntity
+	)
+	Ret.WriteString("目前排行榜：\n")
+	for Curser.Next(context.TODO()) {
+		Idx++
+		Curser.Decode(&US)
+		Con := US.Contribution
+		UserID := US.UserID
+
+		NameRune, _ := GetUserNameByID(UserID)
+
+		Mask := "..."
+		UnmaskIdx := (len(NameRune) - utf8.RuneCountInString(Mask)) / 2
+
+		Name := string(NameRune[:UnmaskIdx]) + Mask + string(NameRune[UnmaskIdx+utf8.RuneCountInString(Mask):])
+		Ret.WriteString(fmt.Sprintf("%d. %v, 貢獻值:%d\n", Idx, Name, Con))
+	}
+	return Ret.String(), nil
 }
 
 func UpdateChatStatus(CS ChatStatusEntity) error {

@@ -15,6 +15,20 @@ import (
 	"go.mongodb.org/mongo-driver/mongo/options"
 )
 
+func statusHandler(Message *tgbotapi.Message) {
+	// Send learderboard info
+	LeaderBoard, _ := GetLBInfo(3)
+	SendText(Message.Chat.ID, LeaderBoard, 0)
+	// Send user status
+	var content string
+	if ChatStatus[Message.Chat.ID].Global {
+		content = fmt.Sprintf("目前處於 公共模式\n貢獻值爲 %d", UserStatus[Message.From.ID].Contribution)
+	} else {
+		content = fmt.Sprintf("目前處於 私人模式\n貢獻值爲 %d", UserStatus[Message.From.ID].Contribution)
+	}
+	SendText(Message.Chat.ID, content, 0)
+}
+
 func toggleHandler(Message *tgbotapi.Message) {
 	// check if exist already
 	if v, ok := ChatStatus[Message.Chat.ID]; ok && v.Global {
@@ -120,10 +134,12 @@ func randomHandler(Message *tgbotapi.Message) {
 		SendText(Message.Chat.ID, fmt.Sprintf("發生了奇怪的錯誤，送不出去這個東西：%+v", HTB), 0)
 	}
 }
+
 func dumpHandler(Message *tgbotapi.Message) {
 	// This command dumps copypasta that you sent in private db into public db
 	Filter := bson.D{{Key: "From", Value: Message.From.ID}}
 	Curser, err := DB.Collection(CONFIG.GetColbyChatID(Message.Chat.ID)).Find(context.TODO(), Filter)
+	defer func() { Curser.Close(context.TODO()) }()
 	if err != nil {
 		log.Println("[dump]", Message)
 		log.Println("[dump]", err)

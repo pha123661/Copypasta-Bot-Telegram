@@ -129,13 +129,7 @@ func ParseCommand(Message *tgbotapi.Message) {
 		toggleHandler(Message)
 
 	case "status": // short: STAT
-		var content string
-		if ChatStatus[Message.Chat.ID].Global {
-			content = fmt.Sprintf("目前處於 公共模式\n貢獻值爲 %d", UserStatus[Message.From.ID].Contribution)
-		} else {
-			content = fmt.Sprintf("目前處於 私人模式\n貢獻值爲 %d", UserStatus[Message.From.ID].Contribution)
-		}
-		SendText(Message.Chat.ID, content, 0)
+		statusHandler(Message)
 
 	case "dump": // short DUMP
 		dumpHandler(Message)

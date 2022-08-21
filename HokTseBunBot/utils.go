@@ -257,17 +257,17 @@ func DeleteFieldFromJson(field string, jsonbytes []byte) ([]byte, error) {
 	return json.Marshal(docs_interface)
 }
 
-func GetUserNameByID(ChatID int64) (string, error) {
+func GetUserNameByID(ChatID int64) ([]rune, error) {
 	C, err := bot.GetChat(tgbotapi.ChatInfoConfig{ChatConfig: tgbotapi.ChatConfig{ChatID: ChatID}})
 	if err != nil {
-		return "", err
+		return make([]rune, 0), err
 	}
 	switch C.Type {
 	case "private":
-		return fmt.Sprintf("[個人] %s", C.UserName), nil
+		return []rune(C.UserName), nil
 	case "group", "supergroup":
-		return fmt.Sprintf("[群組] %s", C.Title), nil
+		return []rune(C.Title), nil
 	default:
-		return fmt.Sprintf("[不明] %s", C.Title+C.FirstName+C.LastName+C.UserName), nil
+		return []rune(C.Title + C.FirstName + C.LastName + C.UserName), nil
 	}
 }
