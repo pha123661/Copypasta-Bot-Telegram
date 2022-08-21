@@ -2,115 +2,36 @@ package main
 
 import (
 	"bufio"
-	"bytes"
 	"context"
 	"fmt"
 	"os"
 	"regexp"
 	"strconv"
-	"strings"
 
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
-	toml "github.com/pelletier/go-toml/v2"
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"
 )
 
-var CONFIG cfg
-
-type cfg struct {
-	SETTING struct {
-		TYPE struct {
-			TXT, IMG, ANI, VID int
-		}
-		NAME struct {
-			TXT, IMG, ANI, VID string
-		}
-		CONCURRENT struct {
-			SUM, CAP struct {
-				COOLDOWN int // ms
-				LIMIT    int
-			}
-		}
-		LOG_FILE        string
-		EXAMPLE_PIC_DIR string
-		EXAMPLE_TXT_DIR string
-	}
-
-	API struct {
-		TG struct {
-			TOKEN string
-		}
-		HF struct {
-			TOKENs              []string
-			CURRENT_TOKEN       string
-			SUM_MODEL, MT_MODEL string
-		}
-		MONGO struct {
-			USER string
-			PASS string
-			URI  string
-		}
-	}
-
-	DB struct {
-		DB_NAME, CFormat                     string
-		GLOBAL_COL, CHAT_STATUS, USER_STATUS string
-	}
-}
-
-func InitConfig(CONFIG_PATH string) {
-	// parse toml file
-	tomldata, err := os.ReadFile(CONFIG_PATH)
-	if err != nil {
-		panic("[InitConfig]" + err.Error())
-	}
-
-	if err := toml.Unmarshal(tomldata, &CONFIG); err != nil {
-		panic("[InitConfig]" + err.Error())
-	}
-
-	// get secret configs from environment variables
-	CONFIG.API.HF.TOKENs = strings.Fields(os.Getenv("API.HF.TOKENs"))
-	CONFIG.API.TG.TOKEN = os.Getenv("API.TG.TOKEN")
-	CONFIG.API.MONGO.URI = os.Getenv("API.MONGO.URI")
-	CONFIG.DB.DB_NAME = os.Getenv("DB.DB_NAME")
-
-	fmt.Println("********************\nConfig Loaded:")
-	PrintStructAsTOML(CONFIG)
-	fmt.Println("********************")
-}
-
-func PrintStructAsTOML(v interface{}) error {
-	buf := bytes.Buffer{}
-	enc := toml.NewEncoder(&buf)
-	enc.SetIndentTables(true)
-	if err := enc.Encode(v); err != nil {
-		return err
-	}
-	fmt.Println(buf.String())
-	return nil
-}
-
 var bot *tgbotapi.BotAPI
 
 func main() {
-	InitConfig("../../HokTseBunBot/config.toml")
-	DBClient, err := mongo.Connect(context.TODO(), options.Client().ApplyURI(CONFIG.API.MONGO.URI))
+
+	DBClient, err := mongo.Connect(context.TODO(), options.Client().ApplyURI(os.Getenv("API.MONGO.URI")))
 	if err != nil {
 		panic("[InitConfig]" + err.Error())
 	}
-	DB := DBClient.Database(CONFIG.DB.DB_NAME)
+	DB := DBClient.Database(os.Getenv("DB.DB_NAME"))
 
 	Collections, err := DB.ListCollectionNames(context.TODO(), bson.D{})
 	if err != nil {
 		panic("[InitConfig]" + err.Error())
 	}
 
-	bot, _ = tgbotapi.NewBotAPI(CONFIG.API.TG.TOKEN)
+	bot, _ = tgbotapi.NewBotAPI(os.Getenv("API.TG.TOKEN"))
 
-	B, err := os.ReadFile("./WHATTOSAY.txt")
+	B, err := os.ReadFile("./WHATTOSAY.md")
 	if err != nil || len(B) == 0 {
 		fmt.Println(err)
 		return
@@ -144,22 +65,17 @@ func main() {
 			}
 			fmt.Printf("%+v\n", Chat)
 
-			SendText(ChatID, Text, 0)
+			replyMsg := tgbotapi.NewMessage(ChatID, Text)
+			replyMsg.DisableNotification = true
+			replyMsg.ParseMode = "Markdown"
+			replyMsg.DisableWebPagePreview = true
+			_, err = bot.Send(replyMsg)
+			if err != nil {
+				fmt.Printf("[SendTR] ChatID: %d, Content:%s\n", ChatID, Text)
+				fmt.Println("[SendTR]", err)
+			}
 		}
 	}
-	os.Truncate("./WHATTOSAY.txt", 0)
-}
-
-func SendText(ChatID int64, Content string, ReplyMsgID int) tgbotapi.Message {
-	replyMsg := tgbotapi.NewMessage(ChatID, Content)
-	if ReplyMsgID != 0 {
-		replyMsg.ReplyToMessageID = ReplyMsgID
-	}
-	replyMsg.DisableNotification = true
-	Msg, err := bot.Send(replyMsg)
-	if err != nil {
-		fmt.Printf("[SendTR] ChatID: %d, Content:%s, MeplyMsgID: %d\n", ChatID, Content, ReplyMsgID)
-		fmt.Println("[SendTR]", err)
-	}
-	return Msg
+	os.Rename("./WHATTOSAY.md", "./SENT.md")
+	os.Create("./WHATTOSAY.md")
 }
