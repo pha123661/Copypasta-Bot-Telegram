@@ -198,18 +198,19 @@ func randomHandler(Message *tgbotapi.Message) {
 }
 
 func dumpHandler(Message *tgbotapi.Message) {
+	ChatID := Message.Chat.ID
 	// only one handler running for each chat
-	ChannelCriticalLock.Lock(int(Message.Chat.ID))
-	defer ChannelCriticalLock.Release(int(Message.Chat.ID))
+	ChannelCriticalLock.Lock(int(ChatID))
+	defer ChannelCriticalLock.Release(int(ChatID))
 
 	// This command dumps copypasta that you sent in private db into public db
 	Filter := bson.D{{Key: "From", Value: Message.From.ID}}
-	Curser, err := DB.Collection(CONFIG.GetColbyChatID(Message.Chat.ID)).Find(context.TODO(), Filter)
+	Curser, err := DB.Collection(CONFIG.GetColbyChatID(ChatID)).Find(context.TODO(), Filter)
 	defer func() { Curser.Close(context.TODO()) }()
 	if err != nil {
 		log.Println("[dump]", Message)
 		log.Println("[dump]", err)
-		SendText(Message.Chat.ID, "傾卸失敗: "+err.Error(), 0)
+		SendText(ChatID, "傾卸失敗: "+err.Error(), 0)
 		return
 	}
 
@@ -220,15 +221,18 @@ func dumpHandler(Message *tgbotapi.Message) {
 		docs2insert = append(docs2insert, doc)
 	}
 
+	to_be_delete_message := SendText(ChatID, "正在運算中……", 0)
+	defer bot.Request(tgbotapi.NewDeleteMessage(ChatID, to_be_delete_message.MessageID))
+
 	opts := options.InsertMany().SetOrdered(false)
 	MRst, err := DB.Collection(CONFIG.DB.GLOBAL_COL).InsertMany(context.TODO(), docs2insert, opts)
 	if err == mongo.ErrEmptySlice {
-		SendText(Message.Chat.ID, "沒有東西能傾倒", 0)
+		SendText(ChatID, "沒有東西能傾倒", 0)
 		return
 	} else if err != nil && reflect.TypeOf(err) != reflect.TypeOf(mongo.BulkWriteException{}) {
 		log.Println("[dump]", Message)
 		log.Println("[dump]", err)
-		SendText(Message.Chat.ID, "傾卸失敗: "+err.Error(), 0)
+		SendText(ChatID, "傾卸失敗: "+err.Error(), 0)
 		return
 	}
 
@@ -237,7 +241,7 @@ func dumpHandler(Message *tgbotapi.Message) {
 		log.Printf("Message: %v\n", Message)
 		log.Println("[UpdateUS]", err)
 	}
-	SendText(Message.Chat.ID, fmt.Sprintf("成功把%d坨大便倒進公共資料庫，目前累計貢獻%d坨", len(MRst.InsertedIDs), NewCon), 0)
+	SendText(ChatID, fmt.Sprintf("成功把%d坨大便倒進公共資料庫，目前累計貢獻%d坨", len(MRst.InsertedIDs), NewCon), 0)
 }
 
 func addHandler(Message *tgbotapi.Message, Keyword, Content, FileUniqueID string, Type int) {
