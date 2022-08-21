@@ -277,21 +277,18 @@ func ParseCommand(Message *tgbotapi.Message) {
 
 		// Create tmp message
 		to_be_delete_message := SendText(Message.Chat.ID, "匯入中，請稍後……", Message.MessageID)
+		defer bot.Request(tgbotapi.NewDeleteMessage(Message.Chat.ID, to_be_delete_message.MessageID))
 
 		_, err = DB.Collection(TargetCol).InsertMany(context.TODO(), docs)
 		if err != nil {
 			SendText(Message.Chat.ID, fmt.Sprintf("匯入失敗: %s", err.Error()), Message.MessageID)
 			log.Println(err)
-			// Delete tmp message
-			bot.Request(tgbotapi.NewDeleteMessage(Message.Chat.ID, to_be_delete_message.MessageID))
 			return
 		}
 		// update system attribute
 		InsertHTB(TargetCol, &HokTseBun{Type: 0, Keyword: "Import", Content: SourceCol})
 
 		SendText(Message.Chat.ID, fmt.Sprintf("成功從 %s 匯入 %d 筆資料", SourceCol, len(docs)), Message.MessageID)
-		// Delete tmp message
-		bot.Request(tgbotapi.NewDeleteMessage(Message.Chat.ID, to_be_delete_message.MessageID))
 
 	case "echo":
 		// Echo

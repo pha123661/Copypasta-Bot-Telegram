@@ -282,8 +282,11 @@ func addHandler(Message *tgbotapi.Message, Keyword, Content, FileUniqueID string
 		SendText(Message.Chat.ID, fmt.Sprintf(fmt.Sprintf("新增%s「%s」失敗：%s", CONFIG.GetNameByType(Type), Keyword, Rst.Err()), Message.MessageID), 0)
 		return
 	}
+
 	// Create tmp message
 	to_be_delete_message := SendText(Message.Chat.ID, "運算中，請稍後……", Message.MessageID)
+	defer bot.Request(tgbotapi.NewDeleteMessage(Message.Chat.ID, to_be_delete_message.MessageID))
+
 	// Insert HTB
 	var (
 		Sum string
@@ -342,8 +345,6 @@ func addHandler(Message *tgbotapi.Message, Keyword, Content, FileUniqueID string
 			SendText(Message.Chat.ID, fmt.Sprintf("新增%s「%s」失敗，可能我濫用API被ban了：%s", CONFIG.GetNameByType(CONFIG.SETTING.TYPE.IMG), Keyword, err), Message.MessageID)
 		}
 	}
-	// Delete tmp message
-	bot.Request(tgbotapi.NewDeleteMessage(Message.Chat.ID, to_be_delete_message.MessageID))
 
 	_, err = InsertHTB(
 		CollectionName,
@@ -399,9 +400,10 @@ func searchHandler(Message *tgbotapi.Message) {
 
 	SendText(Message.From.ID, fmt.Sprintf("「%s」的搜尋結果如下：", Query), 0)
 
-	var to_be_delete_message tgbotapi.Message
 	if Message.Chat.ID != Message.From.ID {
-		to_be_delete_message = SendText(Message.Chat.ID, "正在搜尋中…… 請稍後", 0)
+		// Create tmp message
+		to_be_delete_message := SendText(Message.Chat.ID, "正在搜尋中…… 請稍後", 0)
+		defer bot.Request(tgbotapi.NewDeleteMessage(Message.Chat.ID, to_be_delete_message.MessageID))
 	}
 
 	// search
@@ -434,9 +436,6 @@ func searchHandler(Message *tgbotapi.Message) {
 		}
 	}
 
-	// Delete tmp message
-	bot.Request(tgbotapi.NewDeleteMessage(Message.Chat.ID, to_be_delete_message.MessageID))
-
 	if ResultCount <= MaxResults {
 		SendText(Message.From.ID, fmt.Sprintf("搜尋完成，共 %d 筆吻合\n", ResultCount), 0)
 		if Message.Chat.ID != Message.From.ID {
@@ -465,9 +464,9 @@ func searchMediaHandler(ChatID, FromID int64, FileID_str, FileUniqueID string, T
 	SendMultiMedia(FromID, "此圖片的搜尋結果如下：", FileID_str, Type)
 
 	// create tmp message
-	var to_be_delete_message tgbotapi.Message
 	if ChatID != FromID {
-		to_be_delete_message = SendText(ChatID, "正在搜尋中…… 請稍後, 圖片只會搜尋完全相同的圖片", 0)
+		to_be_delete_message := SendText(ChatID, "正在搜尋中…… 請稍後, 圖片只會搜尋完全相同的圖片", 0)
+		defer bot.Request(tgbotapi.NewDeleteMessage(ChatID, to_be_delete_message.MessageID))
 	}
 
 	// search for same media in db
@@ -494,9 +493,6 @@ func searchMediaHandler(ChatID, FromID int64, FileID_str, FileUniqueID string, T
 		SendText(FromID, fmt.Sprintf("名稱：「%s」\n描述：「%s」", HTB.Keyword, HTB.Summarization), 0)
 		ResultCount++
 	}
-
-	// Delete tmp message
-	bot.Request(tgbotapi.NewDeleteMessage(ChatID, to_be_delete_message.MessageID))
 
 	if ResultCount <= MaxResults {
 		SendText(FromID, fmt.Sprintf("搜尋完成，共 %d 筆吻合\n", ResultCount), 0)
