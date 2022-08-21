@@ -9,30 +9,29 @@ import (
 )
 
 func exampleHandler(Message *tgbotapi.Message) {
-	replyMsg := tgbotapi.NewMessage(Message.Chat.ID, "請按按鈕選擇要觀看的教學範例:")
+	replyMsg := tgbotapi.NewMessage(Message.Chat.ID, "請選擇要觀看的教學說明, 點擊指令按鈕可以查看指令用途:")
 	replyMsg.ReplyToMessageID = Message.MessageID
 	replyMsg.ReplyMarkup = tgbotapi.NewInlineKeyboardMarkup(
 		tgbotapi.NewInlineKeyboardRow(tgbotapi.NewInlineKeyboardButtonData("這個 bot 是幹嘛用的", "EXP WHATISTHIS")),
 		tgbotapi.NewInlineKeyboardRow(tgbotapi.NewInlineKeyboardButtonData("我要如何新增複製文?", "EXP HOWTXT")),
 		tgbotapi.NewInlineKeyboardRow(tgbotapi.NewInlineKeyboardButtonData("我要如何新增圖片/GIF/影片?", "EXP HOWMEDIA")),
+		tgbotapi.NewInlineKeyboardRow(tgbotapi.NewInlineKeyboardButtonData("什麼是公共資料庫?", "EXP WHATISPUBLIC")),
 		tgbotapi.NewInlineKeyboardRow(
-			tgbotapi.NewInlineKeyboardButtonData("/add 指令", "EXP ADD"),
-			tgbotapi.NewInlineKeyboardButtonData("/new 指令", "EXP ADD"),
+			tgbotapi.NewInlineKeyboardButtonData("/add", "EXP ADD"),
+			tgbotapi.NewInlineKeyboardButtonData("/new", "EXP ADD"),
+			tgbotapi.NewInlineKeyboardButtonData("/random", "EXP RAND"),
 		),
 		tgbotapi.NewInlineKeyboardRow(
-			tgbotapi.NewInlineKeyboardButtonData("/random 指令", "EXP RAND"),
-			tgbotapi.NewInlineKeyboardButtonData("/search 指令", "EXP SERC"),
+			tgbotapi.NewInlineKeyboardButtonData("/search", "EXP SERC"),
+			tgbotapi.NewInlineKeyboardButtonData("/delete", "EXP DEL"),
+			tgbotapi.NewInlineKeyboardButtonData("/example", "EXP EXP"),
 		),
 		tgbotapi.NewInlineKeyboardRow(
-			tgbotapi.NewInlineKeyboardButtonData("/delete 指令", "EXP DEL"),
-			tgbotapi.NewInlineKeyboardButtonData("/example 指令", "EXP EXP"),
+			tgbotapi.NewInlineKeyboardButtonData("/toggle", "EXP TOG"),
+			tgbotapi.NewInlineKeyboardButtonData("/status", "EXP STAT"),
+			tgbotapi.NewInlineKeyboardButtonData("/dump", "EXP DUMP"),
 		),
 		tgbotapi.NewInlineKeyboardRow(
-			tgbotapi.NewInlineKeyboardButtonData("/toggle 指令", "EXP TOG"),
-			tgbotapi.NewInlineKeyboardButtonData("/status 指令", "EXP STAT"),
-		),
-		tgbotapi.NewInlineKeyboardRow(
-			tgbotapi.NewInlineKeyboardButtonData("/dump 指令", "EXP DUMP"),
 			tgbotapi.NewInlineKeyboardButtonData("✖️取消", "NIL_WITH_REACT"),
 		),
 	)
