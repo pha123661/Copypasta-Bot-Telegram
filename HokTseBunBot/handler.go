@@ -36,7 +36,7 @@ func recentHandler(Message *tgbotapi.Message) {
 	num = Min(10, num)
 
 	Filter := bson.M{"From": bson.M{"$ne": Message.From.ID}}
-	opts := options.Find().SetLimit(int64(num))
+	opts := options.Find().SetLimit(int64(num)).SetSort(bson.D{{Key: "CreateTime", Value: -1}})
 	Curser, err := DB.Collection(CONFIG.DB.GLOBAL_COL).Find(context.TODO(), Filter, opts)
 	if err != nil {
 		log.Printf("%v\n", Message)

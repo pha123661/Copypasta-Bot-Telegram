@@ -107,14 +107,15 @@ func InitDB() {
 
 	AddFileUIDForText := func(Col *mongo.Collection) {
 		// Add file UID for text
-		Filter := bson.D{{Key: "$and", Value: bson.A{
-			bson.D{{Key: "Type", Value: 1}},
-			bson.D{{Key: "$or", Value: bson.A{
-				bson.D{{Key: "FileUniqueID", Value: ""}},
-				bson.D{{Key: "FileUniqueID", Value: bson.D{{Key: "$exists", Value: false}}}},
+		Filter := bson.M{
+			"$and": bson.A{
+				bson.M{"Type": 1},
+				bson.M{"$or": bson.A{
+					bson.M{"FileUniqueID": ""},
+					bson.M{"FileUniqueID": bson.M{"$exists": false}},
+				}},
 			},
-			}},
-		}}}
+		}
 
 		Curser, err := Col.Find(context.TODO(), Filter)
 		defer func() { Curser.Close(context.TODO()) }()
