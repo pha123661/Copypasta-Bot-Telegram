@@ -49,7 +49,12 @@ func init() {
 
 func main() {
 	// keep alive
-	go http.ListenAndServe(":6060", nil)
+	go func() {
+		http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
+			fmt.Fprintf(w, "Welcome to new server!")
+		})
+		http.ListenAndServe(":5050", nil)
+	}()
 
 	var err error
 	// start bot
