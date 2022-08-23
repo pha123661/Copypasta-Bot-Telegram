@@ -302,12 +302,13 @@ func addHandler(Message *tgbotapi.Message, Keyword, Content, FileUniqueID string
 		Sum = TextSummarization(Keyword, Content)
 		URL = ""
 	case CONFIG.SETTING.TYPE.IMG:
-		URL, err := bot.GetFileDirectURL(Content)
+		URL, err = bot.GetFileDirectURL(Content)
 		if err != nil {
 			log.Printf("[add] Keyword: %s, Content: %s, Type: %d, Message: %+v\n", Keyword, Content, Type, Message)
 			log.Println("[add]", err)
 			SendText(Message.Chat.ID, fmt.Sprintf("新增%s「%s」失敗：%s", CONFIG.GetNameByType(CONFIG.SETTING.TYPE.IMG), Keyword, err), Message.MessageID)
 			Sum = ""
+			return
 		} else {
 			Sum, err = ImageCaptioning(Keyword, URL)
 			if err != nil {
