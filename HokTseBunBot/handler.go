@@ -244,7 +244,7 @@ func dumpHandler(Message *tgbotapi.Message) {
 	SendText(ChatID, fmt.Sprintf("成功把%d坨大便倒進公共資料庫，目前累計貢獻%d坨", len(MRst.InsertedIDs), NewCon), 0)
 }
 
-func addHandler(Message *tgbotapi.Message, Keyword, Content, FileUniqueID string, Type int) {
+func addHandler(Message *tgbotapi.Message, Keyword, Content string, Type int) {
 	// only one handler running for each chat
 	ChannelCriticalLock.Lock(int(Message.Chat.ID))
 	defer ChannelCriticalLock.Release(int(Message.Chat.ID))
@@ -273,34 +273,22 @@ func addHandler(Message *tgbotapi.Message, Keyword, Content, FileUniqueID string
 		CollectionName = CONFIG.GetColbyChatID(Message.Chat.ID)
 	}
 
-	// find existing files
-	Filter := bson.D{{Key: "$and",
-		Value: bson.A{bson.D{{Key: "Type", Value: Type}}, bson.D{{Key: "Keyword", Value: Keyword}}, bson.D{{Key: "FileUniqueID", Value: FileUniqueID}}},
-	}}
-	if Rst := DB.Collection(CollectionName).FindOne(context.TODO(), Filter); Rst.Err() != mongo.ErrNoDocuments {
-		SendText(Message.Chat.ID, "傳過了啦 腦霧?", Message.MessageID)
-		return
-	} else if Rst.Err() != nil && Rst.Err() != mongo.ErrNoDocuments {
-		log.Printf("[add] Keyword: %s, Content: %s, Type: %d, Message: %+v\n", Keyword, Content, Type, Message)
-		log.Println("[add]", Rst.Err())
-		SendText(Message.Chat.ID, fmt.Sprintf(fmt.Sprintf("新增%s「%s」失敗：%s", CONFIG.GetNameByType(Type), Keyword, Rst.Err()), Message.MessageID), 0)
-		return
-	}
-
 	// Create tmp message
 	to_be_delete_message := SendText(Message.Chat.ID, "運算中，請稍後……", Message.MessageID)
 	defer bot.Request(tgbotapi.NewDeleteMessage(Message.Chat.ID, to_be_delete_message.MessageID))
 
 	// Insert HTB
 	var (
-		Sum string
-		URL string
-		err error
+		Sum          string
+		URL          string
+		err          error
+		FileUniqueID string
 	)
 	switch Type {
 	case CONFIG.SETTING.TYPE.TXT:
 		Sum = TextSummarization(Keyword, Content)
 		URL = ""
+		FileUniqueID = Sha256String(Content)
 	case CONFIG.SETTING.TYPE.IMG:
 		URL, err = bot.GetFileDirectURL(Content)
 		if err != nil {
@@ -310,7 +298,14 @@ func addHandler(Message *tgbotapi.Message, Keyword, Content, FileUniqueID string
 			Sum = ""
 			return
 		} else {
-			Sum, err = ImageCaptioning(Keyword, URL)
+			// Encode image
+			ImgEnc, err := DownloadImageToBase64(URL)
+			if err != nil {
+				SendText(Message.Chat.ID, fmt.Sprintf("新增%s「%s」失敗：%s", CONFIG.GetNameByType(CONFIG.SETTING.TYPE.IMG), Keyword, err), Message.MessageID)
+				return
+			}
+			FileUniqueID = Sha256String(ImgEnc)
+			Sum, err = ImageCaptioning(Keyword, ImgEnc)
 			if err != nil {
 				SendText(Message.Chat.ID, fmt.Sprintf("新增%s「%s」失敗，可能我濫用API被ban了：%s", CONFIG.GetNameByType(CONFIG.SETTING.TYPE.IMG), Keyword, err), Message.MessageID)
 			}
@@ -321,14 +316,22 @@ func addHandler(Message *tgbotapi.Message, Keyword, Content, FileUniqueID string
 		if err != nil {
 			log.Printf("[add] Keyword: %s, Content: %s, Type: %d, Message: %+v\n", Keyword, Content, Type, Message)
 			log.Println("[add]", err)
+			SendText(Message.Chat.ID, fmt.Sprintf("新增%s「%s」失敗：%s", CONFIG.GetNameByType(CONFIG.SETTING.TYPE.IMG), Keyword, err), Message.MessageID)
 		}
 		// get caption by thumbnail
 		Thumb_URL, err := bot.GetFileDirectURL(Message.Animation.Thumbnail.FileID)
 		if err != nil {
 			log.Printf("[add] Keyword: %s, Content: %s, Type: %d, Message: %+v\n", Keyword, Content, Type, Message)
 			log.Println("[add]", err)
+			SendText(Message.Chat.ID, fmt.Sprintf("新增%s「%s」失敗：%s", CONFIG.GetNameByType(CONFIG.SETTING.TYPE.IMG), Keyword, err), Message.MessageID)
 		}
-		Sum, err = ImageCaptioning(Keyword, Thumb_URL)
+		ImgEnc, err := DownloadImageToBase64(Thumb_URL)
+		if err != nil {
+			SendText(Message.Chat.ID, fmt.Sprintf("新增%s「%s」失敗：%s", CONFIG.GetNameByType(CONFIG.SETTING.TYPE.IMG), Keyword, err), Message.MessageID)
+			return
+		}
+		FileUniqueID = Sha256String(ImgEnc)
+		Sum, err = ImageCaptioning(Keyword, ImgEnc)
 		if err != nil {
 			SendText(Message.Chat.ID, fmt.Sprintf("新增%s「%s」失敗，可能我濫用API被ban了：%s", CONFIG.GetNameByType(CONFIG.SETTING.TYPE.IMG), Keyword, err), Message.MessageID)
 		}
@@ -345,10 +348,30 @@ func addHandler(Message *tgbotapi.Message, Keyword, Content, FileUniqueID string
 			log.Printf("[add] Keyword: %s, Content: %s, Type: %d, Message: %+v\n", Keyword, Content, Type, Message)
 			log.Println("[add]", err)
 		}
-		Sum, err = ImageCaptioning(Keyword, Thumb_URL)
+		ImgEnc, err := DownloadImageToBase64(Thumb_URL)
+		if err != nil {
+			SendText(Message.Chat.ID, fmt.Sprintf("新增%s「%s」失敗：%s", CONFIG.GetNameByType(CONFIG.SETTING.TYPE.IMG), Keyword, err), Message.MessageID)
+			return
+		}
+		FileUniqueID = Sha256String(ImgEnc)
+		Sum, err = ImageCaptioning(Keyword, ImgEnc)
 		if err != nil {
 			SendText(Message.Chat.ID, fmt.Sprintf("新增%s「%s」失敗，可能我濫用API被ban了：%s", CONFIG.GetNameByType(CONFIG.SETTING.TYPE.IMG), Keyword, err), Message.MessageID)
 		}
+	}
+
+	// find existing files
+	Filter := bson.D{{Key: "$and",
+		Value: bson.A{bson.D{{Key: "Type", Value: Type}}, bson.D{{Key: "Keyword", Value: Keyword}}, bson.D{{Key: "FileUniqueID", Value: FileUniqueID}}},
+	}}
+	if Rst := DB.Collection(CollectionName).FindOne(context.TODO(), Filter); Rst.Err() != mongo.ErrNoDocuments {
+		SendText(Message.Chat.ID, "傳過了啦 腦霧?", Message.MessageID)
+		return
+	} else if Rst.Err() != nil && Rst.Err() != mongo.ErrNoDocuments {
+		log.Printf("[add] Keyword: %s, Content: %s, Type: %d, Message: %+v\n", Keyword, Content, Type, Message)
+		log.Println("[add]", Rst.Err())
+		SendText(Message.Chat.ID, fmt.Sprintf(fmt.Sprintf("新增%s「%s」失敗：%s", CONFIG.GetNameByType(Type), Keyword, Rst.Err()), Message.MessageID), 0)
+		return
 	}
 
 	_, err = InsertHTB(
@@ -454,11 +477,15 @@ func searchHandler(Message *tgbotapi.Message) {
 	}
 }
 
-func searchMediaHandler(ChatID, FromID int64, FileID_str, FileUniqueID string, Type int) {
+func searchMediaHandler(ChatID, FromID int64, FileID_str string, Type int) {
 	var CollectionName string
 	CSLock.RLock()
 	CSE := ChatStatus[ChatID]
 	CSLock.RUnlock()
+
+	URL, _ := bot.GetFileDirectURL(FileID_str)
+	ImgEnc, _ := DownloadImageToBase64(URL)
+	FileUniqueID := Sha256String(ImgEnc)
 
 	if CSE.Global {
 		CollectionName = CONFIG.DB.GLOBAL_COL

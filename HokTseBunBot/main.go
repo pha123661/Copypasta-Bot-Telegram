@@ -167,8 +167,7 @@ func ParseCommand(Message *tgbotapi.Message) {
 		}
 		Keyword := Command_Args[0]
 		Content := strings.TrimSpace(Message.Text[Index:])
-		FileUniqueID := Sha256String(Content)
-		addHandler(Message, Keyword, Content, FileUniqueID, CONFIG.SETTING.TYPE.TXT)
+		addHandler(Message, Keyword, Content, CONFIG.SETTING.TYPE.TXT)
 
 	case "search": // short: SERC
 		Command_Args := strings.Fields(Message.CommandArguments())
@@ -395,12 +394,11 @@ func MediaMessage(Message *tgbotapi.Message) {
 		return
 	}
 	var (
-		Keyword      string = strings.TrimSpace(Message.Caption)
-		Content      string
-		FileUniqueID string
-		Type         int
-		MaxFileSize  int = 20 * 1000 * 1000
-		FileSize     int
+		Keyword     string = strings.TrimSpace(Message.Caption)
+		Content     string
+		Type        int
+		MaxFileSize int = 20 * 1000 * 1000
+		FileSize    int
 	)
 
 	switch {
@@ -411,7 +409,6 @@ func MediaMessage(Message *tgbotapi.Message) {
 				max_area = image.Width * image.Height
 				FileSize = image.FileSize
 				Content = image.FileID
-				FileUniqueID = image.FileUniqueID
 			}
 		}
 		Type = CONFIG.SETTING.TYPE.IMG
@@ -419,18 +416,16 @@ func MediaMessage(Message *tgbotapi.Message) {
 	case Message.Animation != nil:
 		FileSize = Message.Animation.FileSize
 		Content = Message.Animation.FileID
-		FileUniqueID = Message.Animation.FileUniqueID
 		Type = CONFIG.SETTING.TYPE.ANI
 
 	case Message.Video != nil:
 		FileSize = Message.Video.FileSize
 		Content = Message.Video.FileID
-		FileUniqueID = Message.Video.FileUniqueID
 		Type = CONFIG.SETTING.TYPE.VID
 	}
 
 	if strings.Contains(Message.Caption, "/search") {
-		searchMediaHandler(Message.Chat.ID, Message.From.ID, Content, FileUniqueID, Type)
+		searchMediaHandler(Message.Chat.ID, Message.From.ID, Content, Type)
 		return
 	}
 
@@ -443,5 +438,5 @@ func MediaMessage(Message *tgbotapi.Message) {
 		)
 		return
 	}
-	addHandler(Message, Keyword, Content, FileUniqueID, Type)
+	addHandler(Message, Keyword, Content, Type)
 }
