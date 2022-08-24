@@ -249,7 +249,6 @@ func InitDB() {
 	wg.Wait()
 
 	BuildStatusMap()
-	os.Exit(1)
 }
 
 func BuildStatusMap() {
