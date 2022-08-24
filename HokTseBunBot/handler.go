@@ -309,7 +309,10 @@ func addHandler(Message *tgbotapi.Message, Keyword, Content string, Type int) {
 		if err != nil {
 			SendText(Message.Chat.ID, fmt.Sprintf("新增%s「%s」失敗，可能我濫用API被ban了：%s", CONFIG.GetNameByType(CONFIG.SETTING.TYPE.IMG), Keyword, err), Message.MessageID)
 		}
-		URL = UploadToImgur(ImgEnc)
+		tmp := UploadToImgur(ImgEnc)
+		if tmp != "" {
+			URL = tmp
+		}
 
 	case CONFIG.SETTING.TYPE.ANI:
 		// get url
