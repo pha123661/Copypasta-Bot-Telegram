@@ -102,6 +102,10 @@ type cfg struct {
 			PASS string
 			URI  string
 		}
+		IMGUR struct {
+			CLIENTID string
+			SECRET   string
+		}
 	}
 
 	DB struct {
@@ -147,6 +151,8 @@ func InitConfig(CONFIG_PATH string) {
 	CONFIG.API.TG.TOKEN = os.Getenv("API.TG.TOKEN")
 	CONFIG.API.MONGO.URI = os.Getenv("API.MONGO.URI")
 	CONFIG.DB.DB_NAME = os.Getenv("DB.DB_NAME")
+	CONFIG.API.IMGUR.CLIENTID = os.Getenv("API.IMGUR.CLIENTID")
+	CONFIG.API.IMGUR.SECRET = os.Getenv("API.IMGUR.SECRET")
 
 	SetHFAPI()
 

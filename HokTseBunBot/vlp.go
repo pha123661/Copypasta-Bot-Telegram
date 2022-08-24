@@ -9,7 +9,9 @@ import (
 	"log"
 	"math/rand"
 	"net/http"
+	"net/url"
 	"sort"
+	"strings"
 	"sync"
 	"time"
 
@@ -225,6 +227,50 @@ func DownloadImageToBase64(URL string) (string, error) {
 	b64str := base64.StdEncoding.EncodeToString(image)
 
 	return b64str, nil
+}
+
+type ImgurResponse struct {
+	Data    ImageData `json:"data"`
+	Status  int       `json:"status"`
+	Success bool      `json:"success"`
+}
+
+type ImageData struct {
+	Account_id int    `json:"account_id"`
+	Animated   bool   `json:"animated"`
+	Bandwidth  int    `json:"bandwidth"`
+	DateTime   int    `json:"datetime"`
+	Deletehash string `json:"deletehash"`
+	Favorite   bool   `json:"favorite"`
+	Height     int    `json:"height"`
+	Id         string `json:"id"`
+	In_gallery bool   `json:"in_gallery"`
+	Is_ad      bool   `json:"is_ad"`
+	Link       string `json:"link"`
+	Name       string `json:"name"`
+	Size       int    `json:"size"`
+	Title      string `json:"title"`
+	Type       string `json:"type"`
+	Views      int    `json:"views"`
+	Width      int    `json:"width"`
+}
+
+func UploadToImgur(ImgEnc string) string {
+	parameters := url.Values{"image": {ImgEnc}}
+	req, err := http.NewRequest("POST", "https://api.imgur.com/3/image", strings.NewReader(parameters.Encode()))
+	if err != nil {
+		log.Println(err)
+	}
+	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	req.Header.Set("Authorization", "Client-ID "+CONFIG.API.IMGUR.CLIENTID)
+	r, err := http.DefaultClient.Do(req)
+	if err != nil {
+		log.Println(err)
+	}
+
+	var imgurResponse ImgurResponse
+	json.NewDecoder(r.Body).Decode(&imgurResponse)
+	return imgurResponse.Data.Link
 }
 
 func MTen2zhcn(EN string) (string, error) {
