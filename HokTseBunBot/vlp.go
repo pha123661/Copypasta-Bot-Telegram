@@ -88,9 +88,6 @@ func TestHit(Query string, KeySlice ...string) bool {
 		if len(Key) <= 5 {
 			KeySet = append(KeySet, Key)
 		}
-		fmt.Println("################################")
-		fmt.Println(Key)
-		fmt.Println(KeySet)
 		rst := intersect.Hash(QuerySet, KeySet)
 		if len(rst) > 0 {
 			return true
