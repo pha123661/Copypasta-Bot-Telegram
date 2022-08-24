@@ -9,22 +9,29 @@ import (
 	"log"
 	"math/rand"
 	"net/http"
+	"sort"
 	"sync"
 	"time"
 
 	hfapigo "github.com/TannerKvarfordt/hfapigo"
 	gt "github.com/bas24/googletranslatefree"
+	"github.com/juliangruber/go-intersect"
+	"github.com/yanyiwu/gojieba"
 )
 
 var (
 	SumSemaphore, CapSemaphore chan Empty
 	SumCoolSema, CapCoolSema   sync.Mutex
 	SumCool, CapCool           time.Duration
+	Jieba                      *gojieba.Jieba
 )
 
 func InitVLP() {
 	SumSemaphore = make(chan Empty, CONFIG.SETTING.CONCURRENT.SUM.LIMIT)
 	CapSemaphore = make(chan Empty, CONFIG.SETTING.CONCURRENT.CAP.LIMIT)
+
+	Jieba = gojieba.NewJieba()
+	Jieba.AddWord("笑死")
 
 	SumCool = time.Duration(CONFIG.SETTING.CONCURRENT.SUM.COOLDOWN) * time.Millisecond
 	CapCool = time.Duration(CONFIG.SETTING.CONCURRENT.CAP.COOLDOWN) * time.Millisecond
@@ -65,6 +72,32 @@ func SetHFAPI() {
 		CONFIG.API.HF.CURRENT_TOKEN = ""
 		log.Panicln("No available HF api!")
 	}
+}
+
+func TestHit(Query string, KeySlice ...string) bool {
+	var UseHmm = true
+	QuerySet := Jieba.CutForSearch(Query, UseHmm)
+
+	// sort strings by length
+	sort.Slice(KeySlice, func(i, j int) bool {
+		return len(KeySlice[i]) < len(KeySlice[j])
+	})
+
+	for _, Key := range KeySlice {
+		KeySet := Jieba.Extract(Key, Max(3, len(Key)/100))
+		if len(Key) <= 5 {
+			KeySet = append(KeySet, Key)
+		}
+		fmt.Println("################################")
+		fmt.Println(Key)
+		fmt.Println(KeySet)
+		rst := intersect.Hash(QuerySet, KeySet)
+		if len(rst) > 0 {
+			return true
+		}
+	}
+
+	return false
 }
 
 func TextSummarization(Keyword, Content string) string {

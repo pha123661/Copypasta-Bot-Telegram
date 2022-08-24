@@ -12,7 +12,6 @@ import (
 	"unicode/utf8"
 
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
-	"github.com/lithammer/fuzzysearch/fuzzy"
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"
@@ -354,21 +353,22 @@ func NormalTextMessage(Message *tgbotapi.Message) {
 			HTB := &HokTseBun{}
 			Curser.Decode(HTB)
 
-			HIT := false
-			switch {
-			case utf8.RuneCountInString(Query) >= 3:
-				if fuzzy.Match(HTB.Keyword, Query) || (fuzzy.Match(Query, HTB.Keyword) && Abs(len(Query)-len(HTB.Keyword)) <= 3) || fuzzy.Match(Query, HTB.Summarization) {
-					HIT = true
-				}
-			case utf8.RuneCountInString(Query) >= 2:
-				if strings.Contains(Query, HTB.Keyword) || strings.Contains(HTB.Keyword, Query) {
-					HIT = true
-				}
-			case utf8.RuneCountInString(Query) == 1:
-				if utf8.RuneCountInString(HTB.Keyword) == 1 && Query == HTB.Keyword {
-					HIT = true
-				}
-			}
+			// HIT := false
+			// switch {
+			// case utf8.RuneCountInString(Query) >= 3:
+			// 	if fuzzy.Match(HTB.Keyword, Query) || (fuzzy.Match(Query, HTB.Keyword) && Abs(len(Query)-len(HTB.Keyword)) <= 3) || fuzzy.Match(Query, HTB.Summarization) {
+			// 		HIT = true
+			// 	}
+			// case utf8.RuneCountInString(Query) >= 2:
+			// 	if strings.Contains(Query, HTB.Keyword) || strings.Contains(HTB.Keyword, Query) {
+			// 		HIT = true
+			// 	}
+			// case utf8.RuneCountInString(Query) == 1:
+			// 	if utf8.RuneCountInString(HTB.Keyword) == 1 && Query == HTB.Keyword {
+			// 		HIT = true
+			// 	}
+			// }
+			HIT := TestHit(Query, HTB.Keyword)
 			if HIT {
 				switch {
 				case HTB.IsText():

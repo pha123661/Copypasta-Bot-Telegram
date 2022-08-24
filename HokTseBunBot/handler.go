@@ -7,10 +7,10 @@ import (
 	"math/rand"
 	"reflect"
 	"strconv"
+	"sync"
 	"unicode/utf8"
 
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
-	"github.com/lithammer/fuzzysearch/fuzzy"
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"
@@ -448,23 +448,39 @@ func searchHandler(Message *tgbotapi.Message) {
 	}
 
 	HTB := &HokTseBun{}
+	var wg sync.WaitGroup
 	for Curser.Next(context.TODO()) {
 		if ResultCount >= MaxResults {
 			ResultCount++
 			break
 		}
 		Curser.Decode(HTB)
-		if fuzzy.Match(Query, HTB.Keyword) || fuzzy.Match(HTB.Keyword, Query) || fuzzy.Match(Query, HTB.Summarization) || (fuzzy.Match(Query, HTB.Content) && HTB.IsText()) {
-			switch {
-			case HTB.IsText():
-				SendText(Message.From.ID, fmt.Sprintf("名稱：「%s」\n摘要：「%s」\n內容：「%s」", HTB.Keyword, HTB.Summarization, HTB.Content), 0)
-			case HTB.IsMultiMedia():
-				SendMultiMedia(Message.From.ID, fmt.Sprintf("名稱：「%s」\n描述：「%s」", HTB.Keyword, HTB.Summarization), HTB.Content, HTB.Type)
+		// HIT:= fuzzy.Match(Query, HTB.Keyword) || fuzzy.Match(HTB.Keyword, Query) || fuzzy.Match(Query, HTB.Summarization) || (HTB.IsText() && fuzzy.Match(Query, HTB.Content))
+		switch {
+		case HTB.IsText():
+			HIT := TestHit(Query, HTB.Keyword, HTB.Summarization, HTB.Content)
+			if HIT {
+				wg.Add(1)
+				go func() {
+					SendText(Message.From.ID, fmt.Sprintf("名稱：「%s」\n摘要：「%s」\n內容：「%s」", HTB.Keyword, HTB.Summarization, HTB.Content), 0)
+					wg.Done()
+				}()
+				ResultCount++
 			}
-			ResultCount++
+		case HTB.IsMultiMedia():
+			HIT := TestHit(Query, HTB.Keyword, HTB.Summarization)
+			if HIT {
+				wg.Add(1)
+				go func() {
+					SendMultiMedia(Message.From.ID, fmt.Sprintf("名稱：「%s」\n描述：「%s」", HTB.Keyword, HTB.Summarization), HTB.Content, HTB.Type)
+					wg.Done()
+				}()
+				ResultCount++
+			}
 		}
-	}
 
+	}
+	wg.Wait()
 	if ResultCount <= MaxResults {
 		SendText(Message.From.ID, fmt.Sprintf("搜尋完成，共 %d 筆吻合\n", ResultCount), 0)
 		if Message.Chat.ID != Message.From.ID {
