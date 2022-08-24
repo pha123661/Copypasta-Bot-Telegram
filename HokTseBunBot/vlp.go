@@ -270,7 +270,10 @@ func UploadToImgur(ImgEnc string) string {
 
 	var imgurResponse ImgurResponse
 	json.NewDecoder(r.Body).Decode(&imgurResponse)
-	return imgurResponse.Data.Link
+	if imgurResponse.Success {
+		return imgurResponse.Data.Link
+	}
+	return ""
 }
 
 func MTen2zhcn(EN string) (string, error) {

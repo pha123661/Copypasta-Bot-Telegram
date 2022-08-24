@@ -133,6 +133,43 @@ func InitDB() {
 			fmt.Println("Added FUID")
 		}
 	}
+
+	TransferFromTg2Imgur := func(Col *mongo.Collection) {
+		Filter := bson.M{"$and": bson.A{
+			bson.M{"Type": 2},
+			bson.M{"$or": bson.A{bson.M{"URL": bson.M{"$regex": "telegram"}}, bson.M{"URL": bson.M{"$exists": false}}, bson.M{"URL": bson.M{"$eq": ""}}}},
+		}}
+		Curser, err := Col.Find(context.TODO(), Filter)
+		defer func() { Curser.Close(context.TODO()) }()
+		if err != nil {
+			log.Panic(err)
+		}
+		for Curser.Next(context.TODO()) {
+			var doc HokTseBun
+			Curser.Decode(&doc)
+
+			tgURL, err := bot.GetFileDirectURL(doc.Content)
+			if err != nil {
+				continue
+			}
+			ImgEnc, err := DownloadImageToBase64(tgURL)
+			if err != nil {
+				log.Println(err)
+				continue
+			}
+			igURL := UploadToImgur(ImgEnc)
+			FileUniqueID := Sha256String(ImgEnc)
+			var Update bson.M
+			if igURL == "" {
+				Update = bson.M{"$set": bson.A{bson.M{"URL": tgURL}, bson.M{"FileUniqueID": FileUniqueID}}}
+			} else {
+				Update = bson.M{"$set": bson.A{bson.M{"URL": igURL}, bson.M{"FileUniqueID": FileUniqueID}}}
+			}
+			Col.UpdateByID(context.TODO(), doc.UID, Update)
+			fmt.Println("Added URL", igURL)
+		}
+	}
+
 	var wg sync.WaitGroup
 	for _, Col_name := range Collections {
 		Col := DB.Collection(Col_name)
@@ -159,8 +196,10 @@ func InitDB() {
 			wg.Add(1)
 			go func() {
 				AddFileUIDForText(Col)
+				TransferFromTg2Imgur(Col)
 				wg.Done()
 			}()
+
 			_, err := Col.Indexes().CreateMany(context.TODO(), []mongo.IndexModel{
 				// index 1
 				{
@@ -184,8 +223,10 @@ func InitDB() {
 			wg.Add(1)
 			go func() {
 				AddFileUIDForText(Col)
+				TransferFromTg2Imgur(Col)
 				wg.Done()
 			}()
+
 			_, err := Col.Indexes().CreateMany(context.TODO(), []mongo.IndexModel{
 				// index 1
 				{
@@ -208,6 +249,7 @@ func InitDB() {
 	wg.Wait()
 
 	BuildStatusMap()
+	os.Exit(1)
 }
 
 func BuildStatusMap() {
