@@ -203,6 +203,9 @@ func ParseCommand(Message *tgbotapi.Message) {
 	case "chatid":
 		SendText(Message.Chat.ID, fmt.Sprintf("此聊天室的 ChatID: %d", Message.Chat.ID), 0)
 
+	case "userid":
+		SendText(Message.Chat.ID, fmt.Sprintf("您的 User ID: %d", Message.From.ID), Message.MessageID)
+
 	case "drop":
 		if Message.CommandArguments() != fmt.Sprint(Message.Chat.ID) {
 			SendText(Message.Chat.ID, "防呆: 請和指令一起送出 ChatID, 格式爲\"/drop {ChatID}\"", 0)
