@@ -12,6 +12,7 @@ import (
 	"unicode/utf8"
 
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
+	pqueue "github.com/nu7hatch/gopqueue"
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"
@@ -336,11 +337,7 @@ func NormalTextMessage(Message *tgbotapi.Message) {
 
 	// asyc search
 	go func() {
-		var (
-			Query         = Message.Text
-			Limit         = Min(500, 100*utf8.RuneCountInString(Query))
-			RunesPerImage = 200
-		)
+		var Query = Message.Text
 		Filter := bson.D{{Key: "Keyword", Value: bson.D{{Key: "$ne", Value: 0}}}}
 		opts := options.Find().SetSort(bson.D{{Key: "Type", Value: 1}})
 		Curser, err := Col.Find(context.TODO(), Filter, opts)
@@ -351,42 +348,21 @@ func NormalTextMessage(Message *tgbotapi.Message) {
 			return
 		}
 
+		Candidates := pqueue.New(0)
 		for Curser.Next(context.TODO()) {
-			HTB := &HokTseBun{}
-			Curser.Decode(HTB)
-
-			// HIT := false
-			// switch {
-			// case utf8.RuneCountInString(Query) >= 3:
-			// 	if fuzzy.Match(HTB.Keyword, Query) || (fuzzy.Match(Query, HTB.Keyword) && Abs(len(Query)-len(HTB.Keyword)) <= 3) || fuzzy.Match(Query, HTB.Summarization) {
-			// 		HIT = true
-			// 	}
-			// case utf8.RuneCountInString(Query) >= 2:
-			// 	if strings.Contains(Query, HTB.Keyword) || strings.Contains(HTB.Keyword, Query) {
-			// 		HIT = true
-			// 	}
-			// case utf8.RuneCountInString(Query) == 1:
-			// 	if utf8.RuneCountInString(HTB.Keyword) == 1 && Query == HTB.Keyword {
-			// 		HIT = true
-			// 	}
-			// }
+			var HTB HokTseBun
+			Curser.Decode(&HTB)
 			HIT := TestHit(Query, HTB.Keyword, HTB.Summarization)
-			if HIT {
-				switch {
-				case HTB.IsText():
-					// text
-					go SendText(Message.Chat.ID, HTB.Content, 0)
-					Limit -= utf8.RuneCountInString(HTB.Content)
-				case HTB.IsMultiMedia():
-					// image
-					go SendMultiMedia(Message.Chat.ID, "", HTB.Content, HTB.Type)
-					Limit -= RunesPerImage
-				}
-			}
-
-			if Limit <= 0 {
-				break
-			}
+			Candidates.Enqueue(&HTB_pq{HTB, HIT})
+		}
+		HTB := Candidates.Dequeue().(*HTB_pq).HTB
+		switch {
+		case HTB.IsText():
+			// text
+			go SendText(Message.Chat.ID, HTB.Content, 0)
+		case HTB.IsMultiMedia():
+			// image
+			go SendMultiMedia(Message.Chat.ID, "", HTB.Content, HTB.Type)
 		}
 	}()
 }

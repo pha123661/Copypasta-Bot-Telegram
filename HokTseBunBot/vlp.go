@@ -80,7 +80,7 @@ func SetHFAPI() {
 	}
 }
 
-func TestHit(Query string, KeySlice ...string) bool {
+func TestHit(Query string, KeySlice ...string) int {
 	var UseHmm = true
 	QuerySet := Jieba.Cut(Query, UseHmm)
 	QuerySet = append(QuerySet, Query)
@@ -89,10 +89,11 @@ func TestHit(Query string, KeySlice ...string) bool {
 		return len(KeySlice[i]) < len(KeySlice[j])
 	})
 
+	ALL_MAX := 0
 	for _, Key := range KeySlice {
 		var KeySet []string
 
-		KeySet = Jieba.Extract(Key, Max(10, len(Key)/100))
+		KeySet = Jieba.Extract(Key, 7)
 		KeySet = append(KeySet, Key)
 
 		rst := removeDuplicateStr(intersect.Hash(QuerySet, KeySet))
@@ -100,16 +101,10 @@ func TestHit(Query string, KeySlice ...string) bool {
 		for _, r := range rst {
 			sum += utf8.RuneCountInString(r.(string))
 		}
-		if sum >= 2 {
-			fmt.Println("############")
-			fmt.Println(Query, Key)
-			fmt.Println(QuerySet, KeySet)
-			fmt.Println(rst)
-			return true
-		}
+		ALL_MAX = Max(ALL_MAX, sum)
 	}
 
-	return false
+	return ALL_MAX
 }
 
 func removeDuplicateStr(strSlice []interface{}) []interface{} {

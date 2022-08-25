@@ -11,6 +11,7 @@ import (
 	"unicode/utf8"
 
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
+	pqueue "github.com/nu7hatch/gopqueue"
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"
@@ -449,6 +450,7 @@ func searchHandler(Message *tgbotapi.Message) {
 	}
 
 	var wg sync.WaitGroup
+	Candidates := pqueue.New(0)
 	for Curser.Next(context.TODO()) {
 		if ResultCount >= MaxResults {
 			ResultCount++
@@ -460,26 +462,30 @@ func searchHandler(Message *tgbotapi.Message) {
 		switch {
 		case HTB.IsText():
 			HIT := TestHit(Query, HTB.Keyword, HTB.Summarization, HTB.Content)
-			if HIT {
+			Candidates.Enqueue(&HTB_pq{HTB, HIT})
+
+		case HTB.IsMultiMedia():
+			HIT := TestHit(Query, HTB.Keyword, HTB.Summarization)
+			Candidates.Enqueue(&HTB_pq{HTB, HIT})
+		}
+
+		for i := 0; i < Candidates.Len(); i++ {
+			switch {
+			case HTB.IsText():
 				wg.Add(1)
 				go func() {
 					SendText(Message.From.ID, fmt.Sprintf("名稱：「%s」\n摘要：「%s」\n內容：「%s」", HTB.Keyword, HTB.Summarization, HTB.Content), 0)
 					wg.Done()
 				}()
 				ResultCount++
-			}
-		case HTB.IsMultiMedia():
-			HIT := TestHit(Query, HTB.Keyword, HTB.Summarization)
-			if HIT {
+			case HTB.IsMultiMedia():
 				wg.Add(1)
 				go func() {
 					SendMultiMedia(Message.From.ID, fmt.Sprintf("名稱：「%s」\n描述：「%s」", HTB.Keyword, HTB.Summarization), HTB.Content, HTB.Type)
 					wg.Done()
 				}()
-				ResultCount++
 			}
 		}
-
 	}
 	wg.Wait()
 	if ResultCount <= MaxResults {

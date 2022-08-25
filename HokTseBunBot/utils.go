@@ -354,3 +354,13 @@ func Sha256String(str string) string {
 	h.Write([]byte(str))
 	return hex.EncodeToString(h.Sum(nil))
 }
+
+// Max Priority queue
+type HTB_pq struct {
+	HTB      HokTseBun
+	priority int
+}
+
+func (t *HTB_pq) Less(other interface{}) bool {
+	return t.priority > other.(*HTB_pq).priority
+}
