@@ -359,7 +359,7 @@ func NormalTextMessage(Message *tgbotapi.Message) {
 		HTB := tmp.HTB
 		HIT := float32(tmp.priority) / float32(utf8.RuneCountInString(Query))
 		fmt.Print(HIT)
-		if HIT >= 2 {
+		if HIT >= 0.7 {
 			switch {
 			case HTB.IsText():
 				// text
