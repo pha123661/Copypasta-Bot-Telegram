@@ -146,6 +146,10 @@ func ParseCommand(Message *tgbotapi.Message) {
 			SendText(Message.Chat.ID, "請輸入欲設定的暱稱", 0)
 			return
 		}
+		if utf8.RuneCountInString(Nickname) >= 6 {
+			SendText(Message.Chat.ID, fmt.Sprintf("暱稱不可大於6字, 目前 %d 字", utf8.RuneCountInString(Nickname)), 0)
+			return
+		}
 		Filter := bson.M{"TGUserID": Message.From.ID}
 		Update := bson.M{"$set": bson.M{"Nickname": Nickname}}
 		Opts := options.FindOneAndUpdate().SetUpsert(true)
