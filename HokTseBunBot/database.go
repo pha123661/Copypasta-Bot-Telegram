@@ -17,6 +17,7 @@ import (
 
 var (
 	DB         *mongo.Database
+	GLOBAL_DB  *mongo.Database
 	ChatStatus map[int64]ChatStatusEntity
 	CSLock     sync.RWMutex
 	UserStatus map[int64]UserStatusEntity
@@ -73,6 +74,7 @@ func InitDB() {
 		log.Panicln(err)
 	}
 	DB = DBClient.Database(CONFIG.DB.DB_NAME)
+	GLOBAL_DB = DBClient.Database(CONFIG.DB.GLOBAL_DB_NAME)
 
 	Collections, err := DB.ListCollectionNames(context.TODO(), bson.D{})
 	if err != nil {
@@ -97,9 +99,10 @@ func InitDB() {
 		}
 	}
 	// Create default collections
-	DB.CreateCollection(context.TODO(), CONFIG.DB.GLOBAL_COL)
-	DB.CreateCollection(context.TODO(), CONFIG.DB.USER_STATUS)
-	DB.CreateCollection(context.TODO(), CONFIG.DB.CHAT_STATUS)
+	GLOBAL_DB.CreateCollection(context.TODO(), CONFIG.DB.GLOBAL_COL)
+	GLOBAL_DB.CreateCollection(context.TODO(), CONFIG.DB.USER_STATUS)
+	GLOBAL_DB.CreateCollection(context.TODO(), CONFIG.DB.CHAT_STATUS)
+	BuildStatusMap()
 	// // create index for every collection
 	// Collections, err = DB.ListCollectionNames(context.TODO(), bson.D{})
 	// if err != nil {
@@ -248,15 +251,13 @@ func InitDB() {
 	// 	}
 	// }
 	// wg.Wait()
-
-	BuildStatusMap()
 }
 
 func BuildStatusMap() {
 	CSLock.Lock()
 	// Import ChatStatus
 	ChatStatus = make(map[int64]ChatStatusEntity)
-	Curser, err := DB.Collection(CONFIG.DB.CHAT_STATUS).Find(context.TODO(), bson.D{})
+	Curser, err := GLOBAL_DB.Collection(CONFIG.DB.CHAT_STATUS).Find(context.TODO(), bson.D{})
 	defer func() { Curser.Close(context.TODO()) }()
 	if err != nil {
 		log.Panic(err)
@@ -271,7 +272,7 @@ func BuildStatusMap() {
 	USLock.Lock()
 	// Import UserStatus
 	UserStatus = make(map[int64]UserStatusEntity)
-	Curser, err = DB.Collection(CONFIG.DB.USER_STATUS).Find(context.TODO(), bson.D{})
+	Curser, err = GLOBAL_DB.Collection(CONFIG.DB.USER_STATUS).Find(context.TODO(), bson.D{})
 	defer func() { Curser.Close(context.TODO()) }()
 	if err != nil {
 		log.Panic(err)
@@ -287,7 +288,7 @@ func BuildStatusMap() {
 
 func GetLBInfo(num int64) (string, error) {
 	opts := options.Find().SetLimit(num).SetSort(bson.D{{Key: "Contribution", Value: -1}})
-	Curser, err := DB.Collection(CONFIG.DB.USER_STATUS).Find(context.TODO(), bson.D{}, opts)
+	Curser, err := GLOBAL_DB.Collection(CONFIG.DB.USER_STATUS).Find(context.TODO(), bson.D{}, opts)
 	defer func() { Curser.Close(context.TODO()) }()
 	if err != nil {
 		return "", err
@@ -312,7 +313,7 @@ func GetLBInfo(num int64) (string, error) {
 }
 
 func UpdateChatStatus(CS ChatStatusEntity) error {
-	COL := DB.Collection(CONFIG.DB.CHAT_STATUS)
+	COL := GLOBAL_DB.Collection(CONFIG.DB.CHAT_STATUS)
 	Filter := bson.D{{Key: "ChatID", Value: CS.ChatID}}
 	Update := bson.D{{Key: "$set", Value: bson.D{{Key: "Global", Value: CS.Global}}}}
 	opts := options.FindOneAndUpdate().SetUpsert(true)
@@ -326,7 +327,7 @@ func UpdateChatStatus(CS ChatStatusEntity) error {
 }
 
 func AddUserContribution(UserID int64, DeltaContribution int) (int, error) {
-	COL := DB.Collection(CONFIG.DB.USER_STATUS)
+	COL := GLOBAL_DB.Collection(CONFIG.DB.USER_STATUS)
 	Filter := bson.D{{Key: "UserID", Value: UserID}}
 	Update := bson.D{{Key: "$inc", Value: bson.D{{Key: "Contribution", Value: DeltaContribution}}}}
 	comment := fmt.Sprintf("Increment %d contribution by %d", UserID, DeltaContribution)
@@ -350,7 +351,7 @@ func AddUserContribution(UserID int64, DeltaContribution int) (int, error) {
 	return NewUS.Contribution, nil
 }
 
-func InsertHTB(Collection string, HTB *HokTseBun) (primitive.ObjectID, error) {
+func InsertHTB(Col *mongo.Collection, HTB *HokTseBun) (primitive.ObjectID, error) {
 	// Create doc
 	// doc, err := bson.Marshal(HTB)
 	// if err != nil {
@@ -369,7 +370,6 @@ func InsertHTB(Collection string, HTB *HokTseBun) (primitive.ObjectID, error) {
 	}
 
 	// Insert doc
-	Col := DB.Collection(Collection)
 	InRst, err := Col.InsertOne(context.TODO(), doc)
 	if err != nil {
 		return primitive.ObjectID{}, err

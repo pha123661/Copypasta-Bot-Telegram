@@ -23,9 +23,9 @@ func main() {
 	if err != nil {
 		panic("[InitConfig]" + err.Error())
 	}
-	DB := DBClient.Database(os.Getenv("DBDB_NAME"))
+	GLOBAL_DB := DBClient.Database(os.Getenv("DBGLOBAL_DB_NAME"))
 
-	Collections, err := DB.ListCollectionNames(context.TODO(), bson.D{})
+	Collections, err := GLOBAL_DB.ListCollectionNames(context.TODO(), bson.D{})
 	if err != nil {
 		panic("[InitConfig]" + err.Error())
 	}
@@ -84,7 +84,7 @@ func main() {
 			}
 		}
 	case "2":
-		Curser, err := DB.Collection("0_UserStatus").Find(context.TODO(), bson.D{})
+		Curser, err := GLOBAL_DB.Collection("0_UserStatus").Find(context.TODO(), bson.D{})
 		if err != nil {
 			panic(err)
 		}

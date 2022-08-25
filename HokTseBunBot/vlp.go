@@ -30,6 +30,8 @@ var (
 )
 
 func InitVLP() {
+	SetHFAPI()
+
 	SumSemaphore = make(chan Empty, CONFIG.SETTING.CONCURRENT.SUM.LIMIT)
 	CapSemaphore = make(chan Empty, CONFIG.SETTING.CONCURRENT.CAP.LIMIT)
 

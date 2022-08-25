@@ -37,7 +37,7 @@ func recentHandler(Message *tgbotapi.Message) {
 
 	Filter := bson.M{"From": bson.M{"$ne": Message.From.ID}}
 	opts := options.Find().SetLimit(int64(num)).SetSort(bson.D{{Key: "CreateTime", Value: -1}})
-	Curser, err := DB.Collection(CONFIG.DB.GLOBAL_COL).Find(context.TODO(), Filter, opts)
+	Curser, err := GLOBAL_DB.Collection(CONFIG.DB.GLOBAL_COL).Find(context.TODO(), Filter, opts)
 	if err != nil {
 		log.Printf("%v\n", Message)
 		log.Println("[recent]", err)
@@ -147,20 +147,20 @@ func randomHandler(Message *tgbotapi.Message) {
 		Filter = bson.D{{Key: "Type", Value: bson.D{{Key: "$ne", Value: 0}}}}
 	}
 
-	var CollectionName string
-
 	CSLock.RLock()
 	CSE := ChatStatus[Message.Chat.ID]
 	CSLock.RUnlock()
 
+	var Col *mongo.Collection
+
 	if CSE.Global {
-		CollectionName = CONFIG.DB.GLOBAL_COL
+		Col = GLOBAL_DB.Collection(CONFIG.DB.GLOBAL_COL)
 	} else {
-		CollectionName = CONFIG.GetColbyChatID(Message.Chat.ID)
+		Col = DB.Collection(CONFIG.GetColbyChatID(Message.Chat.ID))
 	}
 
 	// Get Docs length
-	num, err := DB.Collection(CollectionName).CountDocuments(context.TODO(), Filter)
+	num, err := Col.CountDocuments(context.TODO(), Filter)
 	RandomIndex := rand.Int63n(num)
 	if err != nil {
 		log.Printf("[random], %+v\n", Message)
@@ -175,7 +175,7 @@ func randomHandler(Message *tgbotapi.Message) {
 
 	// Get Curser
 	opts := options.FindOne().SetSkip(RandomIndex)
-	SRst := DB.Collection(CollectionName).FindOne(context.TODO(), Filter, opts)
+	SRst := Col.FindOne(context.TODO(), Filter, opts)
 	if SRst.Err() != nil {
 		log.Printf("[random], %+v\n", Message)
 		log.Println("[random]", err)
@@ -225,7 +225,7 @@ func dumpHandler(Message *tgbotapi.Message) {
 	defer bot.Request(tgbotapi.NewDeleteMessage(ChatID, to_be_delete_message.MessageID))
 
 	opts := options.InsertMany().SetOrdered(false)
-	MRst, err := DB.Collection(CONFIG.DB.GLOBAL_COL).InsertMany(context.TODO(), docs2insert, opts)
+	MRst, err := GLOBAL_DB.Collection(CONFIG.DB.GLOBAL_COL).InsertMany(context.TODO(), docs2insert, opts)
 	if err == mongo.ErrEmptySlice {
 		SendText(ChatID, "沒有東西能傾倒", 0)
 		return
@@ -261,16 +261,15 @@ func addHandler(Message *tgbotapi.Message, Keyword, Content string, Type int) {
 
 	}
 
-	var CollectionName string
-
 	CSLock.RLock()
 	Global := ChatStatus[Message.Chat.ID].Global
 	CSLock.RUnlock()
 
+	var Col *mongo.Collection
 	if Global {
-		CollectionName = CONFIG.DB.GLOBAL_COL
+		Col = GLOBAL_DB.Collection(CONFIG.DB.GLOBAL_COL)
 	} else {
-		CollectionName = CONFIG.GetColbyChatID(Message.Chat.ID)
+		Col = DB.Collection(CONFIG.GetColbyChatID(Message.Chat.ID))
 	}
 
 	// Create tmp message
@@ -368,7 +367,7 @@ func addHandler(Message *tgbotapi.Message, Keyword, Content string, Type int) {
 	Filter := bson.D{{Key: "$and",
 		Value: bson.A{bson.D{{Key: "Type", Value: Type}}, bson.D{{Key: "Keyword", Value: Keyword}}, bson.D{{Key: "FileUniqueID", Value: FileUniqueID}}},
 	}}
-	if Rst := DB.Collection(CollectionName).FindOne(context.TODO(), Filter); Rst.Err() != mongo.ErrNoDocuments {
+	if Rst := Col.FindOne(context.TODO(), Filter); Rst.Err() != mongo.ErrNoDocuments {
 		SendText(Message.Chat.ID, "傳過了啦 腦霧?", Message.MessageID)
 		return
 	} else if Rst.Err() != nil && Rst.Err() != mongo.ErrNoDocuments {
@@ -379,7 +378,7 @@ func addHandler(Message *tgbotapi.Message, Keyword, Content string, Type int) {
 	}
 
 	_, err = InsertHTB(
-		CollectionName,
+		Col,
 		&HokTseBun{
 			Type:          Type,
 			Keyword:       Keyword,
@@ -413,16 +412,15 @@ func searchHandler(Message *tgbotapi.Message) {
 		MaxResults  int    = 25
 	)
 
-	var CollectionName string
-
 	CSLock.RLock()
 	CSE := ChatStatus[Message.Chat.ID]
 	CSLock.RUnlock()
 
+	var Col *mongo.Collection
 	if CSE.Global {
-		CollectionName = CONFIG.DB.GLOBAL_COL
+		Col = GLOBAL_DB.Collection(CONFIG.DB.GLOBAL_COL)
 	} else {
-		CollectionName = CONFIG.GetColbyChatID(Message.Chat.ID)
+		Col = DB.Collection(CONFIG.GetColbyChatID(Message.Chat.ID))
 	}
 
 	if utf8.RuneCountInString(Query) >= 200 || utf8.RuneCountInString(Query) == 0 {
@@ -441,7 +439,7 @@ func searchHandler(Message *tgbotapi.Message) {
 	// search
 	Filter := bson.D{{Key: "Type", Value: bson.D{{Key: "$ne", Value: 0}}}}
 	opts := options.Find().SetSort(bson.D{{Key: "Type", Value: 1}})
-	Curser, err := DB.Collection(CollectionName).Find(context.TODO(), Filter, opts)
+	Curser, err := Col.Find(context.TODO(), Filter, opts)
 	defer func() { Curser.Close(context.TODO()) }()
 	if err != nil {
 		log.Printf("[search] Message: %+v\n", Message)
@@ -498,7 +496,6 @@ func searchHandler(Message *tgbotapi.Message) {
 }
 
 func searchMediaHandler(ChatID, FromID int64, FileID_str string, Type int) {
-	var CollectionName string
 	CSLock.RLock()
 	CSE := ChatStatus[ChatID]
 	CSLock.RUnlock()
@@ -507,10 +504,11 @@ func searchMediaHandler(ChatID, FromID int64, FileID_str string, Type int) {
 	ImgEnc, _ := DownloadImageToBase64(URL)
 	FileUniqueID := Sha256String(ImgEnc)
 
+	var Col *mongo.Collection
 	if CSE.Global {
-		CollectionName = CONFIG.DB.GLOBAL_COL
+		Col = GLOBAL_DB.Collection(CONFIG.DB.GLOBAL_COL)
 	} else {
-		CollectionName = CONFIG.GetColbyChatID(ChatID)
+		Col = DB.Collection(CONFIG.GetColbyChatID(ChatID))
 	}
 
 	SendMultiMedia(FromID, "此圖片的搜尋結果如下：", FileID_str, Type)
@@ -526,7 +524,7 @@ func searchMediaHandler(ChatID, FromID int64, FileID_str string, Type int) {
 		bson.D{{Key: "Type", Value: Type}},
 		bson.D{{Key: "FileUniqueID", Value: FileUniqueID}},
 	}}}
-	Curser, err := DB.Collection(CollectionName).Find(context.TODO(), Filter)
+	Curser, err := Col.Find(context.TODO(), Filter)
 	defer func() { Curser.Close(context.TODO()) }()
 	if err != nil {
 		log.Printf("[search] ChatID: %d, FilUID: %s, Type: %d\n", ChatID, FileUniqueID, Type)
@@ -567,24 +565,24 @@ func deleteHandler(Message *tgbotapi.Message) {
 	}
 
 	var (
-		CollectionName string
-		Filter         bson.D
+		Filter bson.D
+		Col    *mongo.Collection
 	)
 	CSLock.RLock()
 	Global := ChatStatus[Message.Chat.ID].Global
 	CSLock.RUnlock()
 
 	if Global {
-		CollectionName = CONFIG.DB.GLOBAL_COL
+		Col = GLOBAL_DB.Collection(CONFIG.DB.GLOBAL_COL)
 		Filter = bson.D{{Key: "$and",
 			Value: bson.A{bson.D{{Key: "Keyword", Value: BeDeletedKeyword}}, bson.D{{Key: "From", Value: Message.From.ID}}},
 		}}
 	} else {
-		CollectionName = CONFIG.GetColbyChatID(Message.Chat.ID)
+		Col = DB.Collection(CONFIG.GetColbyChatID(Message.Chat.ID))
 		Filter = bson.D{{Key: "Keyword", Value: BeDeletedKeyword}}
 	}
 
-	num, err := DB.Collection(CollectionName).CountDocuments(context.TODO(), Filter)
+	num, err := Col.CountDocuments(context.TODO(), Filter)
 	if err != nil {
 		log.Printf("[delete] Message: %+v\n", Message)
 		log.Println("[delete]", err)
@@ -601,7 +599,7 @@ func deleteHandler(Message *tgbotapi.Message) {
 	}
 
 	opts := options.Find().SetSort(bson.D{{Key: "Type", Value: 1}})
-	Curser, err := DB.Collection(CollectionName).Find(context.TODO(), Filter, opts)
+	Curser, err := Col.Find(context.TODO(), Filter, opts)
 	defer func() { Curser.Close(context.TODO()) }()
 	if err != nil {
 		log.Printf("[delete] Message: %+v\n", Message)

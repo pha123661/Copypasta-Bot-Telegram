@@ -217,11 +217,14 @@ func ParseCommand(Message *tgbotapi.Message) {
 		SendText(Message.Chat.ID, fmt.Sprintf("成功刪除 %d", ChatID), 0)
 
 	case "import":
-		var SourceCol string
-		var TargetCol string = CONFIG.GetColbyChatID(Message.Chat.ID)
+
+		var (
+			SourceCol *mongo.Collection
+			TargetCol = DB.Collection(CONFIG.GetColbyChatID(Message.Chat.ID))
+		)
 
 		if Message.CommandArguments() == "Beginner" {
-			SourceCol = "Beginner"
+			SourceCol = DB.Collection("Beginner")
 		} else {
 			SourceChatID, err := strconv.ParseInt(Message.CommandArguments(), 10, 64)
 			if err != nil {
@@ -230,7 +233,7 @@ func ParseCommand(Message *tgbotapi.Message) {
 				return
 			}
 
-			SourceCol = CONFIG.GetColbyChatID(SourceChatID)
+			SourceCol = DB.Collection(CONFIG.GetColbyChatID(SourceChatID))
 			// check if sourcecol exist
 			Collections, err := DB.ListCollectionNames(context.TODO(), bson.D{})
 			if err != nil {
@@ -238,7 +241,7 @@ func ParseCommand(Message *tgbotapi.Message) {
 			}
 			var i int
 			for i = 0; i < len(Collections); i++ {
-				if Collections[i] == SourceCol {
+				if Collections[i] == CONFIG.GetColbyChatID(SourceChatID) {
 					break
 				}
 			}
@@ -255,17 +258,17 @@ func ParseCommand(Message *tgbotapi.Message) {
 				Value: bson.A{
 					bson.D{{Key: "Type", Value: 0}},
 					bson.D{{Key: "Keyword", Value: "Import"}},
-					bson.D{{Key: "Content", Value: SourceCol}},
+					bson.D{{Key: "Content", Value: SourceCol.Name()}},
 				}},
 		}
-		SingleRst := DB.Collection(TargetCol).FindOne(context.TODO(), Filter)
+		SingleRst := TargetCol.FindOne(context.TODO(), Filter)
 		if SingleRst.Err() != mongo.ErrNoDocuments {
 			SendText(Message.Chat.ID, "你之前匯入過了~", Message.MessageID)
 			return
 		}
 
 		var docs []interface{}
-		Curser, err := DB.Collection(SourceCol).Find(context.TODO(), bson.D{})
+		Curser, err := SourceCol.Find(context.TODO(), bson.D{})
 		defer Curser.Close(context.TODO())
 		if err != nil {
 			SendText(Message.Chat.ID, fmt.Sprintf("匯入失敗: %s", err.Error()), Message.MessageID)
@@ -282,16 +285,15 @@ func ParseCommand(Message *tgbotapi.Message) {
 		to_be_delete_message := SendText(Message.Chat.ID, "匯入中，請稍後……", Message.MessageID)
 		defer bot.Request(tgbotapi.NewDeleteMessage(Message.Chat.ID, to_be_delete_message.MessageID))
 
-		_, err = DB.Collection(TargetCol).InsertMany(context.TODO(), docs)
+		_, err = TargetCol.InsertMany(context.TODO(), docs)
 		if err != nil {
 			SendText(Message.Chat.ID, fmt.Sprintf("匯入失敗: %s", err.Error()), Message.MessageID)
 			log.Println(err)
 			return
 		}
 		// update system attribute
-		InsertHTB(TargetCol, &HokTseBun{Type: 0, Keyword: "Import", Content: SourceCol})
-
-		SendText(Message.Chat.ID, fmt.Sprintf("成功從 %s 匯入 %d 筆資料", SourceCol, len(docs)), Message.MessageID)
+		InsertHTB(TargetCol, &HokTseBun{Type: 0, Keyword: "Import", Content: SourceCol.Name()})
+		SendText(Message.Chat.ID, fmt.Sprintf("成功從 %s 匯入 %d 筆資料", SourceCol.Name(), len(docs)), Message.MessageID)
 
 	case "echo":
 		// Echo
@@ -321,15 +323,15 @@ func NormalTextMessage(Message *tgbotapi.Message) {
 		return
 	}
 
-	var CollectionName string
 	CSLock.RLock()
 	CSE := ChatStatus[Message.Chat.ID]
 	CSLock.RUnlock()
 
+	var Col *mongo.Collection
 	if CSE.Global {
-		CollectionName = CONFIG.DB.GLOBAL_COL
+		Col = GLOBAL_DB.Collection(CONFIG.DB.GLOBAL_COL)
 	} else {
-		CollectionName = CONFIG.GetColbyChatID(Message.Chat.ID)
+		Col = DB.Collection(CONFIG.GetColbyChatID(Message.Chat.ID))
 	}
 
 	// asyc search
@@ -341,7 +343,7 @@ func NormalTextMessage(Message *tgbotapi.Message) {
 		)
 		Filter := bson.D{{Key: "Keyword", Value: bson.D{{Key: "$ne", Value: 0}}}}
 		opts := options.Find().SetSort(bson.D{{Key: "Type", Value: 1}})
-		Curser, err := DB.Collection(CollectionName).Find(context.TODO(), Filter, opts)
+		Curser, err := Col.Find(context.TODO(), Filter, opts)
 		defer func() { Curser.Close(context.TODO()) }()
 		if err != nil {
 			log.Printf("[Normal] Message: %+v\n", Message)

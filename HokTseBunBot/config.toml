@@ -31,9 +31,10 @@
     SUM_MODEL = "csebuetnlp/mT5_multilingual_XLSum"
     MT_MODEL = "Helsinki-NLP/opus-mt-en-zh" # not used, using google translation atm
   [API.MONGO]
-    URI = ""# should be stored as environment variable
+    URI = "" # should be stored as environment variable
 [DB]
-  DB_NAME = ""
+  DB_NAME = "" # should be stored as environment variable
+  GLOBAL_DB_NAME = "" # should be stored as environment variable
   CFormat = "%d-Copypasta" # args = ChatID int64
   
   GLOBAL_COL = "0_GLOBAL-Copypasta"

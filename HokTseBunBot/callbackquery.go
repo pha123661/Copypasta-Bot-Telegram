@@ -8,6 +8,7 @@ import (
 
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
 	"go.mongodb.org/mongo-driver/bson"
+	"go.mongodb.org/mongo-driver/mongo"
 )
 
 func CallQ(CallbackQuery *tgbotapi.CallbackQuery) {
@@ -83,16 +84,16 @@ func CallQ(CallbackQuery *tgbotapi.CallbackQuery) {
 				return
 			}
 
-			var CollectionName string
+			var Col *mongo.Collection
 
 			if CSE.Global {
-				CollectionName = CONFIG.DB.GLOBAL_COL
+				Col = GLOBAL_DB.Collection(CONFIG.DB.GLOBAL_COL)
 			} else {
-				CollectionName = CONFIG.GetColbyChatID(CallbackQuery.Message.Chat.ID)
+				Col = DB.Collection(CONFIG.GetColbyChatID(CallbackQuery.Message.Chat.ID))
 			}
 
 			// Find by id
-			result := DB.Collection(CollectionName).FindOne(context.Background(), bson.M{"_id": DEntity.HTB.UID})
+			result := Col.FindOne(context.Background(), bson.M{"_id": DEntity.HTB.UID})
 			if result.Err() != nil {
 				log.Println("[CallBQ]", result.Err())
 				return
@@ -171,15 +172,15 @@ func CallQ(CallbackQuery *tgbotapi.CallbackQuery) {
 				return
 			}
 
-			var CollectionName string
+			var Col *mongo.Collection
 
 			if CSE.Global {
-				CollectionName = CONFIG.DB.GLOBAL_COL
+				Col = GLOBAL_DB.Collection(CONFIG.DB.GLOBAL_COL)
 			} else {
-				CollectionName = CONFIG.GetColbyChatID(CallbackQuery.Message.Chat.ID)
+				Col = DB.Collection(CONFIG.GetColbyChatID(CallbackQuery.Message.Chat.ID))
 			}
 
-			result := DB.Collection(CollectionName).FindOneAndDelete(context.Background(), bson.M{"_id": DEntity.HTB.UID})
+			result := Col.FindOneAndDelete(context.Background(), bson.M{"_id": DEntity.HTB.UID})
 			if result.Err() != nil {
 				log.Println("[CallBQ]", result.Err())
 				return

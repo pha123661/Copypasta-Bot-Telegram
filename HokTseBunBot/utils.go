@@ -110,7 +110,7 @@ type cfg struct {
 	}
 
 	DB struct {
-		DB_NAME, CFormat                     string
+		DB_NAME, GLOBAL_DB_NAME, CFormat     string
 		GLOBAL_COL, CHAT_STATUS, USER_STATUS string
 	}
 }
@@ -152,14 +152,13 @@ func InitConfig(CONFIG_PATH string) {
 	CONFIG.API.TG.TOKEN = os.Getenv("APITGTOKEN")
 	CONFIG.API.MONGO.URI = os.Getenv("APIMONGOURI")
 	CONFIG.DB.DB_NAME = os.Getenv("DBDB_NAME")
+	CONFIG.DB.GLOBAL_DB_NAME = os.Getenv("DBGLOBAL_DB_NAME")
 	CONFIG.API.IMGUR.CLIENTID = os.Getenv("APIIMGURCLIENTID")
 	CONFIG.API.IMGUR.SECRET = os.Getenv("APIIMGURSECRET")
 
 	fmt.Println("********************\nConfig Loaded:")
 	PrintStructAsTOML(CONFIG)
 	fmt.Println("********************")
-
-	SetHFAPI()
 }
 
 func TruncateString(text string, width int) string {
