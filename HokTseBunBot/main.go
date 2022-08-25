@@ -368,7 +368,7 @@ func NormalTextMessage(Message *tgbotapi.Message) {
 			// 		HIT = true
 			// 	}
 			// }
-			HIT := TestHit(Query, HTB.Keyword)
+			HIT := TestHit(Query, HTB.Keyword, HTB.Summarization)
 			if HIT {
 				switch {
 				case HTB.IsText():

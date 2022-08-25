@@ -99,11 +99,11 @@ func InitDB() {
 	DB.CreateCollection(context.TODO(), CONFIG.DB.GLOBAL_COL)
 	DB.CreateCollection(context.TODO(), CONFIG.DB.USER_STATUS)
 	DB.CreateCollection(context.TODO(), CONFIG.DB.CHAT_STATUS)
-	// create index for every collection
-	Collections, err = DB.ListCollectionNames(context.TODO(), bson.D{})
-	if err != nil {
-		log.Panicln(err)
-	}
+	// // create index for every collection
+	// Collections, err = DB.ListCollectionNames(context.TODO(), bson.D{})
+	// if err != nil {
+	// 	log.Panicln(err)
+	// }
 
 	// AddFileUIDForText := func(Col *mongo.Collection) {
 	// 	// Add file UID for text
@@ -170,83 +170,83 @@ func InitDB() {
 	// 	}
 	// }
 
-	var wg sync.WaitGroup
-	for _, Col_name := range Collections {
-		Col := DB.Collection(Col_name)
-		// Update index
-		// Col.Indexes().DropAll(context.TODO())
-		switch Col_name {
-		case CONFIG.DB.CHAT_STATUS:
-			_, err := Col.Indexes().CreateOne(context.Background(), mongo.IndexModel{
-				Keys:    bson.D{{Key: "ChatID", Value: 1}},
-				Options: options.Index().SetUnique(true),
-			})
-			if err != nil {
-				panic(err)
-			}
-		case CONFIG.DB.USER_STATUS:
-			_, err := Col.Indexes().CreateOne(context.Background(), mongo.IndexModel{
-				Keys:    bson.D{{Key: "UserID", Value: 1}},
-				Options: options.Index().SetUnique(true),
-			})
-			if err != nil {
-				panic(err)
-			}
-		case CONFIG.DB.GLOBAL_COL:
-			wg.Add(1)
-			go func() {
-				// AddFileUIDForText(Col)
-				// TransferFromTg2Imgur(Col)
-				wg.Done()
-			}()
+	// var wg sync.WaitGroup
+	// for _, Col_name := range Collections {
+	// 	Col := DB.Collection(Col_name)
+	// 	// Update index
+	// 	// Col.Indexes().DropAll(context.TODO())
+	// 	switch Col_name {
+	// 	case CONFIG.DB.CHAT_STATUS:
+	// 		_, err := Col.Indexes().CreateOne(context.Background(), mongo.IndexModel{
+	// 			Keys:    bson.D{{Key: "ChatID", Value: 1}},
+	// 			Options: options.Index().SetUnique(true),
+	// 		})
+	// 		if err != nil {
+	// 			panic(err)
+	// 		}
+	// 	case CONFIG.DB.USER_STATUS:
+	// 		_, err := Col.Indexes().CreateOne(context.Background(), mongo.IndexModel{
+	// 			Keys:    bson.D{{Key: "UserID", Value: 1}},
+	// 			Options: options.Index().SetUnique(true),
+	// 		})
+	// 		if err != nil {
+	// 			panic(err)
+	// 		}
+	// 	case CONFIG.DB.GLOBAL_COL:
+	// 		wg.Add(1)
+	// 		go func() {
+	// 			// AddFileUIDForText(Col)
+	// 			// TransferFromTg2Imgur(Col)
+	// 			wg.Done()
+	// 		}()
 
-			_, err := Col.Indexes().CreateMany(context.TODO(), []mongo.IndexModel{
-				// index 1
-				{
-					Keys: bson.D{{Key: "Type", Value: 1}},
-				},
-				// index 2
-				{
-					Keys: bson.D{{Key: "Type", Value: 1}, {Key: "Keyword", Value: 1}},
-				},
-				// index 3
-				{
-					Keys:    bson.D{{Key: "Type", Value: 1}, {Key: "Keyword", Value: 1}, {Key: "FileUniqueID", Value: 1}},
-					Options: options.Index().SetUnique(true),
-				},
-			})
-			if err != nil {
-				panic(err)
-			}
+	// 		_, err := Col.Indexes().CreateMany(context.TODO(), []mongo.IndexModel{
+	// 			// index 1
+	// 			{
+	// 				Keys: bson.D{{Key: "Type", Value: 1}},
+	// 			},
+	// 			// index 2
+	// 			{
+	// 				Keys: bson.D{{Key: "Type", Value: 1}, {Key: "Keyword", Value: 1}},
+	// 			},
+	// 			// index 3
+	// 			{
+	// 				Keys:    bson.D{{Key: "Type", Value: 1}, {Key: "Keyword", Value: 1}, {Key: "FileUniqueID", Value: 1}},
+	// 				Options: options.Index().SetUnique(true),
+	// 			},
+	// 		})
+	// 		if err != nil {
+	// 			panic(err)
+	// 		}
 
-		default:
-			wg.Add(1)
-			go func() {
-				// AddFileUIDForText(Col)
-				// TransferFromTg2Imgur(Col)
-				wg.Done()
-			}()
+	// 	default:
+	// 		wg.Add(1)
+	// 		go func() {
+	// 			// AddFileUIDForText(Col)
+	// 			// TransferFromTg2Imgur(Col)
+	// 			wg.Done()
+	// 		}()
 
-			_, err := Col.Indexes().CreateMany(context.TODO(), []mongo.IndexModel{
-				// index 1
-				{
-					Keys: bson.D{{Key: "Type", Value: 1}},
-				},
-				// index 2
-				{
-					Keys: bson.D{{Key: "Type", Value: 1}, {Key: "Keyword", Value: 1}},
-				},
-				// index 3
-				{
-					Keys: bson.D{{Key: "Type", Value: 1}, {Key: "Keyword", Value: 1}, {Key: "FileUniqueID", Value: 1}},
-				},
-			})
-			if err != nil {
-				panic(err)
-			}
-		}
-	}
-	wg.Wait()
+	// 		_, err := Col.Indexes().CreateMany(context.TODO(), []mongo.IndexModel{
+	// 			// index 1
+	// 			{
+	// 				Keys: bson.D{{Key: "Type", Value: 1}},
+	// 			},
+	// 			// index 2
+	// 			{
+	// 				Keys: bson.D{{Key: "Type", Value: 1}, {Key: "Keyword", Value: 1}},
+	// 			},
+	// 			// index 3
+	// 			{
+	// 				Keys: bson.D{{Key: "Type", Value: 1}, {Key: "Keyword", Value: 1}, {Key: "FileUniqueID", Value: 1}},
+	// 			},
+	// 		})
+	// 		if err != nil {
+	// 			panic(err)
+	// 		}
+	// 	}
+	// }
+	// wg.Wait()
 
 	BuildStatusMap()
 }

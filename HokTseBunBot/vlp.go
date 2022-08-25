@@ -14,6 +14,7 @@ import (
 	"strings"
 	"sync"
 	"time"
+	"unicode/utf8"
 
 	hfapigo "github.com/TannerKvarfordt/hfapigo"
 	gt "github.com/bas24/googletranslatefree"
@@ -34,6 +35,7 @@ func InitVLP() {
 
 	Jieba = gojieba.NewJieba()
 	Jieba.AddWord("笑死")
+	Jieba.AddWord("複製文")
 
 	SumCool = time.Duration(CONFIG.SETTING.CONCURRENT.SUM.COOLDOWN) * time.Millisecond
 	CapCool = time.Duration(CONFIG.SETTING.CONCURRENT.CAP.COOLDOWN) * time.Millisecond
@@ -78,25 +80,54 @@ func SetHFAPI() {
 
 func TestHit(Query string, KeySlice ...string) bool {
 	var UseHmm = true
-	QuerySet := Jieba.CutForSearch(Query, UseHmm)
-
+	QuerySet := Jieba.Cut(Query, UseHmm)
+	QuerySet = append(QuerySet, Query)
 	// sort strings by length
 	sort.Slice(KeySlice, func(i, j int) bool {
 		return len(KeySlice[i]) < len(KeySlice[j])
 	})
 
 	for _, Key := range KeySlice {
-		KeySet := Jieba.Extract(Key, Max(3, len(Key)/100))
-		if len(Key) <= 5 {
+		var KeySet []string
+
+		switch {
+		case utf8.RuneCountInString(Key) >= 100:
+			KeySet = Jieba.Extract(Key, Max(10, len(Key)/100))
+		default:
+			KeySet = Jieba.Cut(Key, UseHmm)
+		}
+
+		if utf8.RuneCountInString(Key) <= 5 {
 			KeySet = append(KeySet, Key)
 		}
-		rst := intersect.Hash(QuerySet, KeySet)
-		if len(rst) > 0 {
+
+		rst := removeDuplicateStr(intersect.Hash(QuerySet, KeySet))
+		sum := 0
+		for _, r := range rst {
+			sum += utf8.RuneCountInString(r.(string))
+		}
+		if sum >= 2 {
+			// fmt.Println("############")
+			// fmt.Println(Query, Key)
+			// fmt.Println(QuerySet, KeySet)
+			// fmt.Println(rst)
 			return true
 		}
 	}
 
 	return false
+}
+
+func removeDuplicateStr(strSlice []interface{}) []interface{} {
+	allKeys := make(map[interface{}]bool)
+	var list []interface{}
+	for _, item := range strSlice {
+		if _, value := allKeys[item]; !value {
+			allKeys[item] = true
+			list = append(list, item)
+		}
+	}
+	return list
 }
 
 func TextSummarization(Keyword, Content string) string {
