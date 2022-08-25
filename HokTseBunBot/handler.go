@@ -468,23 +468,28 @@ func searchHandler(Message *tgbotapi.Message) {
 			HIT := TestHit(Query, HTB.Keyword, HTB.Summarization)
 			Candidates.Enqueue(&HTB_pq{HTB, HIT})
 		}
-
-		for i := 0; i < Candidates.Len(); i++ {
-			switch {
-			case HTB.IsText():
-				wg.Add(1)
-				go func() {
-					SendText(Message.From.ID, fmt.Sprintf("名稱：「%s」\n摘要：「%s」\n內容：「%s」", HTB.Keyword, HTB.Summarization, HTB.Content), 0)
-					wg.Done()
-				}()
-				ResultCount++
-			case HTB.IsMultiMedia():
-				wg.Add(1)
-				go func() {
-					SendMultiMedia(Message.From.ID, fmt.Sprintf("名稱：「%s」\n描述：「%s」", HTB.Keyword, HTB.Summarization), HTB.Content, HTB.Type)
-					wg.Done()
-				}()
-			}
+	}
+	for i := 0; i < Candidates.Len(); i++ {
+		tmp := Candidates.Dequeue().(*HTB_pq)
+		HTB := tmp.HTB
+		HIT := float32(tmp.priority) / float32(utf8.RuneCountInString(Query))
+		if HIT <= 0 {
+			continue
+		}
+		switch {
+		case HTB.IsText():
+			wg.Add(1)
+			go func() {
+				SendText(Message.From.ID, fmt.Sprintf("名稱：「%s」\n摘要：「%s」\n內容：「%s」", HTB.Keyword, HTB.Summarization, HTB.Content), 0)
+				wg.Done()
+			}()
+			ResultCount++
+		case HTB.IsMultiMedia():
+			wg.Add(1)
+			go func() {
+				SendMultiMedia(Message.From.ID, fmt.Sprintf("名稱：「%s」\n描述：「%s」", HTB.Keyword, HTB.Summarization), HTB.Content, HTB.Type)
+				wg.Done()
+			}()
 		}
 	}
 	wg.Wait()
