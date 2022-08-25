@@ -44,6 +44,7 @@ type HokTseBun struct {
 	CreateTime    time.Time          `bson:"CreateTime"`
 	URL           string             `bson:"URL"`
 	FileUniqueID  string             `bson:"FileUniqueID"`
+	Platform      string             `bson:"Platform"`
 }
 
 func (HTB *HokTseBun) IsText() bool {
@@ -364,6 +365,7 @@ func InsertHTB(Collection string, HTB *HokTseBun) (primitive.ObjectID, error) {
 		{Key: "CreateTime", Value: time.Now()},
 		{Key: "URL", Value: HTB.URL},
 		{Key: "FileUniqueID", Value: HTB.FileUniqueID},
+		{Key: "Platform", Value: "Telegram"},
 	}
 
 	// Insert doc
