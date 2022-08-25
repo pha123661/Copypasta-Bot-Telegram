@@ -162,7 +162,6 @@ func randomHandler(Message *tgbotapi.Message) {
 
 	// Get Docs length
 	num, err := Col.CountDocuments(context.TODO(), Filter)
-	RandomIndex := rand.Int63n(num)
 	if err != nil {
 		log.Printf("[random], %+v\n", Message)
 		log.Println("[random]", err)
@@ -174,27 +173,36 @@ func randomHandler(Message *tgbotapi.Message) {
 		return
 	}
 
-	// Get Curser
-	opts := options.FindOne().SetSkip(RandomIndex)
-	SRst := Col.FindOne(context.TODO(), Filter, opts)
-	if SRst.Err() != nil {
-		log.Printf("[random], %+v\n", Message)
-		log.Println("[random]", err)
-		SendText(Message.Chat.ID, fmt.Sprintf("錯誤：%s", err), 0)
-		return
+	var do int
+	do, err = strconv.Atoi(Message.CommandArguments())
+	if err != nil {
+		do = 1
 	}
+	do = Min(10, do)
+	for i := 0; i < do; i++ {
+		// Get Curser
+		RandomIndex := rand.Int63n(num)
+		opts := options.FindOne().SetSkip(RandomIndex)
+		SRst := Col.FindOne(context.TODO(), Filter, opts)
+		if SRst.Err() != nil {
+			log.Printf("[random], %+v\n", Message)
+			log.Println("[random]", err)
+			SendText(Message.Chat.ID, fmt.Sprintf("錯誤：%s", err), 0)
+			return
+		}
 
-	var HTB HokTseBun
-	SRst.Decode(&HTB)
+		var HTB HokTseBun
+		SRst.Decode(&HTB)
 
-	switch {
-	case HTB.IsText():
-		SendText(Message.Chat.ID, fmt.Sprintf("幫你從 %d 坨大便中精心選擇了「%s」：\n%s", num, HTB.Keyword, HTB.Content), 0)
-	case HTB.IsMultiMedia():
-		SendMultiMedia(Message.Chat.ID, fmt.Sprintf("幫你從 %d 坨大便中精心選擇了「%s」", num, HTB.Keyword), HTB.Content, HTB.Type)
-	default:
-		log.Printf("[random], 發生了奇怪的錯誤，送不出去這個東西：%+v\nMsg:%+v\n", HTB, Message)
-		SendText(Message.Chat.ID, fmt.Sprintf("發生了奇怪的錯誤，送不出去這個東西：%+v", HTB), 0)
+		switch {
+		case HTB.IsText():
+			SendText(Message.Chat.ID, fmt.Sprintf("幫你從 %d 坨大便中精心選擇了「%s」：\n%s", num, HTB.Keyword, HTB.Content), 0)
+		case HTB.IsMultiMedia():
+			SendMultiMedia(Message.Chat.ID, fmt.Sprintf("幫你從 %d 坨大便中精心選擇了「%s」", num, HTB.Keyword), HTB.Content, HTB.Type)
+		default:
+			log.Printf("[random], 發生了奇怪的錯誤，送不出去這個東西：%+v\nMsg:%+v\n", HTB, Message)
+			SendText(Message.Chat.ID, fmt.Sprintf("發生了奇怪的錯誤，送不出去這個東西：%+v", HTB), 0)
+		}
 	}
 }
 
