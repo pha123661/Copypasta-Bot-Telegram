@@ -15,7 +15,6 @@ import (
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
 	_ "github.com/joho/godotenv/autoload"
 	toml "github.com/pelletier/go-toml/v2"
-	xurls "mvdan.cc/xurls/v2"
 )
 
 var CONFIG cfg
@@ -236,8 +235,8 @@ func SendMultiMedia(ChatID int64, Caption string, FileID_Str string, Type int) *
 	var Msg *tgbotapi.APIResponse
 	var err error
 
-	if xurls.Relaxed().FindString(FileID_Str) != "" {
-		// content is URL
+	if _, err := bot.GetFile(tgbotapi.FileConfig{FileID: FileID_Str}); err != nil {
+		// content is not FileID, but is URL
 		URL := FileID_Str
 		if Caption != "" {
 			SendText(ChatID, fmt.Sprintf("%s\n%s", Caption, URL), 0)
