@@ -448,14 +448,14 @@ func searchHandler(Message *tgbotapi.Message) {
 		return
 	}
 
-	HTB := &HokTseBun{}
 	var wg sync.WaitGroup
 	for Curser.Next(context.TODO()) {
 		if ResultCount >= MaxResults {
 			ResultCount++
 			break
 		}
-		Curser.Decode(HTB)
+		var HTB HokTseBun
+		Curser.Decode(&HTB)
 		// HIT:= fuzzy.Match(Query, HTB.Keyword) || fuzzy.Match(HTB.Keyword, Query) || fuzzy.Match(Query, HTB.Summarization) || (HTB.IsText() && fuzzy.Match(Query, HTB.Content))
 		switch {
 		case HTB.IsText():
