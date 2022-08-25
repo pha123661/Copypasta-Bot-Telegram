@@ -466,10 +466,6 @@ func searchHandler(Message *tgbotapi.Message) {
 	var wg sync.WaitGroup
 	Candidates := pqueue.New(0)
 	for Curser.Next(context.TODO()) {
-		if ResultCount >= MaxResults {
-			ResultCount++
-			break
-		}
 		var HTB HokTseBun
 		Curser.Decode(&HTB)
 		// HIT:= fuzzy.Match(Query, HTB.Keyword) || fuzzy.Match(HTB.Keyword, Query) || fuzzy.Match(Query, HTB.Summarization) || (HTB.IsText() && fuzzy.Match(Query, HTB.Content))
@@ -488,7 +484,11 @@ func searchHandler(Message *tgbotapi.Message) {
 		HTB := tmp.HTB
 		HIT := float32(tmp.priority) / float32(utf8.RuneCountInString(Query))
 		if HIT <= 0 {
-			continue
+			break
+		}
+		if ResultCount >= MaxResults {
+			ResultCount++
+			break
 		}
 		switch {
 		case HTB.IsText():
@@ -497,7 +497,6 @@ func searchHandler(Message *tgbotapi.Message) {
 				SendText(Message.From.ID, fmt.Sprintf("名稱：「%s」\n摘要：「%s」\n內容：「%s」", HTB.Keyword, HTB.Summarization, HTB.Content), 0)
 				wg.Done()
 			}()
-			ResultCount++
 		case HTB.IsMultiMedia():
 			wg.Add(1)
 			go func() {
@@ -505,6 +504,7 @@ func searchHandler(Message *tgbotapi.Message) {
 				wg.Done()
 			}()
 		}
+		ResultCount++
 	}
 	wg.Wait()
 	if ResultCount <= MaxResults {
