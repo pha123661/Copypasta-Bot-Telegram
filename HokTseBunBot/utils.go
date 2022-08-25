@@ -84,9 +84,10 @@ type cfg struct {
 				LIMIT    int
 			}
 		}
-		LOG_FILE        string
-		EXAMPLE_PIC_DIR string
-		EXAMPLE_TXT_DIR string
+		LOG_FILE           string
+		EXAMPLE_PIC_DIR    string
+		EXAMPLE_TXT_DIR    string
+		BOT_TALK_THRESHOLD float32
 	}
 
 	API struct {
