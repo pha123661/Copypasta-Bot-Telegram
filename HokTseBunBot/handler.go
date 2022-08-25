@@ -270,8 +270,8 @@ func addHandler(Message *tgbotapi.Message, Keyword, Content string, Type int) {
 		SendText(Message.Chat.ID, fmt.Sprintf("關鍵字長度不可大於 30, 目前爲 %d 字”", utf8.RuneCountInString(Keyword)), Message.MessageID)
 		return
 	// check content length
-	case utf8.RuneCountInString(Content) >= 4000:
-		SendText(Message.Chat.ID, fmt.Sprintf("內容長度不可大於 4000, 目前爲 %d 字”", utf8.RuneCountInString(Content)), Message.MessageID)
+	case utf8.RuneCountInString(Content) >= 1900:
+		SendText(Message.Chat.ID, fmt.Sprintf("內容長度不可大於 1900, 目前爲 %d 字”", utf8.RuneCountInString(Content)), Message.MessageID)
 		return
 
 	}
