@@ -338,10 +338,10 @@ func GetUserNameByID(ChatID int64) ([]rune, error) {
 	}
 }
 
-func GetMaskedNameByID(UserID int64) string {
-	NameRune, err := GetUserNameByID(UserID)
+func GetMaskedNameByID(TGUserID int64) string {
+	NameRune, err := GetUserNameByID(TGUserID)
 	if err != nil {
-		NameRune = []rune("東躲西藏__")
+		return "DC使用者"
 	}
 
 	Mask := strings.Repeat("*", Max(len(NameRune)-6, 2))

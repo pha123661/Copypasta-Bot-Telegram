@@ -30,7 +30,7 @@ type ChatStatusEntity struct {
 }
 
 type UserStatusEntity struct {
-	UserID       int64 `bson:"UserID"`
+	TGUserID     int64 `bson:"TGUserID"`
 	Contribution int   `bson:"Contribution"`
 	Banned       bool  `bson:"Banned"`
 }
@@ -280,7 +280,7 @@ func BuildStatusMap() {
 	for Curser.Next(context.TODO()) {
 		US := UserStatusEntity{}
 		Curser.Decode(&US)
-		UserStatus[US.UserID] = US
+		UserStatus[US.TGUserID] = US
 	}
 	USLock.Unlock()
 
@@ -304,9 +304,9 @@ func GetLBInfo(num int64) (string, error) {
 		Idx++
 		Curser.Decode(&US)
 		Con := US.Contribution
-		UserID := US.UserID
+		TGUserID := US.TGUserID
 
-		Name := GetMaskedNameByID(UserID)
+		Name := GetMaskedNameByID(TGUserID)
 		Ret.WriteString(fmt.Sprintf("%d. %v, 貢獻值:%d\n", Idx, Name, Con))
 	}
 	return Ret.String(), nil
@@ -326,11 +326,11 @@ func UpdateChatStatus(CS ChatStatusEntity) error {
 	return nil
 }
 
-func AddUserContribution(UserID int64, DeltaContribution int) (int, error) {
+func AddUserContribution(TGUserID int64, DeltaContribution int) (int, error) {
 	COL := GLOBAL_DB.Collection(CONFIG.DB.USER_STATUS)
-	Filter := bson.D{{Key: "UserID", Value: UserID}}
+	Filter := bson.D{{Key: "TGUserID", Value: TGUserID}}
 	Update := bson.D{{Key: "$inc", Value: bson.D{{Key: "Contribution", Value: DeltaContribution}}}}
-	comment := fmt.Sprintf("Increment %d contribution by %d", UserID, DeltaContribution)
+	comment := fmt.Sprintf("Increment %d contribution by %d", TGUserID, DeltaContribution)
 	opts := options.FindOneAndUpdate().SetUpsert(true).SetComment(comment)
 
 	// Update
@@ -345,7 +345,7 @@ func AddUserContribution(UserID int64, DeltaContribution int) (int, error) {
 
 	// Update cache
 	USLock.Lock()
-	UserStatus[UserID] = *NewUS
+	UserStatus[TGUserID] = *NewUS
 	USLock.Unlock()
 
 	return NewUS.Contribution, nil
