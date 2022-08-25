@@ -2,6 +2,7 @@ package main
 
 import (
 	"bytes"
+	"context"
 	"crypto/sha256"
 	"encoding/hex"
 	"encoding/json"
@@ -15,6 +16,7 @@ import (
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
 	_ "github.com/joho/godotenv/autoload"
 	toml "github.com/pelletier/go-toml/v2"
+	"go.mongodb.org/mongo-driver/bson"
 )
 
 var CONFIG cfg
@@ -339,6 +341,17 @@ func GetUserNameByID(ChatID int64) ([]rune, error) {
 }
 
 func GetMaskedNameByID(TGUserID int64) string {
+	Filter := bson.M{"$and": bson.A{
+		bson.M{"TGUserID": TGUserID},
+		bson.M{"Nickname": bson.M{"$exists": true}},
+		bson.M{"Nickname": bson.M{"$ne": ""}},
+	}}
+	if SRst := GLOBAL_DB.Collection(CONFIG.DB.USER_STATUS).FindOne(context.TODO(), Filter); SRst.Err() == nil {
+		// has nickname
+		var US UserStatusEntity
+		SRst.Decode(&US)
+		return US.Nickname
+	}
 	NameRune, err := GetUserNameByID(TGUserID)
 	if err != nil {
 		return "DC使用者"

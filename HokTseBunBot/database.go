@@ -30,9 +30,10 @@ type ChatStatusEntity struct {
 }
 
 type UserStatusEntity struct {
-	TGUserID     int64 `bson:"TGUserID"`
-	Contribution int   `bson:"Contribution"`
-	Banned       bool  `bson:"Banned"`
+	TGUserID     int64  `bson:"TGUserID"`
+	Nickname     string `bson:"Nickname"`
+	Contribution int    `bson:"Contribution"`
+	Banned       bool   `bson:"Banned"`
 }
 
 type HokTseBun struct {

@@ -73,10 +73,16 @@ func statusHandler(Message *tgbotapi.Message) {
 	USE := UserStatus[Message.From.ID]
 	USLock.RUnlock()
 
-	if CSE.Global {
-		content = fmt.Sprintf("目前處於 公共模式\n貢獻值爲 %d", USE.Contribution)
+	var Nickname string
+	if USE.Nickname == "" {
+		Nickname = "尚未設定暱稱"
 	} else {
-		content = fmt.Sprintf("目前處於 私人模式\n貢獻值爲 %d", USE.Contribution)
+		Nickname = USE.Nickname
+	}
+	if CSE.Global {
+		content = fmt.Sprintf("目前處於 公共模式\n暱稱:「%s」\n貢獻值: %d", Nickname, USE.Contribution)
+	} else {
+		content = fmt.Sprintf("目前處於 私人模式\n暱稱:「%s」\n貢獻值: %d", Nickname, USE.Contribution)
 	}
 	SendText(Message.Chat.ID, content, 0)
 }

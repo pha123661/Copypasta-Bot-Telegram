@@ -140,6 +140,31 @@ func ParseCommand(Message *tgbotapi.Message) {
 	case "recent": // short: RCNT
 		recentHandler(Message)
 
+	case "nickname": // short: NICK
+		Nickname := Message.CommandArguments()
+		if Nickname == "" {
+			SendText(Message.Chat.ID, "請輸入欲設定的暱稱", 0)
+			return
+		}
+		Filter := bson.M{"TGUserID": Message.From.ID}
+		Update := bson.M{"$set": bson.M{"Nickname": Nickname}}
+		Opts := options.FindOneAndUpdate().SetUpsert(true)
+		SRst := GLOBAL_DB.Collection(CONFIG.DB.USER_STATUS).FindOneAndUpdate(context.TODO(), Filter, Update, Opts)
+
+		USLock.Lock()
+		NewUS := new(UserStatusEntity)
+		*NewUS = UserStatus[Message.From.ID]
+		NewUS.Nickname = Nickname
+		UserStatus[Message.From.ID] = *NewUS
+		USLock.Unlock()
+
+		if SRst.Err() != nil && SRst.Err() != mongo.ErrNoDocuments {
+			log.Println(SRst.Err())
+			SendText(Message.Chat.ID, "設定暱稱失敗:"+SRst.Err().Error(), 0)
+			return
+		}
+		SendText(Message.Chat.ID, fmt.Sprintf("設定暱稱「%s」成功", Nickname), 0)
+
 	case "new", "add": // short: NEW, ADD
 		Command_Args := strings.Fields(Message.CommandArguments())
 		if len(Command_Args) <= 1 {
