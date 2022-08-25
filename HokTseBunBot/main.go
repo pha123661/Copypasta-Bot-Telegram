@@ -143,7 +143,7 @@ func ParseCommand(Message *tgbotapi.Message) {
 	case "nickname": // short: NICK
 		Nickname := Message.CommandArguments()
 		if Nickname == "" {
-			SendText(Message.Chat.ID, "請輸入欲設定的暱稱", 0)
+			SendText(Message.Chat.ID, "設定失敗:請輸入欲設定的暱稱, 指令格式爲: /nickname {暱稱}", 0)
 			return
 		}
 		if utf8.RuneCountInString(Nickname) > 7 {
