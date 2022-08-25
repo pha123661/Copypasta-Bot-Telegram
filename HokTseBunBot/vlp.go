@@ -92,16 +92,8 @@ func TestHit(Query string, KeySlice ...string) bool {
 	for _, Key := range KeySlice {
 		var KeySet []string
 
-		switch {
-		case utf8.RuneCountInString(Key) >= 100:
-			KeySet = Jieba.Extract(Key, Max(10, len(Key)/100))
-		default:
-			KeySet = Jieba.Cut(Key, UseHmm)
-		}
-
-		if utf8.RuneCountInString(Key) <= 5 {
-			KeySet = append(KeySet, Key)
-		}
+		KeySet = Jieba.Extract(Key, Max(10, len(Key)/100))
+		KeySet = append(KeySet, Key)
 
 		rst := removeDuplicateStr(intersect.Hash(QuerySet, KeySet))
 		sum := 0
@@ -109,10 +101,10 @@ func TestHit(Query string, KeySlice ...string) bool {
 			sum += utf8.RuneCountInString(r.(string))
 		}
 		if sum >= 2 {
-			// fmt.Println("############")
-			// fmt.Println(Query, Key)
-			// fmt.Println(QuerySet, KeySet)
-			// fmt.Println(rst)
+			fmt.Println("############")
+			fmt.Println(Query, Key)
+			fmt.Println(QuerySet, KeySet)
+			fmt.Println(rst)
 			return true
 		}
 	}
