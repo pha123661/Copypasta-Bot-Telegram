@@ -19,18 +19,18 @@ var bot *tgbotapi.BotAPI
 
 func main() {
 
-	DBClient, err := mongo.Connect(context.TODO(), options.Client().ApplyURI(os.Getenv("API.MONGO.URI")))
+	DBClient, err := mongo.Connect(context.TODO(), options.Client().ApplyURI(os.Getenv("APIMONGOURI")))
 	if err != nil {
 		panic("[InitConfig]" + err.Error())
 	}
-	DB := DBClient.Database(os.Getenv("DB.DB_NAME"))
+	DB := DBClient.Database(os.Getenv("DBDB_NAME"))
 
 	Collections, err := DB.ListCollectionNames(context.TODO(), bson.D{})
 	if err != nil {
 		panic("[InitConfig]" + err.Error())
 	}
 
-	bot, _ = tgbotapi.NewBotAPI(os.Getenv("API.TG.TOKEN"))
+	bot, _ = tgbotapi.NewBotAPI(os.Getenv("APITGTOKEN"))
 
 	B, err := os.ReadFile("./WHATTOSAY.md")
 	if err != nil || len(B) == 0 {

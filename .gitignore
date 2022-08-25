@@ -3,6 +3,7 @@ HokTseBun_db
 HokTseBunArchive
 go.mod
 go.sum
+.env
 
 *.md
 *.exe

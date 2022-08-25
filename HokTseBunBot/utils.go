@@ -13,6 +13,7 @@ import (
 	"unicode/utf8"
 
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
+	_ "github.com/joho/godotenv/autoload"
 	toml "github.com/pelletier/go-toml/v2"
 )
 
@@ -147,18 +148,18 @@ func InitConfig(CONFIG_PATH string) {
 	}
 
 	// get secret configs from environment variables
-	CONFIG.API.HF.TOKENs = strings.Fields(os.Getenv("API.HF.TOKENs"))
-	CONFIG.API.TG.TOKEN = os.Getenv("API.TG.TOKEN")
-	CONFIG.API.MONGO.URI = os.Getenv("API.MONGO.URI")
-	CONFIG.DB.DB_NAME = os.Getenv("DB.DB_NAME")
-	CONFIG.API.IMGUR.CLIENTID = os.Getenv("API.IMGUR.CLIENTID")
-	CONFIG.API.IMGUR.SECRET = os.Getenv("API.IMGUR.SECRET")
-
-	SetHFAPI()
+	CONFIG.API.HF.TOKENs = strings.Fields(os.Getenv("APIHFTOKENs"))
+	CONFIG.API.TG.TOKEN = os.Getenv("APITGTOKEN")
+	CONFIG.API.MONGO.URI = os.Getenv("APIMONGOURI")
+	CONFIG.DB.DB_NAME = os.Getenv("DBDB_NAME")
+	CONFIG.API.IMGUR.CLIENTID = os.Getenv("APIIMGURCLIENTID")
+	CONFIG.API.IMGUR.SECRET = os.Getenv("APIIMGURSECRET")
 
 	fmt.Println("********************\nConfig Loaded:")
 	PrintStructAsTOML(CONFIG)
 	fmt.Println("********************")
+
+	SetHFAPI()
 }
 
 func TruncateString(text string, width int) string {
