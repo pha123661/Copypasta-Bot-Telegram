@@ -355,14 +355,19 @@ func NormalTextMessage(Message *tgbotapi.Message) {
 			HIT := TestHit(Query, HTB.Keyword, HTB.Summarization)
 			Candidates.Enqueue(&HTB_pq{HTB, HIT})
 		}
-		HTB := Candidates.Dequeue().(*HTB_pq).HTB
-		switch {
-		case HTB.IsText():
-			// text
-			go SendText(Message.Chat.ID, HTB.Content, 0)
-		case HTB.IsMultiMedia():
-			// image
-			go SendMultiMedia(Message.Chat.ID, "", HTB.Content, HTB.Type)
+		tmp := Candidates.Dequeue().(*HTB_pq)
+		HTB := tmp.HTB
+		HIT := float32(tmp.priority) / float32(utf8.RuneCountInString(Query))
+		fmt.Print(HIT)
+		if HIT >= 2 {
+			switch {
+			case HTB.IsText():
+				// text
+				go SendText(Message.Chat.ID, HTB.Content, 0)
+			case HTB.IsMultiMedia():
+				// image
+				go SendMultiMedia(Message.Chat.ID, "", HTB.Content, HTB.Type)
+			}
 		}
 	}()
 }
