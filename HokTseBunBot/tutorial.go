@@ -9,7 +9,7 @@ import (
 )
 
 func exampleHandler(Message *tgbotapi.Message) {
-	replyMsg := tgbotapi.NewMessage(Message.Chat.ID, "請選擇要觀看的教學說明\n點擊指令按鈕可以查看指令用途\n(最近新增的指令會有✨符號!)")
+	replyMsg := tgbotapi.NewMessage(Message.Chat.ID, "請選擇要觀看的教學說明\n點擊指令按鈕可以查看指令用途")
 	replyMsg.ReplyToMessageID = Message.MessageID
 	replyMsg.ReplyMarkup = tgbotapi.NewInlineKeyboardMarkup(
 		tgbotapi.NewInlineKeyboardRow(tgbotapi.NewInlineKeyboardButtonData("這個 bot 是幹嘛用的", "EXP WHATISTHIS")),
@@ -25,14 +25,15 @@ func exampleHandler(Message *tgbotapi.Message) {
 			tgbotapi.NewInlineKeyboardButtonData("/delete", "EXP DEL"),
 		),
 		tgbotapi.NewInlineKeyboardRow(
-			tgbotapi.NewInlineKeyboardButtonData("✨/toggle", "EXP TOG"),
+			tgbotapi.NewInlineKeyboardButtonData("/toggle", "EXP TOG"),
 			tgbotapi.NewInlineKeyboardButtonData("✨/recent", "EXP RCNT"),
 		),
 		tgbotapi.NewInlineKeyboardRow(
-			tgbotapi.NewInlineKeyboardButtonData("✨/status", "EXP STAT"),
-			tgbotapi.NewInlineKeyboardButtonData("✨/dump", "EXP DUMP"),
+			tgbotapi.NewInlineKeyboardButtonData("/status", "EXP STAT"),
+			tgbotapi.NewInlineKeyboardButtonData("/dump", "EXP DUMP"),
 		),
 		tgbotapi.NewInlineKeyboardRow(
+			tgbotapi.NewInlineKeyboardButtonData("✨/nickname", "EXP NICK"),
 			tgbotapi.NewInlineKeyboardButtonData("✖️取消", "NIL_WITH_REACT"),
 		),
 	)
