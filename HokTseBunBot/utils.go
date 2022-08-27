@@ -237,19 +237,21 @@ func SendText(ChatID int64, Content string, ReplyMsgID int) tgbotapi.Message {
 func SendMultiMedia(ChatID int64, Caption string, FileID_Str string, Type int) *tgbotapi.APIResponse {
 	var Msg *tgbotapi.APIResponse
 	var err error
+	var File tgbotapi.RequestFileData
 
 	if _, err := bot.GetFile(tgbotapi.FileConfig{FileID: FileID_Str}); err != nil {
 		// content is not FileID, but is URL
-		URL := FileID_Str
-		if Caption != "" {
-			SendText(ChatID, fmt.Sprintf("%s\n%s", Caption, URL), 0)
-		} else {
-			SendText(ChatID, URL, 0)
-		}
-		return nil
+		// URL := FileID_Str
+		// if Caption != "" {
+		// 	SendText(ChatID, fmt.Sprintf("%s\n%s", Caption, URL), 0)
+		// } else {
+		// 	SendText(ChatID, URL, 0)
+		// }
+		// return nil
+		File = tgbotapi.FileURL(FileID_Str)
+	} else {
+		File = tgbotapi.FileID(FileID_Str)
 	}
-
-	FileID := tgbotapi.FileID(FileID_Str)
 
 	switch Type {
 	case 1:
@@ -257,7 +259,7 @@ func SendMultiMedia(ChatID int64, Caption string, FileID_Str string, Type int) *
 		return nil
 
 	case 2:
-		Config := tgbotapi.NewPhoto(ChatID, FileID)
+		Config := tgbotapi.NewPhoto(ChatID, File)
 		if Caption != "" {
 			Config.Caption = Caption
 		}
@@ -274,7 +276,7 @@ func SendMultiMedia(ChatID int64, Caption string, FileID_Str string, Type int) *
 		}
 
 	case 3:
-		Config := tgbotapi.NewAnimation(ChatID, FileID)
+		Config := tgbotapi.NewAnimation(ChatID, File)
 		if Caption != "" {
 			Config.Caption = Caption
 		}
@@ -291,7 +293,7 @@ func SendMultiMedia(ChatID int64, Caption string, FileID_Str string, Type int) *
 		}
 
 	case 4:
-		Config := tgbotapi.NewVideo(ChatID, FileID)
+		Config := tgbotapi.NewVideo(ChatID, File)
 		if Caption != "" {
 			Config.Caption = Caption
 		}
