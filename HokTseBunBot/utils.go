@@ -379,7 +379,7 @@ func Sha256String(str string) string {
 // Max Priority queue
 type HTB_pq struct {
 	HTB      HokTseBun
-	priority int
+	priority float32
 }
 
 func (t *HTB_pq) Less(other interface{}) bool {

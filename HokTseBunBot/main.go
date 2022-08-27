@@ -385,22 +385,22 @@ func NormalTextMessage(Message *tgbotapi.Message) {
 			var HTB HokTseBun
 			Curser.Decode(&HTB)
 			HIT := TestHit(Query, HTB.Keyword, HTB.Summarization)
-			Candidates.Enqueue(&HTB_pq{HTB, HIT})
-		}
-		tmp := Candidates.Dequeue().(*HTB_pq)
-		HTB := tmp.HTB
-		HIT := float32(tmp.priority) / float32(utf8.RuneCountInString(Query))
-		fmt.Print(HIT)
-		if HIT >= CONFIG.SETTING.BOT_TALK_THRESHOLD {
-			switch {
-			case HTB.IsText():
-				// text
-				go SendText(Message.Chat.ID, HTB.Content, 0)
-			case HTB.IsMultiMedia():
-				// image
-				go SendMultiMedia(Message.Chat.ID, "", HTB.Content, HTB.Type)
+			priority := float32(HIT) / float32(utf8.RuneCountInString(Query))
+			if priority >= CONFIG.SETTING.BOT_TALK_THRESHOLD {
+				Candidates.Enqueue(&HTB_pq{HTB, priority})
 			}
 		}
+		HTB := Candidates.Dequeue().(*HTB_pq).HTB
+
+		switch {
+		case HTB.IsText():
+			// text
+			go SendText(Message.Chat.ID, HTB.Content, 0)
+		case HTB.IsMultiMedia():
+			// image
+			go SendMultiMedia(Message.Chat.ID, "", HTB.Content, HTB.Type)
+		}
+
 	}()
 }
 

@@ -466,26 +466,23 @@ func searchHandler(Message *tgbotapi.Message) {
 	var wg sync.WaitGroup
 	Candidates := pqueue.New(0)
 	for Curser.Next(context.TODO()) {
-		var HTB HokTseBun
+		var (
+			HTB HokTseBun
+			HIT int
+		)
 		Curser.Decode(&HTB)
-		// HIT:= fuzzy.Match(Query, HTB.Keyword) || fuzzy.Match(HTB.Keyword, Query) || fuzzy.Match(Query, HTB.Summarization) || (HTB.IsText() && fuzzy.Match(Query, HTB.Content))
 		switch {
 		case HTB.IsText():
-			HIT := TestHit(Query, HTB.Keyword, HTB.Summarization, HTB.Content)
-			Candidates.Enqueue(&HTB_pq{HTB, HIT})
-
+			HIT = TestHit(Query, HTB.Keyword, HTB.Summarization, HTB.Content)
 		case HTB.IsMultiMedia():
-			HIT := TestHit(Query, HTB.Keyword, HTB.Summarization)
-			Candidates.Enqueue(&HTB_pq{HTB, HIT})
+			HIT = TestHit(Query, HTB.Keyword, HTB.Summarization)
+		}
+		if HIT > 0 {
+			Candidates.Enqueue(&HTB_pq{HTB, float32(HIT)})
 		}
 	}
 	for i := 0; i < Candidates.Len(); i++ {
-		tmp := Candidates.Dequeue().(*HTB_pq)
-		HTB := tmp.HTB
-		HIT := float32(tmp.priority) / float32(utf8.RuneCountInString(Query))
-		if HIT <= 0 {
-			break
-		}
+		HTB := Candidates.Dequeue().(*HTB_pq).HTB
 		if ResultCount >= MaxResults {
 			ResultCount++
 			break
