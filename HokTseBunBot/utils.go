@@ -340,19 +340,26 @@ func GetUserNameByID(ChatID int64) ([]rune, error) {
 	}
 }
 
-func GetMaskedNameByID(TGUserID int64) string {
-	Filter := bson.M{"$and": bson.A{
-		bson.M{"TGUserID": TGUserID},
+func GetMaskedNameByID(FromID int64) string {
+	Filter1 := bson.M{"$and": bson.A{
+		bson.M{"TGUserID": FromID},
 		bson.M{"Nickname": bson.M{"$exists": true}},
 		bson.M{"Nickname": bson.M{"$ne": ""}},
 	}}
+	Filter2 := bson.M{"$and": bson.A{
+		bson.M{"DCUserID": FromID},
+		bson.M{"Nickname": bson.M{"$exists": true}},
+		bson.M{"Nickname": bson.M{"$ne": ""}},
+	}}
+	Filter := bson.M{"$or": bson.A{Filter1, Filter2}}
+
 	if SRst := GLOBAL_DB.Collection(CONFIG.DB.USER_STATUS).FindOne(context.TODO(), Filter); SRst.Err() == nil {
 		// has nickname
 		var US UserStatusEntity
 		SRst.Decode(&US)
 		return US.Nickname
 	}
-	NameRune, err := GetUserNameByID(TGUserID)
+	NameRune, err := GetUserNameByID(FromID)
 	if err != nil {
 		return "DC使用者"
 	}

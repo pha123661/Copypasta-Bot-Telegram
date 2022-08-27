@@ -370,7 +370,7 @@ func NormalTextMessage(Message *tgbotapi.Message) {
 	// asyc search
 	go func() {
 		var Query = Message.Text
-		Filter := bson.D{{Key: "Keyword", Value: bson.D{{Key: "$ne", Value: 0}}}}
+		Filter := bson.D{{Key: "Type", Value: bson.D{{Key: "$ne", Value: 0}}}}
 		opts := options.Find().SetSort(bson.D{{Key: "Type", Value: 1}})
 		Curser, err := Col.Find(context.TODO(), Filter, opts)
 		defer func() { Curser.Close(context.TODO()) }()
