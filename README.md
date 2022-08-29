@@ -1,5 +1,6 @@
 # What Is This?
 A "Ho̍k tsè bûn" / "copypasta" / "複製文" bot for telegram  
+Invite me: https://t.me/HokTseBunBot  
 
 # Features
 * Post related copypasta for you whenever the bot detects matching keyword  
