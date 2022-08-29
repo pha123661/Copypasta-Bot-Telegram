@@ -10,6 +10,7 @@ import (
 	"strings"
 
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
+	_ "github.com/joho/godotenv/autoload"
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"
@@ -25,7 +26,7 @@ func main() {
 	}
 	GLOBAL_DB := DBClient.Database(os.Getenv("DBGLOBAL_DB_NAME"))
 
-	Collections, err := GLOBAL_DB.ListCollectionNames(context.TODO(), bson.D{})
+	Collections, err := DBClient.Database(os.Getenv("DBDB_NAME")).ListCollectionNames(context.TODO(), bson.D{})
 	if err != nil {
 		panic("[InitConfig]" + err.Error())
 	}
@@ -74,7 +75,7 @@ func main() {
 
 				replyMsg := tgbotapi.NewMessage(ChatID, Text)
 				replyMsg.DisableNotification = true
-				replyMsg.ParseMode = "Markdown"
+				// replyMsg.ParseMode = "Markdown"
 				replyMsg.DisableWebPagePreview = true
 				_, err = bot.Send(replyMsg)
 				if err != nil {
@@ -95,7 +96,7 @@ func main() {
 			fmt.Println(ChatID)
 			replyMsg := tgbotapi.NewMessage(ChatID.(int64), Text)
 			replyMsg.DisableNotification = true
-			replyMsg.ParseMode = "Markdown"
+			// replyMsg.ParseMode = "Markdown"
 			replyMsg.DisableWebPagePreview = true
 			_, err = bot.Send(replyMsg)
 			if err != nil {
