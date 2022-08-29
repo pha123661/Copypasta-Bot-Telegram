@@ -12,7 +12,6 @@ import (
 	"unicode/utf8"
 
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
-	pqueue "github.com/nu7hatch/gopqueue"
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"
@@ -380,18 +379,24 @@ func NormalTextMessage(Message *tgbotapi.Message) {
 			return
 		}
 
-		Candidates := pqueue.New(0)
+		var (
+			MaximumPriority float32 = 0
+			MaxHTB          HokTseBun
+		)
 		for Curser.Next(context.TODO()) {
 			var HTB HokTseBun
 			Curser.Decode(&HTB)
 			HIT := TestHit(Query, HTB.Keyword, HTB.Summarization)
 			priority := float32(HIT) / float32(utf8.RuneCountInString(Query))
-			if priority >= CONFIG.SETTING.BOT_TALK_THRESHOLD {
-				Candidates.Enqueue(&HTB_pq{HTB, priority})
+			if priority >= MaximumPriority {
+				MaximumPriority = priority
+				MaxHTB = HTB
 			}
 		}
-		HTB := Candidates.Dequeue().(*HTB_pq).HTB
-
+		if MaximumPriority < CONFIG.SETTING.BOT_TALK_THRESHOLD {
+			return
+		}
+		HTB := MaxHTB
 		switch {
 		case HTB.IsText():
 			// text
