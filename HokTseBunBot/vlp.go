@@ -157,6 +157,12 @@ func TextSummarization(Keyword, Content string) string {
 	return Summarization
 }
 
+var IC_provider = []string{
+	"https://hf.space/embed/awacke1/NLPImageUnderstanding/+/api/predict",
+	"https://hf.space/embed/OFA-Sys/OFA-Image_Caption/+/api/predict/",
+	"https://hf.space/embed/jonasmouyal/Image_Captioning/api/predict",
+}
+
 func ImageCaptioning(Keyword, ImgEnc string) (string, error) {
 	/*
 		Preprocessing:
@@ -182,42 +188,62 @@ func ImageCaptioning(Keyword, ImgEnc string) (string, error) {
 
 	// No image captioning inference api available -> reply on user-hosted space api
 	// get caption
-	url := "https://hf.space/embed/OFA-Sys/OFA-Image_Caption/+/api/predict/"
-	jsonStr := fmt.Sprintf("{\"data\": [\"data:image/jpg;base64,%s\"]}", ImgEnc)
-	req, err := http.NewRequest("POST", url, bytes.NewBuffer([]byte(jsonStr)))
-	if err != nil {
-		log.Printf("[ImgSum] Keyword:%s\n", Keyword)
-		log.Println("[ImgSum]", err)
-		return "", err
-	}
-	req.Header.Set("Content-Type", "application/json")
-	client := &http.Client{}
-	resp, err := client.Do(req)
-	if err != nil {
-		log.Printf("[ImgSum] Keyword:%s\n", Keyword)
-		log.Println("[ImgSum]", err)
-		return "", err
-	}
-	defer resp.Body.Close()
-	if resp.StatusCode != 200 {
-		log.Printf("[ImgSum] Keyword:%s\n", Keyword)
-		log.Printf("[ImgSum] received non 200 response code: %d", resp.StatusCode)
-		return "", err
-	}
-	j := &struct {
-		Data          []string  `json:"data"`
-		Durations     []float32 `json:"durations"`
-		Avg_durations []float32 `json:"avg_durations"`
-	}{}
-	err = json.NewDecoder(resp.Body).Decode(j)
-	if err != nil {
-		log.Printf("[ImgSum] Keyword:%s\n", Keyword)
-		log.Println("[ImgSum]", err)
-		return "", err
+	var cap string
+	for idx, space_url := range IC_provider {
+		url := space_url
+		jsonStr := fmt.Sprintf("{\"data\": [\"data:image/jpg;base64,%s\"]}", ImgEnc)
+		req, err := http.NewRequest("POST", url, bytes.NewBuffer([]byte(jsonStr)))
+		if err != nil {
+			log.Printf("[ImgSum] Keyword:%s\n", Keyword)
+			log.Println("[ImgSum]", err)
+			if idx == len(IC_provider)-1 {
+				return "", err
+			} else {
+				continue
+			}
+		}
+		req.Header.Set("Content-Type", "application/json")
+		client := &http.Client{}
+		resp, err := client.Do(req)
+		if err != nil {
+			log.Printf("[ImgSum] Keyword:%s\n", Keyword)
+			log.Println("[ImgSum]", err)
+			if idx == len(IC_provider)-1 {
+				return "", err
+			} else {
+				continue
+			}
+		}
+		defer resp.Body.Close()
+		if resp.StatusCode != 200 {
+			log.Printf("[ImgSum] Keyword:%s\n", Keyword)
+			log.Printf("[ImgSum] received non 200 response code: %d", resp.StatusCode)
+			if idx == len(IC_provider)-1 {
+				return "", err
+			} else {
+				continue
+			}
+		}
+		j := &struct {
+			Data          []string  `json:"data"`
+			Durations     []float32 `json:"durations"`
+			Avg_durations []float32 `json:"avg_durations"`
+		}{}
+		err = json.NewDecoder(resp.Body).Decode(j)
+		if err != nil {
+			log.Printf("[ImgSum] Keyword:%s\n", Keyword)
+			log.Println("[ImgSum]", err)
+			if idx == len(IC_provider)-1 {
+				return "", err
+			} else {
+				continue
+			}
+		}
+		cap = j.Data[0]
 	}
 
 	// translate
-	CaptionZHTW, err := gt.Translate(j.Data[0], "en", "zh-TW")
+	CaptionZHTW, err := gt.Translate(cap, "en", "zh-TW")
 	if err != nil {
 		log.Printf("[ImgSum] Keyword:%s\n", Keyword)
 		log.Println("[ImgSum]", err)
