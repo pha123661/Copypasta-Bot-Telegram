@@ -161,8 +161,8 @@ func TextSummarization(Keyword, Content string) string {
 }
 
 var IC_provider = []string{
-	"https://hf.space/embed/awacke1/NLPImageUnderstanding/+/api/predict",
 	"https://hf.space/embed/OFA-Sys/OFA-Image_Caption/+/api/predict/",
+	"https://hf.space/embed/awacke1/NLPImageUnderstanding/+/api/predict",
 	"https://hf.space/embed/jonasmouyal/Image_Captioning/api/predict",
 }
 
