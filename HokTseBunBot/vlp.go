@@ -243,6 +243,7 @@ func ImageCaptioning(Keyword, ImgEnc string) (string, error) {
 			}
 		}
 		cap = j.Data[0]
+		break
 	}
 
 	// translate
