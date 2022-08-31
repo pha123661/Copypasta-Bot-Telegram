@@ -75,8 +75,11 @@ func SetHFAPI() {
 	}
 
 	if !success {
+		log.Println("No available HF api, sleeping for 5 sec and try again!")
+		time.Sleep(5 * time.Second)
 		CONFIG.API.HF.CURRENT_TOKEN = ""
-		log.Panicln("No available HF api!")
+		InitConfig("./config.toml")
+		SetHFAPI()
 	}
 }
 
