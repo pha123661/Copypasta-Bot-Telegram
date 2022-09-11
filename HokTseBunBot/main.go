@@ -76,6 +76,9 @@ func main() {
 	for update := range updates {
 		switch {
 		case update.Message != nil:
+			if update.Message.ForwardFrom != nil {
+				continue
+			}
 			switch {
 			case update.Message.Photo != nil || update.Message.Animation != nil || update.Message.Video != nil:
 				go MediaMessage(update.Message)
