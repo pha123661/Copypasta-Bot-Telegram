@@ -1,8 +1,10 @@
-# What Is This?
-A "Ho̍k tsè bûn" / "copypasta" / "複製文" bot for telegram  
-~[Invite me](https://t.me/HokTseBunBot)~(my VPS expired)  
+# Copypasta Bot Telegram
 
-# Features
+A "Ho̍k tsè bûn" / "copypasta" / "複製文" bot for telegram  
+👉[Start using the bot](https://t.me/HokTseBunBot)👈
+
+## Features
+
 * Post related copypasta for you whenever the bot detects matching keyword  
 * Generate summarization (or caption, for media) automaticly by utlizing top-of-the-line DL models  
   * Model used for text summarization: [csebuetnlp/mT5_multilingual_XLSum](https://huggingface.co/csebuetnlp/mT5_multilingual_XLSum)  
@@ -12,16 +14,22 @@ A "Ho̍k tsè bûn" / "copypasta" / "複製文" bot for telegram
 [`#TextGeneration`](https://paperswithcode.com/task/text-generation)  
 [`#TextSummarization`](https://paperswithcode.com/task/text-summarization)  
 
-# DEMO
+## DEMO
+
 ### Insert Text   
+
 ![Imgur](https://imgur.com/s2z5lsH.jpg)  
 ### Insert Media  
+
 ![Imgur](https://imgur.com/WYzxE6R.jpg)  
 ### Post copypasta
-![Imgur](https://imgur.com/uKzFxLT.jpg)  
+
+![Imgur](https://imgur.com/uKzFxLT.jpg) 
+
 and more......  
 
-# Usage  
+## Usage  
+
 Supported commands atm:  
 1. new/add: insert new Ho̍k tsè bûn into the database  
 1. random: select a Ho̍k tsè bûn randomly and post it  
@@ -30,21 +38,23 @@ Supported commands atm:
 1. delete: delete copypasta
 1. example: show tutorial  
 
-# Deploy on [Replit.com](http://replit.com/)
+## Deploy on [Replit.com](http://replit.com/)
+
 1. Import the repo into replit
 2. Setup your config file following section "Config Setup" and move it to ``/HokSeBunBot``
-3. Run (first time only)
+3. Run
 ```go
 go mod init HokSeBunBot  
 go mod tidy
+bash run.sh
 ```
-4. Make sure your replit run command is ``cd HokSeBunBot && go run .``
-5. (Optional) In order to make the bot work in group chat, turn off privacy mode for you bot (by using BotFother).
-6. Profit!  
+4. (Optional) In order to make the bot work in group chat, turn off privacy mode for you bot (by using BotFother).
+5. Profit!  
 
 
-# Config Setup
-## Environment Variable
+## Config Setup
+
+### Environment Variables
 Environment Variable: ``API.TG.TOKEN``  
 Description: API token for your telegram bot  
 Default value: ``"YOUR_TELEGRAM_API_TOKEN"`` (no this does not work)  
@@ -57,7 +67,7 @@ Default value= ``["YOUR_HUGGINGFACETOKEN1", "YOUR_HUGGINGFACETOKEN2",]``
 
 ---
 
-## [SETTING]
+### [SETTING]
 
 Setting: ``LOG_FILE``  
 Description: Name of your log file  
