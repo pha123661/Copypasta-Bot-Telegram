@@ -1,1 +1,0 @@
-cd HokTseBunBot && go run .
